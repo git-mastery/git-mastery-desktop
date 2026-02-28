@@ -1,0 +1,2 @@
+# Development requirements
+You are developing as part of a 6-month university course. As such, many developers over the course of years will touch this code. Each time you make a change, you must update the documentation to reflect the change. If documentation does not exist, add it in `/docs`.

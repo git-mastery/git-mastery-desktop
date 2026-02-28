@@ -1,0 +1,23 @@
+{
+  "appId": "com.nus.gitmastery",
+  "icon": "./desktopIcon.png",
+  "files": [
+    "dist-react",
+    "dist-electron"
+  ],
+  "win": {
+    "target": [
+      "portable",
+      "msi"
+    ]
+  },
+  "linux": {
+    "target": [
+      "AppImage",
+      "deb"
+    ]
+  },
+  "mac": {
+    "target": "dmg"
+  }
+}
