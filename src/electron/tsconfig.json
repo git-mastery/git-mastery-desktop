@@ -3,7 +3,10 @@
     "strict": true,
     "target": "esnext",
     "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "outDir": "../../dist-electron",
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+    "types": ["node", "electron"]
+  },
+  "include": ["./**/*.ts", "./**/*.cts", "./**/*.mts"]
 }
