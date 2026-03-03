@@ -7,14 +7,17 @@ let ptyProcess: pty.IPty;
 export function setupTerminalIpc(mainWindow: BrowserWindow) {
 
   // Handle pty spawn request from renderer
-  ipcMain.on('pty-spawn', () => {
-    if (ptyProcess) return;
+  ipcMain.on('pty-spawn', (_, { cols, rows }: { cols: number; rows: number }) => {
+    // Kill existing pty if the renderer reloaded (e.g. page refresh)
+    if (ptyProcess) {
+      ptyProcess.kill();
+    }
 
     const shell = process.env[os.platform() === 'win32' ? 'COMSPEC' : 'SHELL'];
     ptyProcess = pty.spawn(shell!, [], {
       name: 'xterm-256color',
-      cols: 80,
-      rows: 30,
+      cols,
+      rows,
       cwd: process.env.HOME || process.env.USERPROFILE,
       env: process.env
     });
@@ -41,3 +44,4 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
   });
 
 }
+

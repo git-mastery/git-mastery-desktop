@@ -2,6 +2,7 @@ import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import { AppShell, Box, Button, Container, Title } from '@mantine/core'
 import TerminalComponent from './components/Terminal/Terminal'
+import { LeftBarWrapper } from './components/Navigation/LeftBarWrapper'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -22,21 +23,21 @@ function App() {
         </Box>
       </AppShell.Header>
       <AppShell.Navbar>
-        <AppShell.Section>
-          <Box p='md'>
 
-            <Title order={4}> GitMastery </Title>
-          </Box>
-        </AppShell.Section>
+        <Box p='md' h="100%">
+
+          <LeftBarWrapper />
+        </Box>
+
       </AppShell.Navbar>
       <AppShell.Main>
         {/* <Box p='md'> */}
 
-        Hello this is some text
-        <Title> Hlelo this is a header</Title>
+
         {/* </Box> */}
       </AppShell.Main>
       <AppShell.Aside>
+
 
         <TerminalComponent />
 
