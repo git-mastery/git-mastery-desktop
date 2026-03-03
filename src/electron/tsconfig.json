@@ -6,7 +6,7 @@
     "moduleResolution": "NodeNext",
     "outDir": "../../dist-electron",
     "skipLibCheck": true,
-    "types": ["node", "electron"]
+    "types": ["node", "electron", "../../types.d.ts"]
   },
   "include": ["./**/*.ts", "./**/*.cts", "./**/*.mts"]
 }
