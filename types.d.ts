@@ -7,3 +7,17 @@ interface Window {
   }
 }
 
+// type EventPayloadMapping = {
+//   spawn: void,
+//   write: void,
+//   onData: () => void,
+//   resize: void
+// }
+
+// key:
+type IpcHandlerChannelMapping = {
+  "pty-spawn": { cols: number, rows: number },
+  "pty-write": { data: string },
+  "pty-resize": { cols: number, rows: number },
+  "pty-data": string
+}

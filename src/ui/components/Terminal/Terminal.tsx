@@ -32,7 +32,6 @@ const XTermComponent = () => {
     // Setup communication between xterm.js and node-pty via IPC
     term.onData(data => window.electron.write(data));
     const removeDataListener = window.electron.onData(data => term.write(data));
-
     return () => {
       observer.disconnect();
       removeDataListener();

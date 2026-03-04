@@ -1,13 +1,15 @@
 import { ipcMain, BrowserWindow } from "electron";
 import os from "os";
 import pty from "node-pty";
+import { ipcMainHandle, ipcMainOn } from "../util.js";
 
 let ptyProcess: pty.IPty;
 
 export function setupTerminalIpc(mainWindow: BrowserWindow) {
 
   // Handle pty spawn request from renderer
-  ipcMain.on('pty-spawn', (_, { cols, rows }: { cols: number; rows: number }) => {
+
+  ipcMainOn('pty-spawn', ({ cols, rows }: { cols: number; rows: number }) => {
     // Kill existing pty if the renderer reloaded (e.g. page refresh)
     if (ptyProcess) {
       ptyProcess.kill();
@@ -30,14 +32,14 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
   });
 
   // Handle pty input from renderer
-  ipcMain.on('pty-write', (_, data) => {
+  ipcMainOn('pty-write', ({ data }: { data: string }) => {
     if (ptyProcess) {
       ptyProcess.write(data);
     }
   });
 
   // Handle resize from renderer
-  ipcMain.on('pty-resize', (_, { cols, rows }) => {
+  ipcMainOn('pty-resize', ({ cols, rows }) => {
     if (ptyProcess) {
       ptyProcess.resize(cols, rows);
     }
