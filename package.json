@@ -20,6 +20,7 @@
     "@mantine/core": "^8.3.15",
     "@mantine/hooks": "^8.3.15",
     "@mantine/modals": "^8.3.15",
+    "@tabler/icons-react": "^3.38.0",
     "@tanstack/react-query": "^5.90.21",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
