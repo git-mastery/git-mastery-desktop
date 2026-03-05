@@ -41,7 +41,7 @@ export const WebsiteWrapper = () => {
           <Text variant="subheading" size="sm" key={index}>{formatBreadcrumb(breadcrumb).toUpperCase()}</Text>
         ))}
 
-        <Badge>{formatBreadcrumb(breadcrumbs[breadcrumbs.length - 1])}</Badge>
+        {breadcrumbs.length > 0 ? <Badge>{formatBreadcrumb(breadcrumbs[breadcrumbs.length - 1])}</Badge> : <></>}
       </Breadcrumbs>
     </Box>
     <Flex ref={webViewRef} id="webcontentsview-placeholder" style={{ width: "100%", height: "100%", flexGrow: 1 }}></Flex>
