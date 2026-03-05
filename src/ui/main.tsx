@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import '@mantine/core/styles.css';
 import App from './App.tsx'
 import { colorsTuple, createTheme, MantineProvider, Text } from '@mantine/core'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const theme = createTheme({
   primaryColor: 'gm-green',
@@ -30,10 +31,17 @@ const theme = createTheme({
   },
 })
 
+import { WebContentsViewProvider } from './context/useWebContentsView';
+
+const queryClient = new QueryClient()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme}>
-      <App />
+      <QueryClientProvider client={queryClient}>
+        <WebContentsViewProvider>
+          <App />
+        </WebContentsViewProvider>
+      </QueryClientProvider>
     </MantineProvider>
   </StrictMode>,
 )

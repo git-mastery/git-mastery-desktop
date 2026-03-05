@@ -3,6 +3,7 @@ import reactLogo from './assets/react.svg'
 import { AppShell, Box, Button, Container, Title } from '@mantine/core'
 import TerminalComponent from './components/Terminal/Terminal'
 import { LeftBarWrapper } from './components/Navigation/LeftBarWrapper'
+import { WebsiteWrapper } from './components/Website/WebsiteWrapper'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -14,6 +15,7 @@ function App() {
       header={{ height: 64 }}
       navbar={{ width: 256, breakpoint: "md" }}
       aside={{ width: 512, breakpoint: "xs" }}
+      footer={{ height: 32 }}
     >
       <AppShell.Header
       >
@@ -30,11 +32,8 @@ function App() {
         </Box>
 
       </AppShell.Navbar>
-      <AppShell.Main>
-        {/* <Box p='md'> */}
-
-
-        {/* </Box> */}
+      <AppShell.Main style={{ display: "flex", height: "100%" }}>
+        <WebsiteWrapper />
       </AppShell.Main>
       <AppShell.Aside>
 
@@ -42,6 +41,12 @@ function App() {
         <TerminalComponent />
 
       </AppShell.Aside>
+
+      <AppShell.Footer>
+        <Box>
+          SOME TEXT
+        </Box>
+      </AppShell.Footer>
     </AppShell >
   )
 }

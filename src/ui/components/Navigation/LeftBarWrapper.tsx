@@ -3,18 +3,28 @@ import { TourList } from "./TourList"
 import { LessonList } from "./LessonList"
 
 export const LeftBarWrapper = () => {
-  return <Stack h="100%">
+  return <Stack h="100%" >
     {/* Tours */}
-    <TourList />
+    <Stack style={{
+      overflowY: "scroll",
 
-    {/* Lessons (scrollable) */}
-    <Flex flex={1}>
-      <LessonList />
+    }}>
+
+      <TourList />
+
+      {/* Lessons (scrollable) */}
+      <Flex flex={1}>
+        <LessonList />
+
+      </Flex>
+
+    </Stack>
+    <Flex style={{ flexGrow: 1 }}>
 
     </Flex>
 
     {/* User profile (fixed)*/}
 
-    <Box h={128}>Hi, user!</Box>
+    <Flex h={128} style={{ flexShrink: 0 }}>Hi, user!</Flex>
   </Stack>
 }

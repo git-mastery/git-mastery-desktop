@@ -1,49 +1,64 @@
-import { Button, Collapse, Flex, Stack, Text } from "@mantine/core"
-import type { Lesson, Tour } from "../../../types/Lesson"
-import { TOUR_LIST } from "../../../data/tours"
+import { Button, Collapse, Flex, Stack, Text, Tooltip } from "@mantine/core"
 import { useDisclosure } from "@mantine/hooks"
+import type { Lesson, Tour, TourData } from "../../../types/Tour"
+import { useCustomQuery } from "../../hooks/useCustomQuery"
+import { buildUrl, useWebContentsView } from "../../context/useWebContentsView"
 
 export const TourList = () => {
+
+  const { data: tourList, isLoading } = useCustomQuery<TourData>({ queryKey: ["tour_list"], queryUrl: "https://git-mastery.org/lessons/lessons.json" })
   return <Stack>
     <Text variant="subheading"> TOURS </Text>
-    {TOUR_LIST.map(buildTour)}
+    {tourList ? Object.values(tourList).map((tour, index) => <TourItem key={index} tour={tour} index={index} />) : "No data"}
   </Stack>
 }
 
-const buildTour = (tour: Tour) => {
+const TourItem = ({ tour, index }: { tour: Tour, index: number }) => {
   const [opened, { toggle }] = useDisclosure(false);
-  return <Flex direction={"column"}>
-    <Button
-      onClick={toggle}
-      variant="subtle"
-      color="dark"
-      styles={
-        {
-          label: { whiteSpace: "pre-wrap", textAlign: "left" },
-          root: {
-            height: 'auto',
-            padding: "8px",
-            lineHeight: "1.5em"
-          },
-        }
+  const { navigate } = useWebContentsView();
 
-      } >T{tour.id}: {tour.name} </Button>
+  return <Flex direction={"column"}>
+    <Tooltip label={tour.title} position="right" withArrow>
+
+      <Button
+        onClick={toggle}
+        variant="subtle"
+        color="dark"
+        w="100%"
+        styles={
+          {
+            label: {
+              // whiteSpace: "pre-wrap",
+              textAlign: "left", width: "100%"
+            },
+            root: {
+              height: 'auto',
+              padding: "8px",
+              lineHeight: "1.5em"
+            },
+          }
+
+        } >{tour.title} </Button>
+    </Tooltip>
     <Collapse in={opened} p="8px" w={"100%"}>
-      {tour.lessons.map(buildLesson)}
+      {buildLesson({ path: `lessons/trail/${tour.folder}`, title: "Tour Home" }, navigate)}
+      {Object.values(tour.lessons).map(lesson => buildLesson(lesson, navigate))}
     </Collapse>
-  </Flex >
+  </Flex>
 }
 
-const buildLesson = (lesson: Lesson) => {
-  return <Button variant="subtle" color="dark" size="sm" w="100%" styles={
-    {
-      label: { whiteSpace: "pre-wrap", textAlign: "left", width: "100%" },
-      root: {
-        height: 'auto',
-        padding: "8px",
-        lineHeight: "1.5em"
-      },
-    }
+const buildLesson = (lesson: Lesson, navigate: (url: string) => void) => {
+  return <Button variant="subtle" color="dark" size="sm" w="100%"
+    onClick={() => navigate(buildUrl(lesson))}
+    styles={
+      {
+        label: { whiteSpace: "pre-wrap", textAlign: "left", width: "100%" },
+        root: {
+          height: 'auto',
+          padding: "8px",
+          lineHeight: "1.5em"
+        },
+      }
 
-  } > L{lesson.id}: {lesson.name} </Button>
+    } > {lesson.title} </Button>
 }
