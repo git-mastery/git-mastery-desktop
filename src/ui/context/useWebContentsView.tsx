@@ -6,6 +6,8 @@ type WebContentsViewState = {
   breadcrumbs: string[];
   setBreadcrumbs: (crumbs: string[]) => void;
   navigate: (url: string) => void;
+  hide: () => void;
+  show: () => void;
 }
 
 const WebContentsViewContext = createContext<WebContentsViewState | null>(null);
@@ -13,6 +15,7 @@ const WebContentsViewContext = createContext<WebContentsViewState | null>(null);
 export function WebContentsViewProvider({ children }: { children: ReactNode }) {
   const [currentUrl, setCurrentUrl] = useState<string | null>("https://git-mastery.org")
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([])
+  const [isVisible, setIsVisible] = useState(false);
 
   const navigate = useCallback((url: string) => {
     setBreadcrumbs(url.replace("https://git-mastery.org/", "").split("/"))
@@ -20,10 +23,22 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
     window.electron.navigate(url)
 
     console.log("navigate called", url)
+
+    show();
+  }, [])
+
+  const hide = useCallback(() => {
+    setIsVisible(false)
+    window.electron.hide()
+  }, [])
+
+  const show = useCallback(() => {
+    setIsVisible(true)
+    window.electron.show()
   }, [])
 
   return (
-    <WebContentsViewContext.Provider value={{ currentUrl, breadcrumbs, setBreadcrumbs, navigate }
+    <WebContentsViewContext.Provider value={{ currentUrl, breadcrumbs, setBreadcrumbs, navigate, hide, show }
     }>
       {children}
     </WebContentsViewContext.Provider>

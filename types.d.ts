@@ -6,9 +6,10 @@ interface Window {
     resize: (cols: number, rows: number) => void;
 
     // for Web Contents View
-    display: (x: number, y: number, width: number, height: number) => void;
+    setContentsViewSize: (x: number, y: number, width: number, height: number) => void;
     navigate: (url: string) => void;
-
+    hide: () => void;
+    show: () => void;
   }
 }
 
@@ -26,5 +27,7 @@ type IpcHandlerChannelMapping = {
   "pty-resize": { cols: number, rows: number },
   "pty-data": string,
   "wcv-navigate": { url: string },
-  "wcv-display": { x: number, y: number, width: number, height: number },
+  "wcv-show": null,
+  "wcv-size": { x: number, y: number, width: number, height: number },
+  "wcv-hide": null,
 }

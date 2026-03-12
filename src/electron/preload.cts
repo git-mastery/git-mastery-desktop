@@ -6,7 +6,9 @@ contextBridge.exposeInMainWorld("electron", {
   onData: (callback: (data: string) => void) => ipcOn('pty-data', callback),
   resize: (cols: number, rows: number) => ipcSend('pty-resize', { cols, rows }),
   navigate: (url: string) => ipcSend('wcv-navigate', { url }),
-  display: (x: number, y: number, width: number, height: number) => ipcSend('wcv-display', { x, y, width, height }),
+  setContentsViewSize: (x: number, y: number, width: number, height: number) => ipcSend('wcv-size', { x, y, width, height }),
+  hide: () => ipcSend('wcv-hide', null),
+  show: () => ipcSend('wcv-show', null),
 } satisfies Window['electron'])
 
 // Note: you canNOT import external files into the preload script, due to Electron sandboxing

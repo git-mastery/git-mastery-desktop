@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import reactLogo from './assets/react.svg'
-import { AppShell, Box, Button, Container, Title } from '@mantine/core'
+import { AppShell, Box, Button, Container, Group, Space, Title } from '@mantine/core'
 import TerminalComponent from './components/Terminal/Terminal'
 import { LeftBarWrapper } from './components/Navigation/LeftBarWrapper'
 import { WebsiteWrapper } from './components/Website/WebsiteWrapper'
 
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
     <AppShell
@@ -19,9 +18,13 @@ function App() {
     >
       <AppShell.Header
       >
-        <Box p="md" >
+        <Box p="md" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }} >
           <Title order={4}> GitMastery </Title>
-
+          <Space />
+          <Group>
+            <Button> Set Exercise Directory </Button>
+            <Button> Set EXE location </Button>
+          </Group>
         </Box>
       </AppShell.Header>
       <AppShell.Navbar>

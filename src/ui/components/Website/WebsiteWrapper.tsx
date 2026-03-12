@@ -9,14 +9,13 @@ export const WebsiteWrapper = () => {
 
   const { currentUrl, breadcrumbs, } = useWebContentsView()
 
-  console.log({ currentUrl, breadcrumbs })
   useEffect(() => {
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect
         const { x, y } = entry.target.getBoundingClientRect()
-        window.electron.display(Math.round(x), Math.round(y), Math.round(width), Math.round(height))
+        window.electron.setContentsViewSize(Math.round(x), Math.round(y), Math.round(width), Math.round(height))
       }
     })
 
