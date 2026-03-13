@@ -4,6 +4,20 @@ import { ExerciseList } from "./ExerciseList"
 import { IconArrowsLeftRight, IconChevronRight, IconMessageCircle, IconPhoto, IconSearch, IconSettings, IconTrash } from "@tabler/icons-react"
 import { forwardRef } from "react"
 
+const selectExePath = async () => {
+  const path = await window.electron.selectFile("exe");
+  if (path) {
+    window.electron.setExeLocation(path);
+  }
+}
+
+const selectSaveDir = async () => {
+  const path = await window.electron.selectFolder();
+  if (path) {
+    window.electron.setExerciseDirectory(path);
+  }
+}
+
 export const LeftBarWrapper = () => {
   return <Stack h="100%" >
     {/* Tours */}
@@ -40,10 +54,10 @@ export const LeftBarWrapper = () => {
 
         <Menu.Dropdown>
           <Menu.Label>Setup</Menu.Label>
-          <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => alert("Confgi")}>
+          <Menu.Item leftSection={<IconSettings size={14} />} onClick={selectExePath}>
             Configure Git Mastery
           </Menu.Item>
-          <Menu.Item leftSection={<IconMessageCircle size={14} />}>
+          <Menu.Item leftSection={<IconMessageCircle size={14} />} onClick={selectSaveDir}>
             Configure save location
           </Menu.Item>
 

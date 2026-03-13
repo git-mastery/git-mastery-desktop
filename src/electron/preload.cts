@@ -9,15 +9,31 @@ contextBridge.exposeInMainWorld("electron", {
   setContentsViewSize: (x: number, y: number, width: number, height: number) => ipcSend('wcv-size', { x, y, width, height }),
   hide: () => ipcSend('wcv-hide', null),
   show: () => ipcSend('wcv-show', null),
+
+  setExeLocation: (location: string) => ipcSend('set-exe-location', { location }),
+  setExerciseDirectory: (directory: string) => ipcSend('set-exercise-directory', { directory }),
+  selectFolder: () => ipcInvoke('select-folder', null),
+  selectFile: () => ipcInvoke('select-file', "exe")
 } satisfies Window['electron'])
 
 // Note: you canNOT import external files into the preload script, due to Electron sandboxing
-function ipcInvoke<Key extends keyof IpcHandlerChannelMapping>(
-  key: Key
-): Promise<IpcHandlerChannelMapping[Key]> {
-  return ipcRenderer.invoke(key);
+/**
+ * Bidirectional / Two-Way communication (Request-Response).
+ * Used for fetching data from the system or performing tasks that return a value.
+ * Returns a Promise.
+ */
+function ipcInvoke<Key extends keyof IpcInvokeChannelMapping>(
+  key: Key,
+  payload: IpcInvokeChannelMapping[Key]["request"]
+): Promise<IpcInvokeChannelMapping[Key]["response"]> {
+  return ipcRenderer.invoke(key, payload);
 }
 
+/**
+ * Subscription / Listener (Main -> Renderer).
+ * Used for waiting for the Main process to trigger events spontaneously.
+ * Returns a cleanup function to unsubscribe and prevent memory leaks.
+ */
 function ipcOn<Key extends keyof IpcHandlerChannelMapping>(
   key: Key,
   callback: (payload: IpcHandlerChannelMapping[Key]) => void
@@ -27,6 +43,11 @@ function ipcOn<Key extends keyof IpcHandlerChannelMapping>(
   return () => ipcRenderer.off(key, cb);
 }
 
+/**
+ * Unidirectional / One-Way communication (Renderer -> Main).
+ * "Fire and forget" - used for telling the Main process to perform an action 
+ * where the UI doesn't need to wait for a result.
+ */
 function ipcSend<Key extends keyof IpcHandlerChannelMapping>(
   key: Key,
   payload: IpcHandlerChannelMapping[Key]

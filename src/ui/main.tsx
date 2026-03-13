@@ -22,6 +22,7 @@ const theme = createTheme({
             root: {
               fontWeight: 800,
               color: theme.colors.gray[5],
+              // fontFamily: theme.headings.fontFamily,
             },
           };
         }

@@ -4,6 +4,7 @@ import { isDev } from "./util.js";
 import { getPreloadPath } from "./pathResolver.js";
 import { setupTerminalIpc } from "./ipc/terminal.js";
 import { setupWebContentsViewIpc } from "./ipc/webContentsView.js";
+import { setupConfigIpc } from "./ipc/config.js";
 
 app.on("ready", () => {
   const mainWindow = new BrowserWindow({
@@ -13,6 +14,7 @@ app.on("ready", () => {
   });
   setupTerminalIpc(mainWindow);
   setupWebContentsViewIpc(mainWindow);
+  setupConfigIpc(mainWindow);
 
   console.log("isDev: ", isDev())
   if (isDev()) {
