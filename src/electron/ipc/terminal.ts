@@ -85,83 +85,104 @@ const _spawnChildProcess = (args: string[]) => {
 
 const _setup = async (mainWindow: BrowserWindow) => {
   const exeLocation = getGitMasteryExecutable();
-  const exerciseDirectory = getConfig().dataDirectory;
+  const dataDirectory = getConfig().dataDirectory;
 
-  console.log({ exeLocation, exerciseDirectory });
+  console.log({ exeLocation, dataDirectory });
 
-  // 1. Check if the exe exists (windows only) — auto-download if missing
-  if (process.platform === "win32" && !fs.existsSync(exeLocation)) {
-    if (!exerciseDirectory) {
-      throw new Error('Cannot download gitmastery.exe: exercise directory is not configured.');
-    }
-    logGM('download', 'exe', 'gitmastery.exe not found — downloading latest release...');
-    await downloadGitMasteryExe(exerciseDirectory);
-    logGM('download', 'exe', 'Download complete.');
-  }
-
-  // 2. Check if the exercise directory exists
-  if (!exerciseDirectory || !fs.existsSync(exerciseDirectory)) {
+  // 1. Check if the data directory exists
+  if (!dataDirectory || !fs.existsSync(dataDirectory)) {
     throw new Error('Exercise directory not found');
   }
 
-  // Spawn the process
-  // Do NOT use shell: true — it causes cmd.exe to split on spaces in the path,
-  // e.g. "C:\Coding\gitmastery stuff\gitmastery.exe" gets truncated to "C:\Coding\gitmastery"
-  const childProcess = _spawnChildProcess(["setup"]);
 
-  let stdoutBuffer = '';
-  let stderrBuffer = '';
+  // 2a. Check if the exe exists (windows only) — auto-download if missing
+  if (process.platform === "win32" && !fs.existsSync(exeLocation)) {
 
-  childProcess.stdout.on('data', (data) => {
-    stdoutBuffer += data.toString();
-    // Send progress updates to renderer
-    logGM("stdout", "setup", data.toString());
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send(GM_TASK_DATA_CHANNEL, {
-        originalCommand: "setup",
-        data: {
-          success: {
-            message: data.toString(),
-            stdout: stdoutBuffer,
-            stderr: stderrBuffer,
-          }
-        },
-      });
-    }
+    logGM('download', 'exe', 'gitmastery.exe not found — downloading latest release...');
+    await downloadGitMasteryExe(dataDirectory);
+    logGM('download', 'exe', 'Download complete.');
+  }
 
-    if (data.toString().includes("PROMPT")) {
-      childProcess.stdin.write("\n");
-      childProcess.stdin.end(); // no more input
-    }
-  });
+  // 2b. Check if gitmastery is installed using brew (Mac only)
+  // TODO
 
-  childProcess.stderr.on('data', (data) => {
-    stderrBuffer += data.toString();
-    // Send error updates to renderer
-    logGM("stderr", "setup", data.toString());
-    // mainWindow.webContents.send('gitmastery-error', {
-    //   originalCommand,
-    //   error: stderrBuffer,
-    // });
-  });
+  // 3. Check if the exercises folder is created
+  const exerciseDirectory = path.join(dataDirectory, 'gitmastery-exercises');
+  if (!fs.existsSync(exerciseDirectory)) {
+    // run setup process
+    // Spawn the process
+    // Do NOT use shell: true — it causes cmd.exe to split on spaces in the path,
+    // e.g. "C:\Coding\gitmastery stuff\gitmastery.exe" gets truncated to "C:\Coding\gitmastery"
+    const childProcess = _spawnChildProcess(["setup"]);
 
-  childProcess.on('close', (code) => {
-    logGM("close", "setup", code!.toString());
-    if (code === 0) {
-      // Success
-      // mainWindow.webContents.send('gitmastery-success', {
-      //   originalCommand,
-      //   data: parseGitMasteryOutput(stdoutBuffer),
-      // });
-    } else {
-      // Failure
-      // mainWindow.webContents.send('gitmastery-failure', {
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
+
+    childProcess.stdout.on('data', (data) => {
+      stdoutBuffer += data.toString();
+      // Send progress updates to renderer
+      logGM("stdout", "setup", data.toString());
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(GM_TASK_DATA_CHANNEL, {
+          originalCommand: "setup",
+          data: {
+            success: {
+              message: data.toString(),
+              stdout: stdoutBuffer,
+              stderr: stderrBuffer,
+            }
+          },
+        });
+      }
+
+      if (data.toString().includes("PROMPT")) {
+        childProcess.stdin.write("\n");
+        childProcess.stdin.end(); // no more input
+      }
+    });
+
+    childProcess.stderr.on('data', (data) => {
+      stderrBuffer += data.toString();
+      // Send error updates to renderer
+      logGM("stderr", "setup", data.toString());
+      // mainWindow.webContents.send('gitmastery-error', {
       //   originalCommand,
       //   error: stderrBuffer,
-      //   code,
       // });
-    }
+    });
+
+    childProcess.on('close', (code) => {
+      logGM("close", "setup", code!.toString());
+      if (code === 0) {
+        // Success
+        // mainWindow.webContents.send('gitmastery-success', {
+        //   originalCommand,
+        //   data: parseGitMasteryOutput(stdoutBuffer),
+        // });
+      } else {
+        // Failure
+        // mainWindow.webContents.send('gitmastery-failure', {
+        //   originalCommand,
+        //   error: stderrBuffer,
+        //   code,
+        // });
+      }
+    });
+
+    return;
+
+  }
+
+  // else, nothing to setup
+  mainWindow.webContents.send(GM_TASK_DATA_CHANNEL, {
+    originalCommand: "setup",
+    data: {
+      success: {
+        message: "Setup complete",
+      }
+    },
   });
+  return;
 
 }
 
