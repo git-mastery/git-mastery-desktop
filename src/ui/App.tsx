@@ -4,6 +4,7 @@ import { AppShell, Box, Button, Container, Group, Space, Title } from '@mantine/
 import TerminalComponent from './components/Terminal/Terminal'
 import { LeftBarWrapper } from './components/Navigation/LeftBarWrapper'
 import { WebsiteWrapper } from './components/Website/WebsiteWrapper'
+import { InfoBar } from './components/InfoBar/InfoBar'
 
 function App() {
 
@@ -47,7 +48,8 @@ function App() {
 
       <AppShell.Footer>
         <Box>
-          SOME TEXT
+          <InfoBar
+          ></InfoBar>
         </Box>
       </AppShell.Footer>
     </AppShell >

@@ -1,6 +1,6 @@
 import { app } from "electron";
 import path from "path";
-import { isDev } from "./util.js";
+import { isDev } from "./utils/util.js";
 
 export function getPreloadPath() {
   // reference the video at 52 minutes.

@@ -16,6 +16,11 @@ interface Window {
     setExerciseDirectory: (directory: string) => void;
     selectFolder: () => Promise<string | null>;
     selectFile: (fileType: string) => Promise<string | null>
+
+    // for git-mastery long-running commands
+    // TODO: see if we can type `originalCommand`
+    onGitMasteryTaskData: (callback: (originalCommand: string, data: GitMasteryTaskData) => void) => () => void;
+    startGitMasteryTask: (command: string) => Promise<boolean>;
   }
 }
 
@@ -39,6 +44,9 @@ type IpcHandlerChannelMapping = {
 
   // to be saved on backend to reference whenever a new exercise needs to be downloaded
   "set-exercise-directory": { directory: string },
+
+  "gitmastery-task-data": { originalCommand: string, data: GitMasteryTaskData },
+
 }
 
 /**
@@ -49,4 +57,18 @@ type IpcHandlerChannelMapping = {
 type IpcInvokeChannelMapping = {
   "select-folder": { request: null, response: string | null },
   "select-file": { request: string, response: string | null },
+
+  "gitmastery-setup": { request: null, response: string | null },
+  "gitmastery-start-task": { request: { command: string }, response: boolean },
+}
+
+type GitMasteryTaskData = {
+  error?: {
+    code: number;
+    message: string;
+  }
+  success?: {
+    message: string; // purely for FE to display at the bottom
+    data: Map<string, unknown>;
+  }
 }

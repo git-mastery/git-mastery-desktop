@@ -13,7 +13,12 @@ contextBridge.exposeInMainWorld("electron", {
   setExeLocation: (location: string) => ipcSend('set-exe-location', { location }),
   setExerciseDirectory: (directory: string) => ipcSend('set-exercise-directory', { directory }),
   selectFolder: () => ipcInvoke('select-folder', null),
-  selectFile: () => ipcInvoke('select-file', "exe")
+  selectFile: () => ipcInvoke('select-file', "exe"),
+
+  startGitMasteryTask: (command: string) => ipcInvoke('gitmastery-start-task', { command }),
+  // onGitMasteryTaskData is a subscription, so it returns a cleanup function
+  // GM_TASK_DATA_CHANNEL is inlined here (not imported) due to the Electron build boundary rule
+  onGitMasteryTaskData: (callback: (originalCommand: string, data: GitMasteryTaskData) => void) => ipcOn('gitmastery-task-data', (payload) => callback(payload.originalCommand, payload.data)),
 } satisfies Window['electron'])
 
 // Note: you canNOT import external files into the preload script, due to Electron sandboxing

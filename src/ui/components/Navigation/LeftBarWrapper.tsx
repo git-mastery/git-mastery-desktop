@@ -18,6 +18,13 @@ const selectSaveDir = async () => {
   }
 }
 
+const setupGitMastery = async () => {
+  const result = await window.electron.startGitMasteryTask("setup");
+  if (result) {
+    console.log("Git Mastery setup completed successfully");
+  }
+}
+
 export const LeftBarWrapper = () => {
   return <Stack h="100%" >
     {/* Tours */}
@@ -55,10 +62,13 @@ export const LeftBarWrapper = () => {
         <Menu.Dropdown>
           <Menu.Label>Setup</Menu.Label>
           <Menu.Item leftSection={<IconSettings size={14} />} onClick={selectExePath}>
-            Configure Git Mastery
+            Set .exe path (Windows)
           </Menu.Item>
           <Menu.Item leftSection={<IconMessageCircle size={14} />} onClick={selectSaveDir}>
             Configure save location
+          </Menu.Item>
+          <Menu.Item leftSection={<IconMessageCircle size={14} />} onClick={setupGitMastery}>
+            Setup Git Mastery
           </Menu.Item>
 
           <Menu.Divider />

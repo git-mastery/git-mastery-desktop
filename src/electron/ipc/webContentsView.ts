@@ -1,5 +1,5 @@
 import { WebContentsView, BrowserWindow } from "electron"
-import { ipcMainOn } from "../util.js"
+import { ipcMainOn } from "../utils/util.js"
 
 let wcv: WebContentsView | null = null
 

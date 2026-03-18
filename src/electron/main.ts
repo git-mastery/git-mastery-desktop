@@ -1,8 +1,8 @@
 import { app, BrowserView, BrowserWindow } from "electron";
 import path from 'path';
-import { isDev } from "./util.js";
+import { isDev } from "./utils/util.js";
 import { getPreloadPath } from "./pathResolver.js";
-import { setupTerminalIpc } from "./ipc/terminal.js";
+import { setupGitmasteryIpc, setupTerminalIpc } from "./ipc/terminal.js";
 import { setupWebContentsViewIpc } from "./ipc/webContentsView.js";
 import { setupConfigIpc } from "./ipc/config.js";
 
@@ -13,6 +13,7 @@ app.on("ready", () => {
     }
   });
   setupTerminalIpc(mainWindow);
+  setupGitmasteryIpc(mainWindow);
   setupWebContentsViewIpc(mainWindow);
   setupConfigIpc(mainWindow);
 
