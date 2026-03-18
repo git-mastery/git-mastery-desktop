@@ -23,11 +23,21 @@ export const ExerciseList = () => {
   }
   const onSelectExercise = (key: string | null) => {
     setSelectedExerciseKey(key)
+
+    console.log({ key })
+    // communicate with the electron backend, starting the task
+
   }
   const onFinishAdding = () => {
     close()
     show()
+
+    window.electron.startGitMasteryTask(`download ${selectedExerciseKey}`)
+
+
     setSelectedExerciseKey(null)
+
+
   }
   return <>
     <Stack w="100%">

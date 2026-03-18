@@ -11,6 +11,7 @@ const GM_TASK_DATA_CHANNEL = 'gitmastery-task-data' as const;
 
 let ptyProcess: pty.IPty;
 
+// This handles the simulated git terminal
 export function setupTerminalIpc(mainWindow: BrowserWindow) {
 
   // Handle pty spawn request from renderer
@@ -53,10 +54,29 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
 
 }
 
+
+// -----------------------
+// The below handles the functions for GitMastery invocation
+// -----------------------
+
+
 const validateCommand = (command: string) => {
-  if (!commandToFunctionMap[command as keyof typeof commandToFunctionMap]) {
+  const validCommands = ['setup', 'download'];
+
+  const commandParts = command.split(' ');
+  const commandName = commandParts[0];
+
+  if (!validCommands.includes(commandName)) {
     throw new Error('Invalid command');
   }
+}
+
+const _spawnChildProcess = (args: string[]) => {
+  return spawn(getGitMasteryExecutable(), args, {
+    cwd: getConfig().exerciseDirectory,
+    env: getEnvironmentWithHomebrew(),
+  });
+
 }
 
 const _setup = (mainWindow: BrowserWindow) => {
@@ -68,10 +88,7 @@ const _setup = (mainWindow: BrowserWindow) => {
   // Spawn the process
   // Do NOT use shell: true — it causes cmd.exe to split on spaces in the path,
   // e.g. "C:\Coding\gitmastery stuff\gitmastery.exe" gets truncated to "C:\Coding\gitmastery"
-  const childProcess = spawn(exeLocation, ["setup"], {
-    cwd: exerciseDirectory,
-    env: getEnvironmentWithHomebrew(),
-  });
+  const childProcess = _spawnChildProcess(["setup"]);
 
   let stdoutBuffer = '';
   let stderrBuffer = '';
@@ -130,8 +147,63 @@ const _setup = (mainWindow: BrowserWindow) => {
 }
 
 
-const commandToFunctionMap = {
-  "setup": _setup,
+const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
+  const childProcess = _spawnChildProcess(["download", exerciseName]);
+
+  let stdoutBuffer = '';
+  let stderrBuffer = '';
+
+  childProcess.stdout.on('data', (data) => {
+    stdoutBuffer += data.toString();
+    // Send progress updates to renderer
+    logGM("stdout", `download ${exerciseName}`, data.toString());
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(GM_TASK_DATA_CHANNEL, {
+        originalCommand: `download ${exerciseName}`,
+        data: {
+          success: {
+            message: data.toString(),
+            stdout: stdoutBuffer,
+            stderr: stderrBuffer,
+          }
+        },
+      });
+    }
+
+    if (data.toString().includes("INFO cd")) {
+      // we need to change the CWD of the simulated git terminal to the exercise downloaded
+      // the path will be: getConfig().exerciseDirectory + 
+    }
+  });
+
+  childProcess.stderr.on('data', (data) => {
+    stderrBuffer += data.toString();
+    // Send error updates to renderer
+    logGM("stderr", `download ${exerciseName}`, data.toString());
+    // mainWindow.webContents.send('gitmastery-error', {
+    //   originalCommand,
+    //   error: stderrBuffer,
+    // });
+  });
+
+  childProcess.on('close', (code) => {
+    logGM("close", `download ${exerciseName}`, code!.toString());
+    if (code === 0) {
+      // Success
+      // mainWindow.webContents.send('gitmastery-success', {
+      //   originalCommand,
+      //   data: parseGitMasteryOutput(stdoutBuffer),
+      // });
+    } else {
+      // Failure
+      // mainWindow.webContents.send('gitmastery-failure', {
+      //   originalCommand,
+      //   error: stderrBuffer,
+      //   code,
+      // });
+    }
+  });
+
 }
 
 
@@ -155,8 +227,22 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
 
     console.log(command);
 
+    const commandParts = command.split(' ');
+    const commandName = commandParts[0];
+    const commandArgs = commandParts.slice(1);
 
-    commandToFunctionMap[command as keyof typeof commandToFunctionMap](mainWindow);
+    switch (commandName) {
+      case 'setup':
+        _setup(mainWindow);
+        break;
+      case 'download':
+        _download(mainWindow, commandArgs.join(" "));
+        break;
+      default:
+        throw new Error('Invalid command');
+    }
+
+    // commandToFunctionMap[command as keyof typeof commandToFunctionMap](mainWindow);
 
 
 
