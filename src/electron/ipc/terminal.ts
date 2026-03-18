@@ -4,8 +4,11 @@ import pty from "node-pty";
 import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
 import { getConfig } from "../storage.js";
 import path from "path";
+import fs from "fs";
+import https from "https";
 import { spawn } from "child_process";
 import { logGM } from "../utils/logger.js";
+import { downloadGitMasteryExe } from "../utils/win32/downloadExe.js";
 
 const GM_TASK_DATA_CHANNEL = 'gitmastery-task-data' as const;
 
@@ -73,17 +76,33 @@ const validateCommand = (command: string) => {
 
 const _spawnChildProcess = (args: string[]) => {
   return spawn(getGitMasteryExecutable(), args, {
-    cwd: getConfig().exerciseDirectory,
+    cwd: getConfig().dataDirectory,
     env: getEnvironmentWithHomebrew(),
   });
 
 }
 
-const _setup = (mainWindow: BrowserWindow) => {
+
+const _setup = async (mainWindow: BrowserWindow) => {
   const exeLocation = getGitMasteryExecutable();
-  const exerciseDirectory = getConfig().exerciseDirectory;
+  const exerciseDirectory = getConfig().dataDirectory;
 
   console.log({ exeLocation, exerciseDirectory });
+
+  // 1. Check if the exe exists (windows only) — auto-download if missing
+  if (process.platform === "win32" && !fs.existsSync(exeLocation)) {
+    if (!exerciseDirectory) {
+      throw new Error('Cannot download gitmastery.exe: exercise directory is not configured.');
+    }
+    logGM('download', 'exe', 'gitmastery.exe not found — downloading latest release...');
+    await downloadGitMasteryExe(exerciseDirectory);
+    logGM('download', 'exe', 'Download complete.');
+  }
+
+  // 2. Check if the exercise directory exists
+  if (!exerciseDirectory || !fs.existsSync(exerciseDirectory)) {
+    throw new Error('Exercise directory not found');
+  }
 
   // Spawn the process
   // Do NOT use shell: true — it causes cmd.exe to split on spaces in the path,
@@ -216,13 +235,11 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
   ipcMainHandle('gitmastery-start-task', async ({ command }: { command: string }) => {
     validateCommand(command);
 
-    const exeLocation = getConfig().exeLocation;
-    const exerciseDirectory = getConfig().exerciseDirectory;
-    if (!exeLocation || !exerciseDirectory) {
-      throw new Error('Exe location or exercise directory not found, please configure them in settings.');
+    const exerciseDirectory = getConfig().dataDirectory;
+    if (!exerciseDirectory) {
+      throw new Error('Exercise directory not found, please configure them in settings.');
     }
     // spawn a separate terminal (NOT the pty terminal)
-    console.log(`exeLocation is ${exeLocation}`);
     console.log(`exerciseDirectory is ${exerciseDirectory}`);
 
     console.log(command);
@@ -233,7 +250,7 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
 
     switch (commandName) {
       case 'setup':
-        _setup(mainWindow);
+        await _setup(mainWindow);
         break;
       case 'download':
         _download(mainWindow, commandArgs.join(" "));
@@ -253,17 +270,28 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
 
 // Helper function to get the correct gitmastery executable based on platform
 function getGitMasteryExecutable(): string {
-  if (getConfig().exeLocation) {
-    return getConfig().exeLocation!;
+  if (process.platform === 'darwin') {
+    return "gitmastery";
   }
 
-  if (process.platform === 'darwin') {
-    // On macOS, use Homebrew-installed gitmastery
-    return 'gitmastery';
-  } else {
-    // On Windows, use bundled executable
-    return path.join(__dirname, '../gitmastery.exe');
+  if (process.platform === "linux") {
+    // TODO
   }
+
+  // on Windows
+  return path.join(getConfig().dataDirectory!, "gitmastery.exe");
+
+  // if (getConfig().exeLocation) {
+  //   return getConfig().exeLocation!;
+  // }
+
+  // if (process.platform === 'darwin') {
+  //   // On macOS, use Homebrew-installed gitmastery
+  //   return 'gitmastery';
+  // } else {
+  //   // On Windows, use bundled executable
+  //   return path.join(__dirname, '../gitmastery.exe');
+  // }
 }
 
 // Helper function to get environment with Homebrew paths added

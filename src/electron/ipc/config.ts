@@ -29,12 +29,12 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
     return result.filePaths[0];
   });
 
-  ipcMain.on('set-exe-location', (_, { location }) => {
-    saveConfig({ exeLocation: location });
-  });
+  // ipcMain.on('set-exe-location', (_, { location }) => {
+  //   saveConfig({ exeLocation: location });
+  // });
 
   ipcMain.on('set-exercise-directory', (_, { directory }) => {
     console.log("[info] set-exercise-directory event: ", directory)
-    saveConfig({ exerciseDirectory: directory });
+    saveConfig({ dataDirectory: directory });
   });
 }
