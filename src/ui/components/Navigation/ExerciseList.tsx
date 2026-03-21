@@ -93,10 +93,12 @@ export const ExerciseList = () => {
         updateNotification({
           id: originalCommand,
           title: "Download complete",
-          message: historyLines.join("\n"),
+          message: "",
           loading: false,
           color: "green",
           icon: <IconCheck size={18} />,
+          autoClose: 5000,
+          withCloseButton: true,
         })
       }
     }
