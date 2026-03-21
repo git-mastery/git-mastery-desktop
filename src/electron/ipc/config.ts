@@ -1,5 +1,9 @@
 import { dialog, ipcMain, BrowserWindow } from 'electron';
-import { saveConfig } from '../storage.js';
+import { getConfig, saveConfig } from '../storage.js';
+import { ipcMainHandle } from '../utils/util.js';
+import { getExerciseDirectory } from '../utils/cli/getters.js';
+import fs from 'fs';
+import path from 'path';
 
 export function setupConfigIpc(mainWindow: BrowserWindow) {
   ipcMain.handle('select-folder', async () => {
@@ -37,4 +41,20 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
     console.log("[info] set-exercise-directory event: ", directory)
     saveConfig({ dataDirectory: directory });
   });
+
+
+  ipcMainHandle('get-downloaded-exercises', () => {
+    const exerciseDirectory = getExerciseDirectory();
+    if (!fs.existsSync(exerciseDirectory)) {
+      return [];
+    }
+
+    // only read folders
+    const exercises = fs.readdirSync(exerciseDirectory).filter(file => {
+      return fs.statSync(path.join(exerciseDirectory, file)).isDirectory();
+    })
+
+    console.log("[info] get-downloaded-exercises event: ", exercises)
+    return exercises;
+  })
 }

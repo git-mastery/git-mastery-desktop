@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld("electron", {
   selectFolder: () => ipcInvoke('select-folder', null),
   selectFile: () => ipcInvoke('select-file', "exe"),
 
+  getDownloadedExercises: () => ipcInvoke('get-downloaded-exercises', null),
+
   startGitMasteryTask: (command: string) => ipcInvoke('gitmastery-start-task', { command }),
   // onGitMasteryTaskData is a subscription, so it returns a cleanup function
   // GM_TASK_DATA_CHANNEL is inlined here (not imported) due to the Electron build boundary rule

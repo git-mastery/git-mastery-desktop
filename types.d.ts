@@ -17,9 +17,15 @@ interface Window {
     selectFolder: () => Promise<string | null>;
     selectFile: (fileType: string) => Promise<string | null>
 
-    // for git-mastery long-running commands
+    // for retrieving config settings of the backend (electron app)
+    // just an array of folder names
+    getDownloadedExercises: () => Promise<string[]>
+
+
     // TODO: see if we can type `originalCommand`
     onGitMasteryTaskData: (callback: (originalCommand: string, data: GitMasteryTaskData) => void) => () => void;
+
+    // TODO: decide whether this command should return when (1) task starts or (2) task completes
     startGitMasteryTask: (command: string) => Promise<boolean>;
   }
 }
@@ -58,6 +64,8 @@ type IpcInvokeChannelMapping = {
   "select-folder": { request: null, response: string | null },
   "select-file": { request: string, response: string | null },
 
+  "get-downloaded-exercises": { request: null, response: import("./src/types/Exercise").Exercise },
+
   "gitmastery-setup": { request: null, response: string | null },
   "gitmastery-start-task": { request: { command: string }, response: boolean },
 }
@@ -69,6 +77,13 @@ type GitMasteryTaskData = {
   }
   success?: {
     message: string; // purely for FE to display at the bottom
-    data: Map<string, unknown>;
+    data: Record<string, unknown>;
+
+  }
+
+  completed?: {
+    status: "success" | "failure";
+    message: string;
+    // data: Map<string, unknown>
   }
 }

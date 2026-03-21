@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
 import App from './App.tsx'
 import { colorsTuple, createTheme, MantineProvider, Text } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -33,6 +34,7 @@ const theme = createTheme({
 })
 
 import { WebContentsViewProvider } from './context/useWebContentsView';
+import { Notifications } from '@mantine/notifications';
 
 const queryClient = new QueryClient()
 createRoot(document.getElementById('root')!).render(
@@ -41,6 +43,7 @@ createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <WebContentsViewProvider>
           <App />
+          <Notifications />
         </WebContentsViewProvider>
       </QueryClientProvider>
     </MantineProvider>
