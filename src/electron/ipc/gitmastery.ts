@@ -8,6 +8,7 @@ import { logGM } from "../utils/logger.js";
 import { downloadGitMasteryExe } from "../utils/win32/downloadExe.js";
 import { getEnvironmentWithHomebrew, getExerciseDirectory, getGitMasteryExecutable } from "../utils/cli/getters.js";
 import { getCwd, writeToPty } from "./terminal.js";
+import { sendToRenderer } from "./ipcUtils.js";
 
 const GM_TASK_DATA_CHANNEL = 'gitmastery-task-data' as const;
 
@@ -81,21 +82,22 @@ const _setup = async (mainWindow: BrowserWindow) => {
       logGM("stdout", "setup", data.toString());
 
 
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        const taskPayload: GitMasteryTaskData = {
-          success: {
-            message: data.toString(),
-            data: {
-              stdout: stdoutBuffer,
-              stderr: stderrBuffer,
-            }
+
+      const taskPayload: GitMasteryTaskData = {
+        success: {
+          message: data.toString(),
+          data: {
+            stdout: stdoutBuffer,
+            stderr: stderrBuffer,
           }
         }
-        mainWindow.webContents.send(GM_TASK_DATA_CHANNEL, {
-          originalCommand: "setup",
-          data: taskPayload
-        });
       }
+
+      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+        originalCommand: "setup",
+        data: taskPayload
+      });
+
 
       if (data.toString().includes("PROMPT")) {
         childProcess.stdin.write("\n");
@@ -107,20 +109,26 @@ const _setup = async (mainWindow: BrowserWindow) => {
       stderrBuffer += data.toString();
       // Send error updates to renderer
       logGM("stderr", "setup", data.toString());
-      // mainWindow.webContents.send('gitmastery-error', {
-      //   originalCommand,
-      //   error: stderrBuffer,
-      // });
+
+      const taskPayload: GitMasteryTaskData = {
+        error: {
+          message: data.toString(),
+          code: 500,
+        }
+      }
+
+      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+        originalCommand: "setup",
+        data: taskPayload
+      });
+
     });
 
     childProcess.on('close', (code) => {
       logGM("close", "setup", code!.toString());
       if (code === 0) {
         // Success
-        // mainWindow.webContents.send('gitmastery-success', {
-        //   originalCommand,
-        //   data: parseGitMasteryOutput(stdoutBuffer),
-        // });
+
 
         const taskPayload: GitMasteryTaskData = {
           completed: {
@@ -128,17 +136,24 @@ const _setup = async (mainWindow: BrowserWindow) => {
             message: "Setup completed successfully",
           }
         };
-        mainWindow.webContents.send(GM_TASK_DATA_CHANNEL, {
+        sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
           originalCommand: "setup",
           data: taskPayload
         });
       } else {
         // Failure
-        // mainWindow.webContents.send('gitmastery-failure', {
-        //   originalCommand,
-        //   error: stderrBuffer,
-        //   code,
-        // });
+
+        const taskPayload: GitMasteryTaskData = {
+          error: {
+            message: "Setup failed! Please try again (TODO)",
+            code: 500,
+          }
+        }
+
+        sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+          originalCommand: "setup",
+          data: taskPayload
+        });
       }
     });
 
@@ -153,7 +168,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
       message: "Setup complete",
     }
   };
-  mainWindow.webContents.send(GM_TASK_DATA_CHANNEL, {
+  sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
     originalCommand: "setup",
     data: taskPayload
   });
@@ -172,21 +187,21 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
     stdoutBuffer += data.toString();
     // Send progress updates to renderer
     logGM("stdout", `download ${exerciseName}`, data.toString());
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const taskPayload: GitMasteryTaskData = {
-        success: {
-          message: data.toString(),
-          data: {
-            stdout: stdoutBuffer,
-            stderr: stderrBuffer,
-          }
+
+    const taskPayload: GitMasteryTaskData = {
+      success: {
+        message: data.toString(),
+        data: {
+          stdout: stdoutBuffer,
+          stderr: stderrBuffer,
         }
-      };
-      mainWindow.webContents.send(GM_TASK_DATA_CHANNEL, {
-        originalCommand: `download ${exerciseName}`,
-        data: taskPayload
-      });
-    }
+      }
+    };
+
+    sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+      originalCommand: `download ${exerciseName}`,
+      data: taskPayload
+    });
 
     if (data.toString().includes("INFO  cd")) {
       // get the `cd` portion
@@ -204,37 +219,50 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
     stderrBuffer += data.toString();
     // Send error updates to renderer
     logGM("stderr", `download ${exerciseName}`, data.toString());
-    // mainWindow.webContents.send('gitmastery-error', {
-    //   originalCommand,
-    //   error: stderrBuffer,
-    // });
+
+    const taskPayload: GitMasteryTaskData = {
+      error: {
+        code: 500, // TODO: set this code properly
+        message: data.toString(),
+      }
+    };
+    sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+      originalCommand: `download ${exerciseName}`,
+      data: taskPayload
+    });
+
+
   });
+
 
   childProcess.on('close', (code) => {
     logGM("close", `download ${exerciseName}`, code!.toString());
     if (code === 0) {
       // Success
-      // mainWindow.webContents.send('gitmastery-success', {
-      //   originalCommand,
-      //   data: parseGitMasteryOutput(stdoutBuffer),
-      // });
+
       const taskPayload: GitMasteryTaskData = {
         completed: {
           status: "success",
           message: "Download completed successfully",
         }
       };
-      mainWindow.webContents.send(GM_TASK_DATA_CHANNEL, {
+      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
         originalCommand: `download ${exerciseName}`,
         data: taskPayload
       });
     } else {
       // Failure
-      // mainWindow.webContents.send('gitmastery-failure', {
-      //   originalCommand,
-      //   error: stderrBuffer,
-      //   code,
-      // });
+      const taskPayload: GitMasteryTaskData = {
+        completed: {
+          status: "failure",
+          message: "Download failed! Please ensure GitMastery is set up properly",
+        }
+      };
+      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+        originalCommand: `download ${exerciseName}`,
+        data: taskPayload
+      });
+
     }
   });
 
@@ -250,21 +278,21 @@ const _verify = (mainWindow: BrowserWindow) => {
     stdoutBuffer += data.toString();
     // Send progress updates to renderer
     logGM("stdout", `verify`, data.toString());
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const taskPayload: GitMasteryTaskData = {
-        success: {
-          message: data.toString(),
-          data: {
-            stdout: stdoutBuffer,
-            stderr: stderrBuffer,
-          }
+
+    const taskPayload: GitMasteryTaskData = {
+      success: {
+        message: data.toString(),
+        data: {
+          stdout: stdoutBuffer,
+          stderr: stderrBuffer,
         }
-      };
-      mainWindow.webContents.send(GM_TASK_DATA_CHANNEL, {
-        originalCommand: `verify`,
-        data: taskPayload
-      });
-    }
+      }
+    };
+    sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+      originalCommand: `verify`,
+      data: taskPayload
+    });
+
 
     // check for SUCCESS and ERROR
 
@@ -274,27 +302,52 @@ const _verify = (mainWindow: BrowserWindow) => {
     stderrBuffer += data.toString();
     // Send error updates to renderer
     logGM("stderr", `verify`, data.toString());
-    // mainWindow.webContents.send('gitmastery-error', {
-    //   originalCommand,
-    //   error: stderrBuffer,
-    // });
+
+    const taskPayload: GitMasteryTaskData = {
+      error: {
+        code: 500, // TODO: set this code properly
+        message: data.toString(),
+      }
+    };
+    sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+      originalCommand: `verify`,
+      data: taskPayload
+    });
+
   });
 
   childProcess.on('close', (code) => {
     logGM("close", `verify`, code!.toString());
     if (code === 0) {
       // Success
-      // mainWindow.webContents.send('gitmastery-success', {
-      //   originalCommand,
-      //   data: parseGitMasteryOutput(stdoutBuffer),
-      // });
+
+
+      const taskPayload: GitMasteryTaskData = {
+        completed: {
+          status: "success",
+          message: "Verify completed successfully",
+        }
+      };
+      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+        originalCommand: `verify`,
+        data: taskPayload
+      });
+
     } else {
       // Failure
-      // mainWindow.webContents.send('gitmastery-failure', {
-      //   originalCommand,
-      //   error: stderrBuffer,
-      //   code,
-      // });
+
+
+      const taskPayload: GitMasteryTaskData = {
+        error: {
+          code: 500, // TODO: set this code properly
+          message: "Verify failed! Please try again (TODO)",
+        }
+      };
+      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+        originalCommand: `verify`,
+        data: taskPayload
+      });
+
     }
   });
 }

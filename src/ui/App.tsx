@@ -4,6 +4,7 @@ import { LeftBarWrapper } from './components/Navigation/LeftBarWrapper'
 import { WebsiteWrapper } from './components/Website/WebsiteWrapper'
 import { InfoBar } from './components/InfoBar/InfoBar'
 import { GitMasteryTaskProvider } from './contexts/GitMasteryTaskContext'
+import { Header } from './components/Header/Header'
 
 function App() {
 
@@ -18,18 +19,11 @@ function App() {
         footer={{ height: 32 }}
       >
         <AppShell.Header
+          bg="gm-bone"
         >
-          <Box p="md" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }} >
-            <Title order={4}> GitMastery </Title>
-            <Space />
-            <Group>
-              {/* <Button> Set Exercise Directory </Button>
-            <Button> Set EXE location </Button> */}
-              <Button onClick={() => window.electron.startGitMasteryTask("verify")}> Submit answer </Button>
-            </Group>
-          </Box>
+          <Header />
         </AppShell.Header>
-        <AppShell.Navbar>
+        <AppShell.Navbar bg="gm-bone">
 
           <Box p='md' h="100%">
 
@@ -47,7 +41,7 @@ function App() {
 
         </AppShell.Aside>
 
-        <AppShell.Footer>
+        <AppShell.Footer bg="gm-dark-green">
           <Box>
             <InfoBar
             ></InfoBar>

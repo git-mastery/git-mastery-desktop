@@ -1,14 +1,16 @@
 import type { Lesson } from "./Tour"
 
+export type Exercises = {
+  [key: string]: Exercise
+}
+
 export type Exercise = {
-  [key: string]: {
-    "lesson"?: Lesson,
-    "detour"?: {
-      "lesson": Lesson,
-      title: string
-    },
-    "identifier": string
-  }
+  lesson?: Lesson,
+  detour?: {
+    lesson: Lesson,
+    title: string
+  },
+  identifier: string
 }
 
 

@@ -61,9 +61,9 @@ export const LeftBarWrapper = () => {
 
         <Menu.Dropdown>
           <Menu.Label>Setup</Menu.Label>
-          <Menu.Item leftSection={<IconSettings size={14} />} onClick={selectExePath}>
+          {/* <Menu.Item leftSection={<IconSettings size={14} />} onClick={selectExePath}>
             Set .exe path (Windows)
-          </Menu.Item>
+          </Menu.Item> */}
           <Menu.Item leftSection={<IconMessageCircle size={14} />} onClick={selectSaveDir}>
             Configure save location
           </Menu.Item>

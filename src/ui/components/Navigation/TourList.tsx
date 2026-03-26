@@ -2,16 +2,17 @@ import { Box, Button, Collapse, Flex, Stack, Text, Tooltip } from "@mantine/core
 import { useDisclosure } from "@mantine/hooks"
 import type { Lesson, Tour, TourData } from "../../../types/Tour"
 import { useCustomQuery } from "../../hooks/useCustomQuery"
-import { buildUrl, useWebContentsView } from "../../context/useWebContentsView"
+import { buildLessonUrl, useWebContentsView } from "../../context/useWebContentsView"
 import { IconChevronCompactDown, IconChevronDown } from "@tabler/icons-react"
 
 import classes from './TourList.module.css'
+import { NavigationButton } from "./NavigationButton/NavigationButton"
 
 export const TourList = () => {
 
   const { data: tourList, isLoading } = useCustomQuery<TourData>({ queryKey: ["tour_list"], queryUrl: "https://git-mastery.org/lessons/lessons.json" })
   return <Stack>
-    <Text variant="subheading"> TOURS </Text>
+    <Text variant="subheading"> Tours </Text>
     {tourList ? Object.values(tourList).map((tour, index) => <TourItem key={index} tour={tour} index={index} />) : "No data"}
   </Stack>
 }
@@ -61,17 +62,5 @@ const TourItem = ({ tour, index }: { tour: Tour, index: number }) => {
 }
 
 const buildLesson = (lesson: Lesson, navigate: (url: string) => void) => {
-  return <Button key={lesson.path} variant="subtle" color="dark" size="sm" w="100%"
-    onClick={() => navigate(buildUrl(lesson))}
-    styles={
-      {
-        label: { whiteSpace: "pre-wrap", textAlign: "left", width: "100%" },
-        root: {
-          height: 'auto',
-          padding: "8px",
-          lineHeight: "1.5em"
-        },
-      }
-
-    } > {lesson.title} </Button>
+  return <NavigationButton title={lesson.title} onClick={() => navigate(buildLessonUrl(lesson))} />
 }

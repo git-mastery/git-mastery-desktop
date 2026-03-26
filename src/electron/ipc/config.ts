@@ -52,7 +52,7 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
     // only read folders
     const exercises = fs.readdirSync(exerciseDirectory).filter(file => {
       return fs.statSync(path.join(exerciseDirectory, file)).isDirectory();
-    })
+    }).filter(exercise => exercise !== "progress");
 
     console.log("[info] get-downloaded-exercises event: ", exercises)
     return exercises;

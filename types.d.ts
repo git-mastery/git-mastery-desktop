@@ -64,13 +64,16 @@ type IpcInvokeChannelMapping = {
   "select-folder": { request: null, response: string | null },
   "select-file": { request: string, response: string | null },
 
-  "get-downloaded-exercises": { request: null, response: import("./src/types/Exercise").Exercise },
+  "get-downloaded-exercises": { request: null, response: import("./src/types/Exercise").Exercises },
 
   "gitmastery-setup": { request: null, response: string | null },
   "gitmastery-start-task": { request: { command: string }, response: boolean },
 }
 
 type GitMasteryTaskData = {
+
+  // Error is sent when the terminal displays an error while running an operation.
+  // In this case, the terminal is still running.
   error?: {
     code: number;
     message: string;
@@ -81,6 +84,7 @@ type GitMasteryTaskData = {
 
   }
 
+  // Completed is sent when the terminal exits.
   completed?: {
     status: "success" | "failure";
     message: string;

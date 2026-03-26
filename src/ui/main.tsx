@@ -10,6 +10,8 @@ const theme = createTheme({
   primaryColor: 'gm-green',
   colors: {
     'gm-green': colorsTuple('#2D864E'),
+    "gm-bone": colorsTuple("#F8F8F8"),
+    "gm-dark-green": colorsTuple("#717c4d"),
   },
   headings: {
     fontFamily: "Noto Serif, serif",
@@ -21,7 +23,7 @@ const theme = createTheme({
         if (props.variant === 'subheading') {
           return {
             root: {
-              fontWeight: 800,
+              fontWeight: 600,
               color: theme.colors.gray[5],
               // fontFamily: theme.headings.fontFamily,
             },
@@ -35,16 +37,23 @@ const theme = createTheme({
 
 import { WebContentsViewProvider } from './context/useWebContentsView';
 import { Notifications } from '@mantine/notifications';
+import { ActivityProvider } from './context/useActivity.tsx';
+import { ModalsProvider } from '@mantine/modals';
 
 const queryClient = new QueryClient()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme}>
       <QueryClientProvider client={queryClient}>
-        <WebContentsViewProvider>
-          <App />
-          <Notifications />
-        </WebContentsViewProvider>
+        <ModalsProvider>
+
+          <WebContentsViewProvider>
+            <ActivityProvider>
+              <App />
+              <Notifications />
+            </ActivityProvider>
+          </WebContentsViewProvider>
+        </ModalsProvider>
       </QueryClientProvider>
     </MantineProvider>
   </StrictMode>,

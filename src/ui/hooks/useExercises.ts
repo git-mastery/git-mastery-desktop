@@ -1,13 +1,11 @@
-import type { Exercise } from "../../types/Exercise"
+import type { Exercises } from "../../types/Exercise"
 import { useCustomQuery } from "./useCustomQuery"
 
 export const useExercises = () => {
 
   // const localExcersises TODO: this should be loaded from 
 
-  const query = useCustomQuery<{
-    [exerciseKey: string]: Exercise
-  }>({
+  const query = useCustomQuery<Exercises>({
     queryKey: ["exercises"],
     queryUrl: "https://git-mastery.org/exercises-directory/exercises.json"
   })
