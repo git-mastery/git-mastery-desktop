@@ -39,6 +39,7 @@ import { WebContentsViewProvider } from './context/useWebContentsView';
 import { Notifications } from '@mantine/notifications';
 import { ActivityProvider } from './context/useActivity.tsx';
 import { ModalsProvider } from '@mantine/modals';
+import { GitMasteryTaskProvider } from './contexts/GitMasteryTaskContext.tsx';
 
 const queryClient = new QueryClient()
 createRoot(document.getElementById('root')!).render(
@@ -46,13 +47,14 @@ createRoot(document.getElementById('root')!).render(
     <MantineProvider theme={theme}>
       <QueryClientProvider client={queryClient}>
         <ModalsProvider>
-
-          <WebContentsViewProvider>
-            <ActivityProvider>
-              <App />
-              <Notifications />
-            </ActivityProvider>
-          </WebContentsViewProvider>
+          <GitMasteryTaskProvider>
+            <WebContentsViewProvider>
+              <ActivityProvider>
+                <App />
+                <Notifications />
+              </ActivityProvider>
+            </WebContentsViewProvider>
+          </GitMasteryTaskProvider>
         </ModalsProvider>
       </QueryClientProvider>
     </MantineProvider>

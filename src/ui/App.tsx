@@ -9,46 +9,46 @@ import { Header } from './components/Header/Header'
 function App() {
 
   return (
-    <GitMasteryTaskProvider>
-      <AppShell
 
-        padding="md"
-        header={{ height: 64 }}
-        navbar={{ width: 256, breakpoint: "md" }}
-        aside={{ width: 512, breakpoint: "xs" }}
-        footer={{ height: 32 }}
+    <AppShell
+
+      padding="md"
+      header={{ height: 64 }}
+      navbar={{ width: 256, breakpoint: "md" }}
+      aside={{ width: 512, breakpoint: "xs" }}
+      footer={{ height: 32 }}
+    >
+      <AppShell.Header
+        bg="gm-bone"
       >
-        <AppShell.Header
-          bg="gm-bone"
-        >
-          <Header />
-        </AppShell.Header>
-        <AppShell.Navbar bg="gm-bone">
+        <Header />
+      </AppShell.Header>
+      <AppShell.Navbar bg="gm-bone">
 
-          <Box p='md' h="100%">
+        <Box p='md' h="100%">
 
-            <LeftBarWrapper />
-          </Box>
+          <LeftBarWrapper />
+        </Box>
 
-        </AppShell.Navbar>
-        <AppShell.Main style={{ display: "flex", height: "100%" }}>
-          <WebsiteWrapper />
-        </AppShell.Main>
-        <AppShell.Aside>
+      </AppShell.Navbar>
+      <AppShell.Main style={{ display: "flex", height: "100%" }}>
+        <WebsiteWrapper />
+      </AppShell.Main>
+      <AppShell.Aside>
 
 
-          <TerminalComponent />
+        <TerminalComponent />
 
-        </AppShell.Aside>
+      </AppShell.Aside>
 
-        <AppShell.Footer bg="gm-dark-green">
-          <Box>
-            <InfoBar
-            ></InfoBar>
-          </Box>
-        </AppShell.Footer>
-      </AppShell >
-    </GitMasteryTaskProvider>
+      <AppShell.Footer bg="gm-dark-green">
+        <Box>
+          <InfoBar
+          ></InfoBar>
+        </Box>
+      </AppShell.Footer>
+    </AppShell >
+
   )
 }
 

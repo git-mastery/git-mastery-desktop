@@ -4,7 +4,7 @@ import { Text } from "@mantine/core"
 
 export const Header = () => {
 
-  const { getActivityText, isDoingActivity } = useActivity()
+  const { getActivityText, isDoingActivity, endActivity, verifyExercise } = useActivity()
 
   return <SimpleGrid cols={3} p="md" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: '64px' }}>
     <Title order={4}> GitMastery </Title>
@@ -17,7 +17,7 @@ export const Header = () => {
       }}>
         <Center>
 
-          <Button size="sm" variant="subtle" c="white" >Quit</Button>
+          <Button size="sm" variant="subtle" c="white" onClick={() => endActivity()} >Quit</Button>
         </Center>
         <Divider orientation="vertical" />
         <Center>
@@ -31,7 +31,7 @@ export const Header = () => {
 
           <Button size="sm" variant="transparent" c="white"
             onClick={() => {
-              window.electron.startGitMasteryTask("verify");
+              verifyExercise({})
             }}
           >Check solution</Button>
         </Center>

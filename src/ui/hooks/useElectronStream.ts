@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useGitMasteryTask } from "../contexts/GitMasteryTaskContext";
 
-export const useElectronStream = ({ condition, onData, onComplete }: {
+export const useElectronStream = ({ condition, onData, onSuccessExit, onFailedExit }: {
   condition: (cmd: string) => boolean;
   onData: (originalCommand: string, data: GitMasteryTaskData) => void;
-  onComplete: (originalCommand: string, data: GitMasteryTaskData) => void;
+  onSuccessExit: (originalCommand: string, data: GitMasteryTaskData) => void;
+  onFailedExit: (originalCommand: string, data: GitMasteryTaskData) => void;
 }) => {
 
   const { addListener } = useGitMasteryTask();
@@ -15,39 +16,25 @@ export const useElectronStream = ({ condition, onData, onComplete }: {
       if (!condition(originalCommand)) return;
 
       if (data.completed?.status === "success") {
-        handleComplete(originalCommand, data);
+        onSuccessExit(originalCommand, data);
+        return;
+      }
+      if (data.completed?.status === 'failure') {
+        onFailedExit(originalCommand, data);
         return;
       }
 
       if (data.success) {
         // intermediate step was successfull
-        handleData(originalCommand, data);
+        onData(originalCommand, data);
         return;
       }
-
-
     }
-
-    const handleData = (originalCommand: string, data: GitMasteryTaskData) => {
-      if (condition(originalCommand) && data.success) {
-        onData(originalCommand, data);
-      }
-    };
-
-    const handleComplete = (originalCommand: string, data: GitMasteryTaskData) => {
-      if (condition(originalCommand)) {
-        onComplete(originalCommand, data);
-      }
-    };
-
     const unsubscribe = addListener(condition, _onMessage);
 
     return () => unsubscribe()
-    // window.electron.onGitMasteryTaskComplete(handleComplete);
+  }, [condition, onData, onSuccessExit, onFailedExit]);
 
-
-  }, [condition, onData, onComplete]);
-
-  return { condition, onData, onComplete }
+  return { condition, onData, onSuccessExit, onFailedExit }
 
 }

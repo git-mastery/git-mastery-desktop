@@ -80,7 +80,11 @@ type GitMasteryTaskData = {
   }
   success?: {
     message: string; // purely for FE to display at the bottom
-    data: Record<string, unknown>;
+    data: {
+      stdout?: string;
+      stderr?: string;
+      [key: string]: unknown
+    };
 
   }
 
@@ -89,5 +93,7 @@ type GitMasteryTaskData = {
     status: "success" | "failure";
     message: string;
     // data: Map<string, unknown>
+    stdout?: string;
+    stderr?: string;
   }
 }

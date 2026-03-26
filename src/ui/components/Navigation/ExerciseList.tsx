@@ -11,6 +11,7 @@ import { NavigationButton } from "./NavigationButton/NavigationButton";
 import type { Exercise } from "../../../types/Exercise";
 import { useActivity } from "../../context/useActivity";
 import { useElectronModals } from "../../hooks/useElectronModals";
+import { useElectronStream } from "../../hooks/useElectronStream";
 
 // temporary map to store data
 const activeNotifications: Record<string, any> = {}
@@ -26,7 +27,6 @@ export const ExerciseList = () => {
   const { navigate } = useWebContentsView();
   const selectedExerciseRef = useRef<Exercise | null>(null);
 
-  const { addListener } = useGitMasteryTask();
   const { data: downloadedExerciseNames, refetch: rescanDownloadedExercises } = useQuery({
     queryKey: ['downloaded-exercises'],
     queryFn: () => window.electron.getDownloadedExercises(),
@@ -102,94 +102,179 @@ export const ExerciseList = () => {
 
   }
 
-
-  useEffect(() => {
-    const condition = (cmd: string) => cmd.startsWith("download");
-
-    const historyLines: string[] = [] // max 4
-    const callback = (originalCommand: string, data: GitMasteryTaskData) => {
-      setIsCurrentlyAdding(true);
-      console.log(`[callback - download] ${originalCommand}: ${data}`)
-
-      if (!activeNotifications[originalCommand]) {
-        activeNotifications[originalCommand] = showNotification({
-          id: originalCommand,
-          title: "Downloading",
-          message: "Downloading...",
-          loading: true,
-          autoClose: false,
-          withCloseButton: false,
-        })
-      }
-
-      if (data.success) {
-        // partial success
-        const message = data.success.message;
-
-        historyLines.push(message);
-        if (historyLines.length > 4) {
-          historyLines.shift();
-        }
-
-        updateNotification({
-          id: originalCommand,
-          message: historyLines.join("\n"),
-        })
-      }
-
-      if (data.completed?.status === "success") {
-        // reached the last thing, refetch query
-        console.log("[info] download completed, refetching downloaded exercises")
-        rescanDownloadedExercises()
-
-        updateNotification({
-          id: originalCommand,
-          title: "Download complete",
-          message: "",
-          loading: false,
-          color: "green",
-          icon: <IconCheck size={18} />,
-          autoClose: 5000,
-          withCloseButton: true,
-        })
-
-        // close modal
-        // TODO: be more specific in which modal we're closing
-        closeAll();
-
-        // redirect to the exercise
-        const selectedExercise = selectedExerciseRef.current;
-        if (selectedExercise) {
-          navigate(buildExerciseUrl(selectedExercise))
-          startExercise(selectedExercise)
-        }
-
-        selectedExerciseRef.current = null;
-        setIsCurrentlyAdding(false);
-
-
-      } else if (data.completed?.status === "failure") {
-        // error
-        console.log("[info] download completed but with errors.")
-
-        updateNotification({
-          id: originalCommand,
-          title: "Download failed",
-          message: data.completed?.message,
-          loading: false,
-          color: "red",
-          icon: <IconX size={18} />,
-          autoClose: 5000,
-          withCloseButton: true,
-        })
-
-        selectedExerciseRef.current = null;
-        setIsCurrentlyAdding(false);
-      }
+  // don't need to be reactive
+  const historyLines: string[] = [] // max 4
+  const onExerciseDownloadProgress = (originalCommand: string, data: GitMasteryTaskData) => {
+    setIsCurrentlyAdding(true);
+    if (!activeNotifications[originalCommand]) {
+      activeNotifications[originalCommand] = showNotification({
+        id: originalCommand,
+        title: "Downloading",
+        message: "Downloading...",
+        loading: true,
+        autoClose: false,
+        withCloseButton: false,
+      })
     }
-    const unsubscribe = addListener(condition, callback);
-    return unsubscribe;
-  }, [])
+
+    const message = data.success!.message;
+
+    historyLines.push(message);
+    if (historyLines.length > 4) {
+      historyLines.shift();
+    }
+
+    updateNotification({
+      id: originalCommand,
+      message: historyLines.join("\n"),
+    })
+
+  }
+
+  const onExerciseDownloadComplete = (originalCommand: string, data: GitMasteryTaskData) => {
+    console.log("[info] download completed, refetching downloaded exercises")
+    rescanDownloadedExercises()
+
+    updateNotification({
+      id: originalCommand,
+      title: "Download complete",
+      message: "",
+      loading: false,
+      color: "green",
+      icon: <IconCheck size={18} />,
+      autoClose: 5000,
+      withCloseButton: true,
+    })
+
+    // close modal
+    // TODO: be more specific in which modal we're closing
+    closeAll();
+
+    // redirect to the exercise
+    const selectedExercise = selectedExerciseRef.current;
+    if (selectedExercise) {
+      navigate(buildExerciseUrl(selectedExercise))
+      startExercise(selectedExercise)
+    }
+
+    selectedExerciseRef.current = null;
+    setIsCurrentlyAdding(false);
+  }
+
+  const onExerciseDownloadFailure = (originalCommand: string, data: GitMasteryTaskData) => {
+    console.log("[info] download completed but with errors.")
+
+    updateNotification({
+      id: originalCommand,
+      title: "Download failed",
+      message: data.error!.message,
+      loading: false,
+      color: "red",
+      icon: <IconX size={18} />,
+      autoClose: 5000,
+      withCloseButton: true,
+    })
+
+    closeAll();
+    selectedExerciseRef.current = null;
+    setIsCurrentlyAdding(false);
+  }
+
+  const { } = useElectronStream({
+    condition: (cmd: string) => cmd.startsWith("download"),
+    onData: onExerciseDownloadProgress,
+    onSuccessExit: onExerciseDownloadComplete,
+    onFailedExit: onExerciseDownloadFailure,
+  })
+
+
+  // useEffect(() => {
+  //   const condition = (cmd: string) => cmd.startsWith("download");
+
+  //   const historyLines: string[] = [] // max 4
+  //   const callback = (originalCommand: string, data: GitMasteryTaskData) => {
+  //     setIsCurrentlyAdding(true);
+  //     console.log(`[callback - download] ${originalCommand}: ${data}`)
+
+  //     if (!activeNotifications[originalCommand]) {
+  //       activeNotifications[originalCommand] = showNotification({
+  //         id: originalCommand,
+  //         title: "Downloading",
+  //         message: "Downloading...",
+  //         loading: true,
+  //         autoClose: false,
+  //         withCloseButton: false,
+  //       })
+  //     }
+
+  //     if (data.success) {
+  //       // partial success
+  //       const message = data.success.message;
+
+  //       historyLines.push(message);
+  //       if (historyLines.length > 4) {
+  //         historyLines.shift();
+  //       }
+
+  //       updateNotification({
+  //         id: originalCommand,
+  //         message: historyLines.join("\n"),
+  //       })
+  //     }
+
+  //     if (data.completed?.status === "success") {
+  //       // reached the last thing, refetch query
+  //       console.log("[info] download completed, refetching downloaded exercises")
+  //       rescanDownloadedExercises()
+
+  //       updateNotification({
+  //         id: originalCommand,
+  //         title: "Download complete",
+  //         message: "",
+  //         loading: false,
+  //         color: "green",
+  //         icon: <IconCheck size={18} />,
+  //         autoClose: 5000,
+  //         withCloseButton: true,
+  //       })
+
+  //       // close modal
+  //       // TODO: be more specific in which modal we're closing
+  //       closeAll();
+
+  //       // redirect to the exercise
+  //       const selectedExercise = selectedExerciseRef.current;
+  //       if (selectedExercise) {
+  //         navigate(buildExerciseUrl(selectedExercise))
+  //         startExercise(selectedExercise)
+  //       }
+
+  //       selectedExerciseRef.current = null;
+  //       setIsCurrentlyAdding(false);
+
+
+  //     } else if (data.completed?.status === "failure") {
+  //       // error
+  //       console.log("[info] download completed but with errors.")
+
+  //       updateNotification({
+  //         id: originalCommand,
+  //         title: "Download failed",
+  //         message: data.completed?.message,
+  //         loading: false,
+  //         color: "red",
+  //         icon: <IconX size={18} />,
+  //         autoClose: 5000,
+  //         withCloseButton: true,
+  //       })
+
+  //       selectedExerciseRef.current = null;
+  //       setIsCurrentlyAdding(false);
+  //     }
+  //   }
+  //   const unsubscribe = addListener(condition, callback);
+  //   return unsubscribe;
+  // }, [])
 
 
   return <>

@@ -77,7 +77,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
     let stderrBuffer = '';
 
     childProcess.stdout.on('data', (data) => {
-      stdoutBuffer += data.toString();
+      stdoutBuffer += data.toString() + "[[terminal-line]]";
       // Send progress updates to renderer
       logGM("stdout", "setup", data.toString());
 
@@ -106,7 +106,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
     });
 
     childProcess.stderr.on('data', (data) => {
-      stderrBuffer += data.toString();
+      stderrBuffer += data.toString() + "[[terminal-line]]";
       // Send error updates to renderer
       logGM("stderr", "setup", data.toString());
 
@@ -184,7 +184,7 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
   let stderrBuffer = '';
 
   childProcess.stdout.on('data', (data) => {
-    stdoutBuffer += data.toString();
+    stdoutBuffer += data.toString() + "[[terminal-line]]";
     // Send progress updates to renderer
     logGM("stdout", `download ${exerciseName}`, data.toString());
 
@@ -192,8 +192,8 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
       success: {
         message: data.toString(),
         data: {
-          stdout: stdoutBuffer,
           stderr: stderrBuffer,
+          stdout: stdoutBuffer,
         }
       }
     };
@@ -216,7 +216,7 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
   });
 
   childProcess.stderr.on('data', (data) => {
-    stderrBuffer += data.toString();
+    stderrBuffer += data.toString() + "[[terminal-line]]";
     // Send error updates to renderer
     logGM("stderr", `download ${exerciseName}`, data.toString());
 
@@ -275,7 +275,7 @@ const _verify = (mainWindow: BrowserWindow) => {
   let stderrBuffer = '';
 
   childProcess.stdout.on('data', (data) => {
-    stdoutBuffer += data.toString();
+    stdoutBuffer += data.toString() + "[[terminal-line]]";
     // Send progress updates to renderer
     logGM("stdout", `verify`, data.toString());
 
@@ -299,7 +299,7 @@ const _verify = (mainWindow: BrowserWindow) => {
   });
 
   childProcess.stderr.on('data', (data) => {
-    stderrBuffer += data.toString();
+    stderrBuffer += data.toString() + "[[terminal-line]]";
     // Send error updates to renderer
     logGM("stderr", `verify`, data.toString());
 
@@ -326,6 +326,8 @@ const _verify = (mainWindow: BrowserWindow) => {
         completed: {
           status: "success",
           message: "Verify completed successfully",
+          stdout: stdoutBuffer,
+          stderr: stderrBuffer,
         }
       };
       sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
