@@ -58,34 +58,39 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   const { rescanDownloadedExercises } = useLocalExercises();
 
 
-  const startExercise = (exercise: Exercise, navigateToPage: boolean = true) => {
+  const startExercise = (exercise: Exercise) => {
     // other logic
 
     // TODO: we can add a "timer" too!!
     setCurrentExercise(exercise)
 
     // if (navigateToPage) navigate(buildExerciseUrl(exercise));
-    const modalId = open({
-      title: "Exercise",
-      children: (
-        <Stack>
-          <Text> You are about to begin doing an exericse. Blah blah blah.</Text>
+    if (showOnboardingExercise) {
+      const modalId = open({
+        title: "Exercise",
+        children: (
+          <Stack>
+            <Text> You are about to begin doing an exericse. Blah blah blah.</Text>
 
-          <Checkbox
-            label="Don't show this again"
-            checked={!showOnboardingExercise}
-            onChange={(event) => setShowOnboardingExercise(event.currentTarget.checked)}
-          />
-          <Flex justify={"end"}>
+            <Checkbox
+              label="Don't show this again"
+              checked={!showOnboardingExercise}
+              onChange={(event) => setShowOnboardingExercise(event.currentTarget.checked)}
+            />
+            <Flex justify={"end"}>
 
-            <Button onClick={() => { close(modalId); window.electron.startExercise(exercise.identifier) }}>
-              Start
-            </Button>
-          </Flex>
-        </ Stack>
-      ),
+              <Button onClick={() => { close(modalId); window.electron.startExercise(exercise.identifier) }}>
+                Start
+              </Button>
+            </Flex>
+          </ Stack>
+        ),
 
-    })
+      })
+
+    } else {
+      window.electron.startExercise(exercise.identifier)
+    }
 
 
 
@@ -199,6 +204,52 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       autoClose: 5000,
       withCloseButton: true,
     })
+
+    const { comments, incorrect, correct } = data.completed?.data || {} as { correct: boolean, incorrect: boolean, comments: string }
+
+    if (correct) {
+      const modalId = openConfirmModal({
+        title: "Exercise completed successfully!",
+        children: (
+          <Stack>
+            <Text> You successfully completed the exercise!</Text>
+            <Text> {comments as string}</Text>
+          </Stack>
+        ),
+        labels: {
+          confirm: "OK",
+          cancel: "Retry"
+        },
+        onCancel: () => {
+          // TOOD: redownload
+        },
+        onConfirm: () => close(modalId)
+        // confirmProps: { children: "OK" },
+        // onConfirm: () => { },
+      })
+    }
+
+    if (incorrect) {
+      const modalId = openConfirmModal({
+        title: "Exercise solution incorrect!",
+        children: (
+          <Stack>
+            <Text> Your solution is incorrect!</Text>
+            <Text> {comments as string}</Text>
+          </Stack>
+        ),
+        labels: {
+          confirm: "Continue trying",
+          cancel: "Reset exercise"
+        },
+        onCancel: () => {
+          // TOOD: redownload
+        },
+        onConfirm: () => close(modalId)
+        // confirmProps: { children: "OK" },
+        // onConfirm: () => { },
+      })
+    }
 
     // cleanup
     delete activeNotifications[currentExercise.identifier];

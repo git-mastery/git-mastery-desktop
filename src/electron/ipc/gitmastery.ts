@@ -389,8 +389,8 @@ const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
     if (code === 0) {
       // Success
 
-      const success = _checkStatusComplete(stdoutBuffer);
-      const failure = _checkStatusIncomplete(stdoutBuffer);
+      const correct = _checkCorrectSolution(stdoutBuffer);
+      const incorrect = _checkIncorrectSolution(stdoutBuffer);
       const comments = _getComments(stdoutBuffer);
 
       const taskPayload: GitMasteryTaskData = {
@@ -401,9 +401,9 @@ const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
           stderr: stderrBuffer,
 
           data: {
-            success: success,
-            failure: failure,
-            comments: comments,
+            correct,
+            incorrect,
+            comments,
           }
         }
       };
@@ -416,7 +416,7 @@ const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
       // write the sucess or failure to a file
       writeToFile(exerciseIdentifier, (data) => ({
         ...data,
-        status: success ? "correct" : "incorrect"
+        status: correct ? "correct" : "incorrect"
       }))
     } else {
       // Failure
@@ -520,7 +520,7 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
 }
 
 // Checks for the line `INFO  Status: Incomplete`
-const _checkStatusIncomplete = (stdout: string) => {
+const _checkIncorrectSolution = (stdout: string) => {
   const lines = stdout.split("[[terminal-line]]");
   for (const line of lines) {
     if (line.includes("INFO  Status: Incomplete")) {
@@ -530,7 +530,7 @@ const _checkStatusIncomplete = (stdout: string) => {
   return false;
 }
 // Checks for the line `INFO  Status: Completed`
-const _checkStatusComplete = (stdout: string) => {
+const _checkCorrectSolution = (stdout: string) => {
   const lines = stdout.split("[[terminal-line]]");
   for (const line of lines) {
     if (line.includes("INFO  Status: Completed")) {
@@ -548,7 +548,9 @@ const _getComments = (stdout: string) => {
   const lines = stdout.split("[[terminal-line]]");
   for (const line of lines) {
     if (line.includes("INFO  Comments:")) {
-      return line.split("\n")[1].trim();
+
+      // TODO: Fragile, replace with the json output version in future
+      return line.split("\n")[1].trim().replace("- ", "");
     }
   }
   return "";

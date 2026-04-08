@@ -282,7 +282,9 @@ export const DownloadedExercise = ({ exercise, status }: { exercise: Exercise, s
   return <Flex style={{ width: "100%", alignItems: 'center' }}>
     {statusMap[status as keyof typeof statusMap]()}
     <NavigationButton title={exercise.identifier} onClick={() => {
+      navigate(buildExerciseUrl(exercise));
       startExercise(exercise);
+
     }} />
   </Flex >
 }
