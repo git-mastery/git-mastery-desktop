@@ -72,6 +72,8 @@ type IpcInvokeChannelMapping = {
 }
 
 type GitMasteryTaskData = {
+  // specific to `download` channels
+  exerciseIdentifier?: string;
 
   // Error is sent when the terminal displays an error while running an operation.
   // In this case, the terminal is still running.
@@ -88,6 +90,7 @@ type GitMasteryTaskData = {
       stdout?: string;
       stderr?: string;
       [key: string]: unknown
+
 
     };
 

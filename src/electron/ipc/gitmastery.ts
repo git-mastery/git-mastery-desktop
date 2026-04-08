@@ -205,8 +205,24 @@ const _setup = async (mainWindow: BrowserWindow) => {
 }
 
 
-const _download = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
+export const _download = (mainWindow: BrowserWindow, exerciseIdentifier: string, navigateToPage: boolean = true) => {
   const childProcess = _spawnChildProcess({ args: ["download", exerciseIdentifier] });
+
+  const taskPayload: GitMasteryTaskData = {
+    exerciseIdentifier: exerciseIdentifier,
+    success: {
+      message: "Download starting...",
+      data: {
+        stderr: "",
+        stdout: "",
+      }
+    }
+  };
+
+  sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+    originalCommand: `download ${exerciseIdentifier}`,
+    data: taskPayload
+  });
 
   let stdoutBuffer = '';
   let stderrBuffer = '';
@@ -216,12 +232,17 @@ const _download = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
     // Send progress updates to renderer
     logGM("stdout", `download ${exerciseIdentifier}`, data.toString());
 
+
+
     const taskPayload: GitMasteryTaskData = {
+      exerciseIdentifier: exerciseIdentifier,
+
       success: {
         message: data.toString(),
         data: {
           stderr: stderrBuffer,
           stdout: stdoutBuffer,
+
         }
       }
     };
@@ -253,6 +274,8 @@ const _download = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
     logGM("stderr", `download ${exerciseIdentifier}`, data.toString());
 
     const taskPayload: GitMasteryTaskData = {
+      exerciseIdentifier: exerciseIdentifier,
+
       error: {
         code: 500, // TODO: set this code properly
         message: data.toString(),
@@ -273,9 +296,12 @@ const _download = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
       // Success
 
       const taskPayload: GitMasteryTaskData = {
+        exerciseIdentifier: exerciseIdentifier,
+
         completed: {
           status: "success",
           message: "Download completed successfully",
+
         }
       };
       sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {

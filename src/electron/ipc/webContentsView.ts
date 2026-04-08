@@ -1,6 +1,7 @@
 import { WebContentsView, BrowserWindow } from "electron"
 import { ipcMainOn } from "../utils/util.js"
 import { getWcvPreloadPath } from "../pathResolver.js"
+import { _download } from "./gitmastery.js";
 
 let wcv: WebContentsView | null = null
 
@@ -25,10 +26,20 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
       wcv!.webContents.insertCSS(`
         nav { display: none !important; }
       `)
+
+      // every time the dom changes, run these functions: 
+      // 1. Replace all `ex-download-info-XX` divs with a button saying "Download exercise"
+      // 2. When that button is clicked, send an ipc message to `main` (captured by `gitmastery.ts`)
+      // --> the command is `gitmastery download ${exerciseIdentifier}`
+
     })
 
+    injectDownloadExercise(mainWindow, () => { });
+
   }
+  wcv.webContents.openDevTools()
   return wcv
+
 }
 
 /**
@@ -38,7 +49,7 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
  *
  * Returns a cleanup function that removes the dom-ready listener.
  */
-function injectCustomElements(mainWindow: BrowserWindow, onStartExercise: (exerciseId: string) => void) {
+function injectDownloadExercise(mainWindow: BrowserWindow, onStartExercise: (exerciseId: string) => void) {
   const wcv = getOrCreateWcv(mainWindow);
 
   // Listen for IPC messages sent from the WCV page via window.wcvBridge.send()
@@ -46,7 +57,11 @@ function injectCustomElements(mainWindow: BrowserWindow, onStartExercise: (exerc
     if (channel === "wcv-start-exercise") {
       const { exerciseId } = args[0] as { exerciseId: string };
       console.log("[wcv] start exercise clicked:", exerciseId);
-      onStartExercise(exerciseId);
+      // onStartExercise(exerciseId);
+
+      // call gitmastery download ${exerciseIdentifier}
+      _download(mainWindow, `${exerciseId}`)
+
     }
   });
 
@@ -54,18 +69,41 @@ function injectCustomElements(mainWindow: BrowserWindow, onStartExercise: (exerc
     // All DOM manipulation must live inside the executeJavaScript string —
     // DOM nodes cannot cross the process boundary.
     // window.wcvBridge is available because wcv-preload.cts is loaded.
+    console.log("now executing javascript to replace button")
     await wcv.webContents.executeJavaScript(`
       (function() {
-        const el = document.querySelector('div[id^="ex-download-info-"]');
-        if (!el) return;
-        const id = el.id.replace("ex-download-info-", "");
-        const btn = document.createElement("button");
-        btn.textContent = "Start Exercise";
-        btn.style.cssText = "padding:8px 16px; background:#6366f1; color:white; border:none; border-radius:6px; cursor:pointer;";
-        btn.addEventListener("click", () => {
-          window.wcvBridge.send("wcv-start-exercise", { exerciseId: id });
+        /**
+         * Replaces all ex-download-info-XX divs with a "Start Exercise" button.
+         * Safe to call multiple times: already-replaced elements won't match
+         * the querySelector since they are no longer divs with that id.
+         */
+        function replaceDownloadDivs() {
+          const els = document.querySelectorAll('div[id^="ex-download-info-"]');
+          els.forEach((el) => {
+            const id = el.id.replace("ex-download-info-", "");
+            const btn = document.createElement("button");
+            btn.textContent = "Start Exercise";
+            btn.style.cssText = "padding:8px 16px; background:#6366f1; color:white; border:none; border-radius:6px; cursor:pointer;";
+            btn.addEventListener("click", () => {
+              window.wcvBridge.send("wcv-start-exercise", { exerciseId: id });
+            });
+            el.replaceWith(btn);
+            console.log("replaced div: ", el.id);
+          });
+        }
+
+        // Run immediately for any divs already present on dom-ready
+        replaceDownloadDivs();
+
+        // Watch every .card-collapse for internal DOM changes (e.g. expanding
+        // a collapsed section that injects new ex-download-info- divs).
+        const cardCollapses = document.querySelectorAll('.card-collapse');
+        cardCollapses.forEach((cardCollapse) => {
+          const observer = new MutationObserver(() => {
+            replaceDownloadDivs();
+          });
+          observer.observe(cardCollapse, { childList: true, subtree: true });
         });
-        el.replaceWith(btn);
       })()
     `);
   };
@@ -90,10 +128,10 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
   ipcMainOn("wcv-navigate", ({ url }: { url: string }) => {
     console.log("[info] wcv-navigate event received")
     getOrCreateWcv(mainWindow).webContents.loadURL(url)
-    injectCustomElements(mainWindow, (exerciseId) => {
-      // TODO: call your gitmastery start-exercise function here
-      console.log("[wcv] TODO: start exercise", exerciseId)
-    })
+    // injectCustomElements(mainWindow, (exerciseId) => {
+    //   // TODO: call your gitmastery start-exercise function here
+    //   console.log("[wcv] navigate", exerciseId)
+    // })
   })
 
   // Temporarily hide the wcv, whenever we need to display a full screen modal.

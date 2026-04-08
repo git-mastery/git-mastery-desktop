@@ -125,12 +125,14 @@ export const ExerciseList = () => {
 
     // use a ref to prevent stale data from closures
     const currentActiveExercise = selectedExerciseRef.current;
+    if (!currentActiveExercise) return;
     console.log("------ downloading ------");
     console.log({ currentActiveExercise });
 
     window.electron.startGitMasteryTask(`download ${currentActiveExercise?.identifier}`)
-
     closeAll();
+    navigate(buildExerciseUrl(currentActiveExercise));
+
 
   }
 
@@ -150,6 +152,12 @@ export const ExerciseList = () => {
     }
 
     const message = data.success!.message;
+    const exerciseIdentifier = data.exerciseIdentifier;
+    if (exerciseIdentifier && !selectedExerciseRef.current) {
+      const exercise = Object.values(exercisesQuery.data || {}).find(exercise => exercise.identifier === exerciseIdentifier) || null
+      selectedExerciseRef.current = exercise
+    }
+
 
     historyLines.push(message);
     if (historyLines.length > 4) {
@@ -184,12 +192,15 @@ export const ExerciseList = () => {
 
     // redirect to the exercise
     const selectedExercise = selectedExerciseRef.current;
+
     if (selectedExercise) {
       startExercise(selectedExercise)
     }
 
     selectedExerciseRef.current = null;
     setIsCurrentlyAdding(false);
+
+    activeNotifications[originalCommand] = null
   }
 
   const onExerciseDownloadFailure = (originalCommand: string, data: GitMasteryTaskData) => {
@@ -209,6 +220,9 @@ export const ExerciseList = () => {
     closeAll();
     selectedExerciseRef.current = null;
     setIsCurrentlyAdding(false);
+
+    activeNotifications[originalCommand] = null
+
   }
 
   const { } = useElectronStream({

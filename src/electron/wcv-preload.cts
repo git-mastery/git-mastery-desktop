@@ -1,4 +1,4 @@
-import { ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 
 /**
  * Minimal preload script for the WebContentsView (wcv-preload.cts).
@@ -14,23 +14,17 @@ import { ipcRenderer } from "electron";
  *               →  ipcRenderer.send(channel, data)
  *               →  wcv.webContents.on("ipc-message", ...)  [main process]
  *
+ * WHY contextBridge instead of window.wcvBridge = ...:
+ *   Electron enables contextIsolation by default. In an isolated context, the
+ *   preload's `window` is a separate object from the page's `window`, so direct
+ *   property assignment is invisible to page JS. contextBridge.exposeInMainWorld
+ *   is the only way to safely cross that boundary.
+ *
  * NOTE: Do NOT expose ipcRenderer directly. Only expose the minimum surface needed.
  */
 
-// Use a type-only interface so we don't import from shared dirs
-// (Electron build boundary rule: no cross-directory imports from src/electron/)
-interface WcvBridge {
-  send: (channel: string, data: Record<string, unknown>) => void;
-}
-
-declare global {
-  interface Window {
-    wcvBridge: WcvBridge;
-  }
-}
-
-window.wcvBridge = {
+contextBridge.exposeInMainWorld("wcvBridge", {
   send: (channel: string, data: Record<string, unknown>) => {
     ipcRenderer.send(channel, data);
   },
-};
+});

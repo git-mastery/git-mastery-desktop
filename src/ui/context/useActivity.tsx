@@ -58,13 +58,13 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   const { rescanDownloadedExercises } = useLocalExercises();
 
 
-  const startExercise = (exercise: Exercise) => {
+  const startExercise = (exercise: Exercise, navigateToPage: boolean = true) => {
     // other logic
 
     // TODO: we can add a "timer" too!!
     setCurrentExercise(exercise)
 
-    navigate(buildExerciseUrl(exercise));
+    // if (navigateToPage) navigate(buildExerciseUrl(exercise));
     const modalId = open({
       title: "Exercise",
       children: (
