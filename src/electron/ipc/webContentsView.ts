@@ -1,5 +1,6 @@
 import { WebContentsView, BrowserWindow } from "electron"
 import { ipcMainOn } from "../utils/util.js"
+import { getWcvPreloadPath } from "../pathResolver.js"
 
 let wcv: WebContentsView | null = null
 
@@ -8,7 +9,14 @@ let bounds = { x: 0, y: 0, width: 0, height: 0 }
 
 function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
   if (!wcv) {
-    wcv = new WebContentsView()
+    wcv = new WebContentsView({
+      webPreferences: {
+        // Loads a minimal preload that exposes window.wcvBridge.send()
+        // so injected JS can fire IPC events back to the main process.
+        // See: src/electron/wcv-preload.cts
+        preload: getWcvPreloadPath(),
+      }
+    })
 
     mainWindow.contentView.addChildView(wcv)
 
@@ -23,27 +31,45 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
   return wcv
 }
 
-function injectCustomElements(mainWindow: BrowserWindow) {
+/**
+ * Injects a "Start Exercise" button into the WCV page, replacing the
+ * matching download-info div. When clicked, the button uses window.wcvBridge
+ * (exposed by wcv-preload.cts) to fire an IPC event back to the main process.
+ *
+ * Returns a cleanup function that removes the dom-ready listener.
+ */
+function injectCustomElements(mainWindow: BrowserWindow, onStartExercise: (exerciseId: string) => void) {
   const wcv = getOrCreateWcv(mainWindow);
+
+  // Listen for IPC messages sent from the WCV page via window.wcvBridge.send()
+  wcv.webContents.on("ipc-message", (_event, channel, ...args) => {
+    if (channel === "wcv-start-exercise") {
+      const { exerciseId } = args[0] as { exerciseId: string };
+      console.log("[wcv] start exercise clicked:", exerciseId);
+      onStartExercise(exerciseId);
+    }
+  });
+
   const handler = async () => {
-    // Everything DOM-related must be inside the JS string
-    const exerciseIdentifier = await wcv.webContents.executeJavaScript(`
+    // All DOM manipulation must live inside the executeJavaScript string —
+    // DOM nodes cannot cross the process boundary.
+    // window.wcvBridge is available because wcv-preload.cts is loaded.
+    await wcv.webContents.executeJavaScript(`
       (function() {
         const el = document.querySelector('div[id^="ex-download-info-"]');
-        if (!el) return null;
+        if (!el) return;
         const id = el.id.replace("ex-download-info-", "");
         const btn = document.createElement("button");
         btn.textContent = "Start Exercise";
         btn.style.cssText = "padding:8px 16px; background:#6366f1; color:white; border:none; border-radius:6px; cursor:pointer;";
-        btn.addEventListener("click", () => console.log("WCV_START_EXERCISE:" + id));
+        btn.addEventListener("click", () => {
+          window.wcvBridge.send("wcv-start-exercise", { exerciseId: id });
+        });
         el.replaceWith(btn);
-        return id; // return primitive — this is safe
       })()
     `);
-    if (exerciseIdentifier) {
-      console.log("[wcv] injected button for exercise:", exerciseIdentifier);
-    }
   };
+
   wcv.webContents.addListener("dom-ready", handler);
   return () => wcv.webContents.removeListener("dom-ready", handler);
 }
@@ -61,25 +87,13 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
     isHidden = false
   })
 
-  ipcMainOn("wcv-navigate", async ({ url }: { url: string }) => {
+  ipcMainOn("wcv-navigate", ({ url }: { url: string }) => {
     console.log("[info] wcv-navigate event received")
     getOrCreateWcv(mainWindow).webContents.loadURL(url)
-
-    // // inject custom HTML and css
-    // // TODO: Investigate whether this can be tied the dom-ready event
-    // const exerciseDownloadButton = await getOrCreateWcv(mainWindow).webContents.executeJavaScript(`document.querySelector('div[id^="ex-download-info-"]')`);
-    // if (!exerciseDownloadButton) return;
-
-    // const id = exerciseDownloadButton.id;
-    // const exerciseIdentifier = id.replace("ex-download-info-", "");
-
-    // // replace with a button
-    // const div = document.createElement("div");
-    // div.id = "exercise-download-button";
-    // div.textContent = "Start Exercise";
-    // exerciseDownloadButton.replaceWith(div);
-    injectCustomElements(mainWindow)
-
+    injectCustomElements(mainWindow, (exerciseId) => {
+      // TODO: call your gitmastery start-exercise function here
+      console.log("[wcv] TODO: start exercise", exerciseId)
+    })
   })
 
   // Temporarily hide the wcv, whenever we need to display a full screen modal.
