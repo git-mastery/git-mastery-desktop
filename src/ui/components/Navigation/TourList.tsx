@@ -1,7 +1,7 @@
 import { Box, Button, Collapse, Flex, Stack, Text, Tooltip } from "@mantine/core"
 import { useDisclosure } from "@mantine/hooks"
 import type { Lesson, Tour, TourData } from "../../../types/Tour"
-import { useCustomQuery } from "../../hooks/useCustomQuery"
+import { useCustomQuery } from "../../hooks/query/useCustomQuery"
 import { buildLessonUrl, useWebContentsView } from "../../context/useWebContentsView"
 import { IconChevronCompactDown, IconChevronDown } from "@tabler/icons-react"
 

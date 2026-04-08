@@ -8,7 +8,10 @@ interface Config {
   dataDirectory?: string;
 }
 
+const appBasePath = app.getPath('userData');
 const configPath = path.join(app.getPath('userData'), 'config.json');
+
+export const getUserStoragePath = () => appBasePath;
 
 export function getConfig(): Config {
   try {

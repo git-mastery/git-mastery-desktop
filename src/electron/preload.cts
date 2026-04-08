@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("electron", {
   // onGitMasteryTaskData is a subscription, so it returns a cleanup function
   // GM_TASK_DATA_CHANNEL is inlined here (not imported) due to the Electron build boundary rule
   onGitMasteryTaskData: (callback: (originalCommand: string, data: GitMasteryTaskData) => void) => ipcOn('gitmastery-task-data', (payload) => callback(payload.originalCommand, payload.data)),
+  startExercise: (exerciseIdentifier: string) => ipcSend('gitmastery-start-exercise', { exerciseIdentifier }),
 } satisfies Window['electron'])
 
 // Note: you canNOT import external files into the preload script, due to Electron sandboxing

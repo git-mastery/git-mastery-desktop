@@ -19,7 +19,7 @@ interface Window {
 
     // for retrieving config settings of the backend (electron app)
     // just an array of folder names
-    getDownloadedExercises: () => Promise<string[]>
+    getDownloadedExercises: () => Promise<ProgressData>
 
 
     // TODO: see if we can type `originalCommand`
@@ -27,6 +27,7 @@ interface Window {
 
     // TODO: decide whether this command should return when (1) task starts or (2) task completes
     startGitMasteryTask: (command: string) => Promise<boolean>;
+    startExercise: (exerciseIdentifier: string) => void;
   }
 }
 
@@ -52,7 +53,7 @@ type IpcHandlerChannelMapping = {
   "set-exercise-directory": { directory: string },
 
   "gitmastery-task-data": { originalCommand: string, data: GitMasteryTaskData },
-
+  "gitmastery-start-exercise": { exerciseIdentifier: string },
 }
 
 /**
@@ -64,7 +65,7 @@ type IpcInvokeChannelMapping = {
   "select-folder": { request: null, response: string | null },
   "select-file": { request: string, response: string | null },
 
-  "get-downloaded-exercises": { request: null, response: import("./src/types/Exercise").Exercises },
+  "get-downloaded-exercises": { request: null, response: ProgressData },
 
   "gitmastery-setup": { request: null, response: string | null },
   "gitmastery-start-task": { request: { command: string }, response: boolean },
@@ -78,12 +79,16 @@ type GitMasteryTaskData = {
     code: number;
     message: string;
   }
+
+  // Success is sent when there is a line of code written to stdout.
+  // Note that the terminal is still running.
   success?: {
     message: string; // purely for FE to display at the bottom
     data: {
       stdout?: string;
       stderr?: string;
       [key: string]: unknown
+
     };
 
   }
@@ -92,8 +97,18 @@ type GitMasteryTaskData = {
   completed?: {
     status: "success" | "failure";
     message: string;
-    // data: Map<string, unknown>
+    data?: {
+      [key: string]: unknown
+    }
     stdout?: string;
     stderr?: string;
   }
+}
+
+type ProgressState = "correct" | "incorrect" | "in-progress" | "not-started";
+type ExerciseProgress = {
+  status: ProgressState
+}
+type ProgressData = {
+  [exerciseIdentifier: string]: ExerciseProgress
 }

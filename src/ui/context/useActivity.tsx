@@ -18,6 +18,8 @@ import { formatExerciseTitle } from "../utils/format";
 import { showNotification, updateNotification } from "@mantine/notifications";
 import { IconCheck, IconInfoCircle } from "@tabler/icons-react";
 import { useElectronStream } from "../hooks/useElectronStream";
+import { useLocalExercises } from "../hooks/query/useLocalExercises";
+import { buildExerciseUrl, useWebContentsView } from "./useWebContentsView";
 
 type ActivityState = {
   currentLesson: Lesson | null;
@@ -38,6 +40,7 @@ const ActivityContext = createContext<ActivityState | null>(null);
 const activeNotifications: Record<string, any> = {}
 
 export function ActivityProvider({ children }: { children: ReactNode }) {
+  const { navigate } = useWebContentsView();
   const { openConfirmModal, open, close } = useElectronModals();
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
@@ -52,6 +55,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     defaultValue: true,
   });
 
+  const { rescanDownloadedExercises } = useLocalExercises();
 
 
   const startExercise = (exercise: Exercise) => {
@@ -60,7 +64,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     // TODO: we can add a "timer" too!!
     setCurrentExercise(exercise)
 
-
+    navigate(buildExerciseUrl(exercise));
     const modalId = open({
       title: "Exercise",
       children: (
@@ -74,7 +78,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
           />
           <Flex justify={"end"}>
 
-            <Button onClick={() => close(modalId)}>
+            <Button onClick={() => { close(modalId); window.electron.startExercise(exercise.identifier) }}>
               Start
             </Button>
           </Flex>
@@ -82,6 +86,8 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       ),
 
     })
+
+
 
   }
 
@@ -158,6 +164,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
           withCloseButton: false,
         })
     }
+
+    // refresh the left sidebar because the status is now updated
+    // 
     return true
   }
 
@@ -176,6 +185,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    console.log("verified success", { data })
     // check to see if it was success or failure
 
     // const isSuccess = 
@@ -197,7 +207,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     exerciseVerifyCallbackRef.current?.();
     exerciseVerifyCallbackRef.current = null;
 
-    checkVerificationStatus(data.completed!.stdout!)
+    // checkVerificationStatus(data.completed!.stdout!)
+    rescanDownloadedExercises();
+
   }
 
   const _onExerciseVerifiedFailure = (originalCommand: string, data: GitMasteryTaskData) => {

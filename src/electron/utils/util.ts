@@ -8,11 +8,11 @@ export function isDev() {
 
 export function ipcMainHandle<Key extends keyof IpcInvokeChannelMapping>(
   key: Key,
-  handler: (payload: IpcInvokeChannelMapping[Key]["request"]) => any
+  handler: (payload: IpcInvokeChannelMapping[Key]["request"]) => Promise<IpcInvokeChannelMapping[Key]["response"]>
 ) {
-  ipcMain.handle(key, (event, payload) => {
+  ipcMain.handle(key, async (event, payload) => {
     validateEventFrame(event.senderFrame!);
-    return handler(payload);
+    return await handler(payload);
   });
 }
 

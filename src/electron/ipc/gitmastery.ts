@@ -2,8 +2,8 @@ import { BrowserWindow } from "electron";
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
-import { ipcMainHandle } from "../utils/util.js";
-import { getConfig } from "../storage.js";
+import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
+import { getConfig, getUserStoragePath } from "../storage.js";
 import { logGM } from "../utils/logger.js";
 import { downloadGitMasteryExe } from "../utils/win32/downloadExe.js";
 import { getEnvironmentWithHomebrew, getExerciseDirectory, getGitMasteryExecutable } from "../utils/cli/getters.js";
@@ -11,6 +11,34 @@ import { getCwd, writeToPty } from "./terminal.js";
 import { sendToRenderer } from "./ipcUtils.js";
 
 const GM_TASK_DATA_CHANNEL = 'gitmastery-task-data' as const;
+
+// -----------------------
+// Setup for storing and reading local exercise progress state
+// Needed so we can display the progress in the UI
+// -----------------------
+const FILE_NAME = "progressData.json"
+
+let progressData: ProgressData = {}
+
+const writeToFile = (exerciseIdentifier: string, updateFn: (data: ExerciseProgress) => ExerciseProgress) => {
+  const currentProgress = progressData[exerciseIdentifier] || { status: "not-started" };
+
+  const newProgress = updateFn(currentProgress);
+
+  progressData[exerciseIdentifier] = newProgress;
+
+  // update the file
+  const dir = getUserStoragePath();
+  const filePath = path.join(dir, FILE_NAME);
+
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  fs.writeFileSync(filePath, JSON.stringify(progressData, null, 2), 'utf8');
+
+}
+
 
 // -----------------------
 // The below handles the functions for GitMastery invocation
@@ -177,8 +205,8 @@ const _setup = async (mainWindow: BrowserWindow) => {
 }
 
 
-const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
-  const childProcess = _spawnChildProcess({ args: ["download", exerciseName] });
+const _download = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
+  const childProcess = _spawnChildProcess({ args: ["download", exerciseIdentifier] });
 
   let stdoutBuffer = '';
   let stderrBuffer = '';
@@ -186,7 +214,7 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
   childProcess.stdout.on('data', (data) => {
     stdoutBuffer += data.toString() + "[[terminal-line]]";
     // Send progress updates to renderer
-    logGM("stdout", `download ${exerciseName}`, data.toString());
+    logGM("stdout", `download ${exerciseIdentifier}`, data.toString());
 
     const taskPayload: GitMasteryTaskData = {
       success: {
@@ -199,26 +227,30 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
     };
 
     sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-      originalCommand: `download ${exerciseName}`,
+      originalCommand: `download ${exerciseIdentifier}`,
       data: taskPayload
     });
 
-    if (data.toString().includes("INFO  cd")) {
-      // get the `cd` portion
-      const cdLine = data.toString().split("INFO  cd")[1].trim();
+    // if (data.toString().includes("INFO  cd")) {
+    //   // get the `cd` portion
+    //   const cdLine = data.toString().split("INFO  cd")[1].trim();
 
-      const fullPath = path.join(getExerciseDirectory(), ...cdLine.split("/"));
+    //   const fullPath = path.join(getExerciseDirectory(), ...cdLine.split("/"));
 
-      console.log(`[info - electron] automatically cd-ing to: ${fullPath}`)
+    //   console.log(`[info - electron] automatically cd-ing to: ${fullPath}`)
 
-      writeToPty(`cd "${fullPath}"\r`);
-    }
+    //   writeToPty(`cd "${fullPath}"\r`);
+    //   writeToFile(exerciseIdentifier, (prev) => ({
+    //     ...prev,
+    //     cdPath: fullPath, // THis may lead to issues where users change their file structure...
+    //   }))
+    // }
   });
 
   childProcess.stderr.on('data', (data) => {
     stderrBuffer += data.toString() + "[[terminal-line]]";
     // Send error updates to renderer
-    logGM("stderr", `download ${exerciseName}`, data.toString());
+    logGM("stderr", `download ${exerciseIdentifier}`, data.toString());
 
     const taskPayload: GitMasteryTaskData = {
       error: {
@@ -227,7 +259,7 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
       }
     };
     sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-      originalCommand: `download ${exerciseName}`,
+      originalCommand: `download ${exerciseIdentifier}`,
       data: taskPayload
     });
 
@@ -236,7 +268,7 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
 
 
   childProcess.on('close', (code) => {
-    logGM("close", `download ${exerciseName}`, code!.toString());
+    logGM("close", `download ${exerciseIdentifier}`, code!.toString());
     if (code === 0) {
       // Success
 
@@ -247,9 +279,16 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
         }
       };
       sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-        originalCommand: `download ${exerciseName}`,
+        originalCommand: `download ${exerciseIdentifier}`,
         data: taskPayload
       });
+
+      // update the file
+      writeToFile(exerciseIdentifier, (data) => ({
+        ...data,
+        status: "in-progress",
+      }));
+
     } else {
       // Failure
       const taskPayload: GitMasteryTaskData = {
@@ -259,7 +298,7 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
         }
       };
       sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-        originalCommand: `download ${exerciseName}`,
+        originalCommand: `download ${exerciseIdentifier}`,
         data: taskPayload
       });
 
@@ -268,11 +307,14 @@ const _download = (mainWindow: BrowserWindow, exerciseName: string) => {
 
 }
 
-const _verify = (mainWindow: BrowserWindow) => {
+const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
   const childProcess = _spawnChildProcess({ args: ["verify"], cwd: getCwd() });
 
   let stdoutBuffer = '';
   let stderrBuffer = '';
+
+  let hasSeenSuccess = false;
+  let hasSeenFailure = false;
 
   childProcess.stdout.on('data', (data) => {
     stdoutBuffer += data.toString() + "[[terminal-line]]";
@@ -321,6 +363,9 @@ const _verify = (mainWindow: BrowserWindow) => {
     if (code === 0) {
       // Success
 
+      const success = _checkStatusComplete(stdoutBuffer);
+      const failure = _checkStatusIncomplete(stdoutBuffer);
+      const comments = _getComments(stdoutBuffer);
 
       const taskPayload: GitMasteryTaskData = {
         completed: {
@@ -328,6 +373,12 @@ const _verify = (mainWindow: BrowserWindow) => {
           message: "Verify completed successfully",
           stdout: stdoutBuffer,
           stderr: stderrBuffer,
+
+          data: {
+            success: success,
+            failure: failure,
+            comments: comments,
+          }
         }
       };
       sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
@@ -335,6 +386,12 @@ const _verify = (mainWindow: BrowserWindow) => {
         data: taskPayload
       });
 
+
+      // write the sucess or failure to a file
+      writeToFile(exerciseIdentifier, (data) => ({
+        ...data,
+        status: success ? "correct" : "incorrect"
+      }))
     } else {
       // Failure
 
@@ -376,18 +433,98 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
         _download(mainWindow, commandArgs.join(" "));
         break;
       case 'verify':
-        _verify(mainWindow);
+        _verify(mainWindow, commandArgs.join(" "));
         break;
       default:
         throw new Error('Invalid command');
     }
 
-    // commandToFunctionMap[command as keyof typeof commandToFunctionMap](mainWindow);
+
 
 
 
     return true;
   });
 
+  // Command 2: `start` an exercise manually (this function helps the user CD into an exercise)
+  ipcMainOn("gitmastery-start-exercise", ({ exerciseIdentifier }: { exerciseIdentifier: string }) => {
+    // this should start an exercise locally.
+    // 1. Check the folder name of the given exerciseIdnetifier
+    // 2. check the first subfolder of the /${exerciseIdentifier}
+    // run `writeToPty('cd ...')
+
+    const exerciseDir = getExerciseDirectory();
+    const exercisePath = path.join(exerciseDir, exerciseIdentifier);
+    const subfolders = fs.readdirSync(exercisePath, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name);
+    if (subfolders.length === 0) {
+      throw new Error("No subfolders found");
+    }
+    const firstSubfolder = subfolders[0];
+    const exerciseCwd = path.join(exercisePath, firstSubfolder);
+    writeToPty(`cd "${exerciseCwd}"\r`);
+
+
+
+  })
+
+  const dir = getUserStoragePath();
+  const filePath = path.join(dir, FILE_NAME);
+
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, JSON.stringify({}));
+  }
+
+  // read from filePath and update`progressData`
+  // TODO: add validation
+  const rawData = fs.readFileSync(filePath, 'utf8');
+  try {
+    progressData = JSON.parse(rawData);
+  } catch (err) {
+    console.error("[error] failed to parse progress data: ", err);
+  }
+
+
+
+}
+
+// Checks for the line `INFO  Status: Incomplete`
+const _checkStatusIncomplete = (stdout: string) => {
+  const lines = stdout.split("[[terminal-line]]");
+  for (const line of lines) {
+    if (line.includes("INFO  Status: Incomplete")) {
+      return true;
+    }
+  }
+  return false;
+}
+// Checks for the line `INFO  Status: Completed`
+const _checkStatusComplete = (stdout: string) => {
+  const lines = stdout.split("[[terminal-line]]");
+  for (const line of lines) {
+    if (line.includes("INFO  Status: Completed")) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * 
+ * INFO  Comments:\r\n- The init operation is not undone.
+ */
+const _getComments = (stdout: string) => {
+  const lines = stdout.split("[[terminal-line]]");
+  for (const line of lines) {
+    if (line.includes("INFO  Comments:")) {
+      return line.split("\n")[1].trim();
+    }
+  }
+  return "";
 }
 

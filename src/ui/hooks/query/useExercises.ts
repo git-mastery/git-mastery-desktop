@@ -1,4 +1,4 @@
-import type { Exercises } from "../../types/Exercise"
+import type { Exercises } from "../../../types/Exercise"
 import { useCustomQuery } from "./useCustomQuery"
 
 export const useExercises = () => {

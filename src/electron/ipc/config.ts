@@ -1,5 +1,5 @@
 import { dialog, ipcMain, BrowserWindow } from 'electron';
-import { getConfig, saveConfig } from '../storage.js';
+import { getConfig, getUserStoragePath, saveConfig } from '../storage.js';
 import { ipcMainHandle } from '../utils/util.js';
 import { getExerciseDirectory } from '../utils/cli/getters.js';
 import fs from 'fs';
@@ -43,10 +43,10 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
   });
 
 
-  ipcMainHandle('get-downloaded-exercises', () => {
+  ipcMainHandle('get-downloaded-exercises', async () => {
     const exerciseDirectory = getExerciseDirectory();
     if (!fs.existsSync(exerciseDirectory)) {
-      return [];
+      return {};
     }
 
     // only read folders
@@ -54,7 +54,27 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
       return fs.statSync(path.join(exerciseDirectory, file)).isDirectory();
     }).filter(exercise => exercise !== "progress");
 
+    // read the progress file
+    const progressFilePath = path.join(getUserStoragePath(), "progressData.json");
+    // read from filePath and update`progressData`
+    // TODO: add validation
+    const rawData = fs.readFileSync(progressFilePath, 'utf8');
+    let progressData: ProgressData = {}
+    try {
+      progressData = JSON.parse(rawData);
+    } catch (err) {
+      console.error("[error] failed to parse progress data: ", err);
+    }
     console.log("[info] get-downloaded-exercises event: ", exercises)
-    return exercises;
+    return progressData
+
+    // return exercises.map(exercise => {
+    //   return {
+    //     exerciseKey: exercise,
+    //     status: "not-started"
+    //   }
+    // });
+
+
   })
 }
