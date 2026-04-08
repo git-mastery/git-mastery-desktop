@@ -1,8 +1,59 @@
 import { BrowserWindow } from "electron";
 import os from "os";
 import path from "path";
+import fs from "fs";
+import { execSync } from "child_process";
 import pty from "node-pty";
 import { ipcMainOn } from "../utils/util.js";
+
+/**
+ * On Windows, attempts to find Git Bash (bash.exe) by locating the git
+ * executable on PATH and resolving bash.exe relative to the Git install root.
+ *
+ * Git for Windows always ships bash.exe at <git-root>\bin\bash.exe, so this
+ * works regardless of the installation directory.
+ *
+ * Returns null if git is not on PATH or bash.exe cannot be found.
+ */
+function findGitBash(): string | null {
+  if (os.platform() !== 'win32') return null;
+  try {
+    // `where git` may return multiple lines; take the first valid one
+    const gitPath = execSync('where git', { encoding: 'utf8' })
+      .trim()
+      .split('\n')[0]
+      .trim();
+    // git.exe lives at <git-root>\cmd\git.exe or <git-root>\bin\git.exe
+    // Go up two levels to reach the Git install root
+    const gitRoot = path.resolve(gitPath, '..', '..');
+    const bashPath = path.join(gitRoot, 'bin', 'bash.exe');
+    if (fs.existsSync(bashPath)) {
+      console.log(`[terminal] found Git Bash at: ${bashPath}`);
+      return bashPath;
+    }
+    console.warn(`[terminal] git found at ${gitPath} but bash.exe not found at ${bashPath}`);
+    return null;
+  } catch {
+    console.warn('[terminal] could not locate git on PATH; falling back to COMSPEC');
+    return null;
+  }
+}
+
+/**
+ * Resolves the shell to use for the pty process.
+ *
+ * Priority:
+ *  1. Windows: Git Bash (bash.exe) found via git on PATH
+ *  2. Windows fallback: COMSPEC (cmd.exe or PowerShell)
+ *  3. macOS/Linux: $SHELL env var
+ *  4. macOS/Linux fallback: /bin/bash
+ */
+function resolveShell(): string {
+  if (os.platform() === 'win32') {
+    return findGitBash() ?? process.env.COMSPEC ?? 'cmd.exe';
+  }
+  return process.env.SHELL ?? '/bin/bash';
+}
 
 let ptyProcess: pty.IPty;
 
@@ -59,8 +110,8 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
     // Reset cwd to home on each new pty spawn
     cwd = process.env.HOME || process.env.USERPROFILE || os.homedir();
 
-    const shell = process.env[os.platform() === 'win32' ? 'COMSPEC' : 'SHELL'];
-    ptyProcess = pty.spawn(shell!, [], {
+    const shell = resolveShell();
+    ptyProcess = pty.spawn(shell, [], {
       name: 'xterm-256color',
       cols,
       rows,
