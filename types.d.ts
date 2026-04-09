@@ -56,19 +56,27 @@ type IpcHandlerChannelMapping = {
   "gitmastery-start-exercise": { exerciseIdentifier: string },
 }
 
+type IIpcInvoke<U, V> = {
+  request: U,
+  response: V
+}
+
 /**
  * Two-way channels (Renderer -> Main -> Renderer).
  * Used with ipcInvoke.
  * Each entry has a typed request payload and a typed response value.
  */
 type IpcInvokeChannelMapping = {
-  "select-folder": { request: null, response: string | null },
-  "select-file": { request: string, response: string | null },
+  "select-folder": IIpcInvoke<null, string | null>,
+  "select-file": IIpcInvoke<string, string | null>,
 
-  "get-downloaded-exercises": { request: null, response: ProgressData },
+  "check-git": IIpcInvoke<null, boolean>,
+  "check-github-cli": IIpcInvoke<null, boolean>,
 
-  "gitmastery-setup": { request: null, response: string | null },
-  "gitmastery-start-task": { request: { command: string }, response: boolean },
+  "get-downloaded-exercises": IIpcInvoke<null, ProgressData>,
+
+  "gitmastery-setup": IIpcInvoke<null, string | null>,
+  "gitmastery-start-task": IIpcInvoke<{ command: string }, boolean>,
 }
 
 type GitMasteryTaskData = {

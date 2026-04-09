@@ -5,8 +5,43 @@ import { WebsiteWrapper } from './components/Website/WebsiteWrapper'
 import { InfoBar } from './components/InfoBar/InfoBar'
 import { GitMasteryTaskProvider } from './contexts/GitMasteryTaskContext'
 import { Header } from './components/Header/Header'
+import { useEffect, useState } from 'react'
+import { useLocalStorage } from '@mantine/hooks'
+import { Onboarding } from './pages/Onboarding'
 
+// enum Page { 
+//   Onboarding,
+//   Main
+// }
+
+/**
+ * Note for future development
+ * 
+ * >> As there are only two "pages" planned:
+ *   1. Onboarding
+ *   2. Actual work page
+ * 
+ * the routing system uses a simple `enum` to control what page is shown.
+ * 
+ * in the future, explore options such as Tanstack Router
+ * 
+ * @returns 
+ */
 function App() {
+
+  // const [page, setPage] = useState<Page>(Page.Main)
+  const [onboardingCompleted, setOnboardingCompleted] = useLocalStorage({
+    key: 'onboarding-completed',
+    defaultValue: false,
+  })
+
+  console.log({ onboardingCompleted })
+
+  // useEffect(() => { 
+
+  // }, []);
+
+  if (!onboardingCompleted) return <Onboarding onCompleteOnboarding={() => setOnboardingCompleted(true)} />
 
   return (
 

@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electron", {
+
+
   spawn: (cols: number, rows: number) => ipcSend('pty-spawn', { cols, rows }),
   write: (data: string) => ipcSend('pty-write', { data }),
   onData: (callback: (data: string) => void) => ipcOn('pty-data', callback),
