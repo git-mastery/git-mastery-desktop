@@ -1,7 +1,8 @@
 import { WebContentsView, BrowserWindow } from "electron"
 import { ipcMainOn } from "../utils/util.js"
 import { getWcvPreloadPath } from "../pathResolver.js"
-import { _download } from "./gitmastery.js";
+import { _download, _verify } from "./gitmastery.js";
+import { verify } from "crypto";
 
 let wcv: WebContentsView | null = null
 
@@ -35,6 +36,7 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     })
 
     injectDownloadExercise(mainWindow, () => { });
+    injectVerifyExercise(mainWindow);
 
   }
   wcv.webContents.openDevTools()
@@ -69,7 +71,7 @@ function injectDownloadExercise(mainWindow: BrowserWindow, onStartExercise: (exe
     // All DOM manipulation must live inside the executeJavaScript string —
     // DOM nodes cannot cross the process boundary.
     // window.wcvBridge is available because wcv-preload.cts is loaded.
-    console.log("now executing javascript to replace button")
+    console.log("now executing javascript to replace button for download")
     await wcv.webContents.executeJavaScript(`
       (function() {
         /**
@@ -101,6 +103,69 @@ function injectDownloadExercise(mainWindow: BrowserWindow, onStartExercise: (exe
         cardCollapses.forEach((cardCollapse) => {
           const observer = new MutationObserver(() => {
             replaceDownloadDivs();
+          });
+          observer.observe(cardCollapse, { childList: true, subtree: true });
+        });
+      })()
+    `);
+  };
+
+  wcv.webContents.addListener("dom-ready", handler);
+  return () => wcv.webContents.removeListener("dom-ready", handler);
+}
+
+function injectVerifyExercise(mainWindow: BrowserWindow) {
+  const wcv = getOrCreateWcv(mainWindow);
+
+  // Listen for IPC messages sent from the WCV page via window.wcvBridge.send()
+  wcv.webContents.on("ipc-message", (_event, channel, ...args) => {
+    if (channel === "wcv-verify-exercise") {
+      const { exerciseId } = args[0] as { exerciseId: string };
+      console.log("[wcv] verify exercise clicked:", exerciseId);
+      // onStartExercise(exerciseId);
+
+      // call gitmastery download ${exerciseIdentifier}
+      _verify(mainWindow, exerciseId)
+
+    }
+  });
+
+  const handler = async () => {
+    // All DOM manipulation must live inside the executeJavaScript string —
+    // DOM nodes cannot cross the process boundary.
+    // window.wcvBridge is available because wcv-preload.cts is loaded.
+    console.log("now executing javascript to replace button for verify")
+    await wcv.webContents.executeJavaScript(`
+      (function() {
+        /**
+         * Replaces all ex-verify-info-XX divs with a "Start Exercise" button.
+         * Safe to call multiple times: already-replaced elements won't match
+         * the querySelector since they are no longer divs with that id.
+         */
+        function replaceVerifyDivs() {
+          const els = document.querySelectorAll('div[id^="ex-verify-info-"]');
+          els.forEach((el) => {
+            const id = el.id.replace("ex-verify-info-", "");
+            const btn = document.createElement("button");
+            btn.textContent = "Verify Solution";
+            btn.style.cssText = "padding:8px 16px; background:#6366f1; color:white; border:none; border-radius:6px; cursor:pointer;";
+            btn.addEventListener("click", () => {
+              window.wcvBridge.send("wcv-verify-exercise", { exerciseId: id });
+            });
+            el.replaceWith(btn);
+            console.log("replaced div: ", el.id);
+          });
+        }
+
+        // Run immediately for any divs already present on dom-ready
+        replaceVerifyDivs();
+
+        // Watch every .card-collapse for internal DOM changes (e.g. expanding
+        // a collapsed section that injects new ex-download-info- divs).
+        const cardCollapses = document.querySelectorAll('.card-collapse');
+        cardCollapses.forEach((cardCollapse) => {
+          const observer = new MutationObserver(() => {
+            replaceVerifyDivs();
           });
           observer.observe(cardCollapse, { childList: true, subtree: true });
         });

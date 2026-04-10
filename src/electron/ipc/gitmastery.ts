@@ -333,8 +333,23 @@ export const _download = (mainWindow: BrowserWindow, exerciseIdentifier: string,
 
 }
 
-const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
+export const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
   const childProcess = _spawnChildProcess({ args: ["verify"], cwd: getCwd() });
+  const taskPayload: GitMasteryTaskData = {
+    exerciseIdentifier: exerciseIdentifier,
+    success: {
+      message: "Checking correctness...",
+      data: {
+        stderr: "",
+        stdout: "",
+      }
+    }
+  };
+
+  sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+    originalCommand: `verify`,
+    data: taskPayload
+  });
 
   let stdoutBuffer = '';
   let stderrBuffer = '';
@@ -348,6 +363,8 @@ const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
     logGM("stdout", `verify`, data.toString());
 
     const taskPayload: GitMasteryTaskData = {
+      exerciseIdentifier: exerciseIdentifier,
+
       success: {
         message: data.toString(),
         data: {
@@ -372,6 +389,8 @@ const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
     logGM("stderr", `verify`, data.toString());
 
     const taskPayload: GitMasteryTaskData = {
+      exerciseIdentifier: exerciseIdentifier,
+
       error: {
         code: 500, // TODO: set this code properly
         message: data.toString(),
@@ -394,6 +413,8 @@ const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
       const comments = _getComments(stdoutBuffer);
 
       const taskPayload: GitMasteryTaskData = {
+        exerciseIdentifier: exerciseIdentifier,
+
         completed: {
           status: "success",
           message: "Verify completed successfully",
@@ -423,6 +444,8 @@ const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) => {
 
 
       const taskPayload: GitMasteryTaskData = {
+        exerciseIdentifier: exerciseIdentifier,
+
         error: {
           code: 500, // TODO: set this code properly
           message: "Verify failed! Please try again (TODO)",

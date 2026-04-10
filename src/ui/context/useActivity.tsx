@@ -144,6 +144,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   /**
    * Begins the process of verifying the current exercise.
+   * Note that we should only show the notification WHEN the backend has started verifying the exercise.
    * 
    * @param [showProgress=true] - Whether to show the progress toast
    * @param callback - Callback function to be called when the exercise is verified
@@ -158,10 +159,34 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     exerciseVerifyCallbackRef.current = callback;
     window.electron.startGitMasteryTask(`verify ${currentExercise.identifier}`)
 
-    if (!activeNotifications[currentExercise.identifier]) {
-      activeNotifications[currentExercise.identifier] =
+    // if (!activeNotifications[currentExercise.identifier]) {
+    //   activeNotifications[currentExercise.identifier] =
+    //     showNotification({
+    //       id: 'currentExercise.identifier',
+    //       title: "Verifying",
+    //       message: "Verifying...",
+    //       loading: true,
+    //       autoClose: false,
+    //       withCloseButton: false,
+    //     })
+    // }
+
+    // refresh the left sidebar because the status is now updated
+    // 
+    return true
+  }
+
+  const _onExerciseVerifyData = (originalCommand: string, data: GitMasteryTaskData) => {
+    if (!data.exerciseIdentifier) return;
+    if (!currentExercise) { // we cannot verify if there is no exercise selected (assume that an exercise selected --> we are cd'ed into a folder (required for verify to work))
+      return
+    }
+    const notificationId = `${originalCommand}-${data.exerciseIdentifier}`
+
+    if (!activeNotifications[notificationId]) {
+      activeNotifications[notificationId] =
         showNotification({
-          id: 'currentExercise.identifier',
+          id: notificationId,
           title: "Verifying",
           message: "Verifying...",
           loading: true,
@@ -170,17 +195,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         })
     }
 
-    // refresh the left sidebar because the status is now updated
-    // 
-    return true
-  }
 
-  const _onExerciseVerifyData = (originalCommand: string, data: GitMasteryTaskData) => {
-    if (!currentExercise) {
-      return
-    }
     updateNotification({
-      id: activeNotifications[currentExercise.identifier],
+      id: activeNotifications[notificationId],
       message: data.success!.message,
     })
   }
@@ -190,12 +207,13 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    const id = `${originalCommand}-${data.exerciseIdentifier}`
     console.log("verified success", { data })
     // check to see if it was success or failure
 
     // const isSuccess = 
     updateNotification({
-      id: activeNotifications[currentExercise.identifier],
+      id: activeNotifications[id],
       title: "Verification complete.",
       message: "",
       loading: false,
@@ -252,7 +270,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     }
 
     // cleanup
-    delete activeNotifications[currentExercise.identifier];
+    delete activeNotifications[id];
 
     // callback
     exerciseVerifyCallbackRef.current?.();
@@ -265,6 +283,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const _onExerciseVerifiedFailure = (originalCommand: string, data: GitMasteryTaskData) => {
     // TODO: Show a toast OR show a success
+    const id = `${originalCommand}-${data.exerciseIdentifier}`
+    delete activeNotifications[id];
+
   }
   const { } = useElectronStream({
     condition: (cmd: string) => cmd.startsWith("verify"),
