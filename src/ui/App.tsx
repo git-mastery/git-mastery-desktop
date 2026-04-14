@@ -51,7 +51,7 @@ function App() {
       header={{ height: 64 }}
       navbar={{ width: 256, breakpoint: "md" }}
       aside={{ width: 512, breakpoint: "xs" }}
-      footer={{ height: 32 }}
+    // footer={{ height: 32 }}
     >
       <AppShell.Header
         bg="gm-bone"
@@ -76,12 +76,12 @@ function App() {
 
       </AppShell.Aside>
 
-      <AppShell.Footer bg="gm-dark-green">
+      {/* <AppShell.Footer bg="gm-dark-green">
         <Box>
           <InfoBar
           ></InfoBar>
         </Box>
-      </AppShell.Footer>
+      </AppShell.Footer> */}
     </AppShell >
 
   )

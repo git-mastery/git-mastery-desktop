@@ -14,7 +14,7 @@ type WebContentsViewState = {
 const WebContentsViewContext = createContext<WebContentsViewState | null>(null);
 
 export function WebContentsViewProvider({ children }: { children: ReactNode }) {
-  const [currentUrl, setCurrentUrl] = useState<string | null>("https://git-mastery.org")
+  const [currentUrl, setCurrentUrl] = useState<string | null>("")
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([])
   const [isVisible, setIsVisible] = useState(false);
 

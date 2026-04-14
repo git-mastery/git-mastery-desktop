@@ -1,8 +1,9 @@
-import { WebContentsView, BrowserWindow } from "electron"
+import { WebContentsView, BrowserWindow, screen } from "electron"
 import { ipcMainOn } from "../utils/util.js"
 import { getWcvPreloadPath } from "../pathResolver.js"
 import { _download, _verify } from "./gitmastery.js";
 import { verify } from "crypto";
+import { getMainWindow } from "../main.js";
 
 let wcv: WebContentsView | null = null
 
@@ -39,7 +40,6 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     injectVerifyExercise(mainWindow);
 
   }
-  wcv.webContents.openDevTools()
   return wcv
 
 }
@@ -180,7 +180,29 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
   ipcMainOn("wcv-size", ({ x, y, width, height }: { x: number, y: number, width: number, height: number }) => {
     console.log("[info] wcv-size event received")
     getOrCreateWcv(mainWindow)
-    bounds = { x, y, width, height }
+
+    /**
+     * Note: Issue with Electron apps & scaling for web contents view.
+     * We need to account for the display scaling. 
+     * 
+     * If the user only has one display, then it's easy -- screen.getDisplayNearestPoint always returns the same display.
+     * But if the user has two displays with different scale factor, then we base off the mouse position when deciding which display to 
+     * find the scaling factor of.
+     * 
+     * Consider that when the screen size changes, the 
+     */
+
+    const mainWindowBounds = getMainWindow().getContentBounds()
+    const centerPt = { x: mainWindowBounds.x + mainWindowBounds.width / 2, y: mainWindowBounds.y + mainWindowBounds.height / 2 }
+
+    const display = screen.getDisplayNearestPoint(centerPt);
+    const scalingFactor = display.scaleFactor;
+    console.log({ scalingFactor })
+    bounds = { x: screen.screenToDipPoint({ x, y }).x / scalingFactor, y: screen.screenToDipPoint({ x, y }).y / scalingFactor, width: width / scalingFactor, height: height / scalingFactor }
+
+    if (!isHidden) {
+      getOrCreateWcv(mainWindow).setBounds(bounds)
+    }
   })
 
   ipcMainOn("wcv-show", () => {

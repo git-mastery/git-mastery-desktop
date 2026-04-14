@@ -6,9 +6,19 @@ import { setupTerminalIpc } from "./ipc/terminal.js";
 import { setupGitmasteryIpc } from "./ipc/gitmastery.js";
 import { setupWebContentsViewIpc } from "./ipc/webContentsView.js";
 import { setupConfigIpc } from "./ipc/config.js";
+import { setupPrereqIpc } from "./ipc/setupPrereq.js";
+
+let mainWindow: BrowserWindow | null = null;
+
+export function getMainWindow() {
+  if (!mainWindow) {
+    throw new Error("Main window not found");
+  }
+  return mainWindow;
+}
 
 app.on("ready", () => {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     webPreferences: {
       preload: getPreloadPath()
     }
@@ -17,6 +27,7 @@ app.on("ready", () => {
   setupGitmasteryIpc(mainWindow);
   setupWebContentsViewIpc(mainWindow);
   setupConfigIpc(mainWindow);
+  setupPrereqIpc();
 
   console.log("isDev: ", isDev())
   if (isDev()) {

@@ -74,17 +74,18 @@ const _setup = async (mainWindow: BrowserWindow) => {
 
   // 1. Check if the data directory exists
   if (!dataDirectory || !fs.existsSync(dataDirectory)) {
+    console.log("error: data directory not found")
     throw new Error('Exercise directory not found');
   }
 
 
   // 2a. Check if the exe exists (windows only) — auto-download if missing
-  if (process.platform === "win32" && !fs.existsSync(exeLocation)) {
+  // if (process.platform === "win32" && !fs.existsSync(exeLocation)) {
 
-    logGM('download', 'exe', 'gitmastery.exe not found — downloading latest release...');
-    await downloadGitMasteryExe(dataDirectory);
-    logGM('download', 'exe', 'Download complete.');
-  }
+  //   logGM('download', 'exe', 'gitmastery.exe not found — downloading latest release...');
+  //   await downloadGitMasteryExe(dataDirectory);
+  //   logGM('download', 'exe', 'Download complete.');
+  // }
 
   // 2b. Check if gitmastery is installed using brew (Mac only)
   // TODO
@@ -200,6 +201,8 @@ const _setup = async (mainWindow: BrowserWindow) => {
     originalCommand: "setup",
     data: taskPayload
   });
+
+  console.log("nothing to setup for gitmastery setup", taskPayload);
   return;
 
 }

@@ -3,6 +3,7 @@ import { TourList } from "./TourList"
 import { ExerciseList } from "./ExerciseList"
 import { IconArrowsLeftRight, IconChevronRight, IconMessageCircle, IconPhoto, IconSearch, IconSettings, IconTrash } from "@tabler/icons-react"
 import { forwardRef } from "react"
+import { useLocalStorage } from "@mantine/hooks"
 
 const selectExePath = async () => {
   const path = await window.electron.selectFile("exe");
@@ -14,7 +15,7 @@ const selectExePath = async () => {
 const selectSaveDir = async () => {
   const path = await window.electron.selectFolder();
   if (path) {
-    window.electron.setExerciseDirectory(path);
+    window.electron.setDataDirectory(path);
   }
 }
 
@@ -25,7 +26,14 @@ const setupGitMastery = async () => {
   }
 }
 
+
+
 export const LeftBarWrapper = () => {
+
+  const [onboardingCompleted, setOnboardingCompleted] = useLocalStorage({
+    key: 'onboarding-completed',
+    defaultValue: false,
+  })
   return <Stack h="100%" >
     {/* Tours */}
     <Stack style={{
@@ -61,17 +69,20 @@ export const LeftBarWrapper = () => {
 
         <Menu.Dropdown>
           <Menu.Label>Setup</Menu.Label>
+          <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => setOnboardingCompleted(false)}>
+            Setup GitMastery
+          </Menu.Item>
           {/* <Menu.Item leftSection={<IconSettings size={14} />} onClick={selectExePath}>
             Set .exe path (Windows)
           </Menu.Item> */}
-          <Menu.Item leftSection={<IconMessageCircle size={14} />} onClick={selectSaveDir}>
+          {/* <Menu.Item leftSection={<IconMessageCircle size={14} />} onClick={selectSaveDir}>
             Configure save location
           </Menu.Item>
           <Menu.Item leftSection={<IconMessageCircle size={14} />} onClick={setupGitMastery}>
             Setup Git Mastery
-          </Menu.Item>
+          </Menu.Item> */}
 
-          <Menu.Divider />
+          {/* <Menu.Divider />
 
           <Menu.Label>Danger zone</Menu.Label>
 
@@ -80,7 +91,7 @@ export const LeftBarWrapper = () => {
             leftSection={<IconTrash size={14} />}
           >
             Reset progress
-          </Menu.Item>
+          </Menu.Item> */}
         </Menu.Dropdown>
       </Menu>
 

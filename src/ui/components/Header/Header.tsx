@@ -9,7 +9,7 @@ export const Header = () => {
   return <SimpleGrid cols={3} p="md" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: '64px' }}>
     <Title order={4}> GitMastery </Title>
     <Box >
-      {isDoingActivity && <Flex px="md" bg="gm-dark-green" w="100%" h="100%" gap={"lg"} style={{
+      {isDoingActivity && <Flex px="md" bg="gm-green" w="100%" h="100%" gap={"lg"} style={{
         borderRadius: "24px",
         paddingTop: "2px",
         paddingBottom: "2px"

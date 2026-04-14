@@ -37,11 +37,14 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
   //   saveConfig({ exeLocation: location });
   // });
 
-  ipcMain.on('set-exercise-directory', (_, { directory }) => {
-    console.log("[info] set-exercise-directory event: ", directory)
+  ipcMain.on('set-data-directory', (_, { directory }) => {
+    console.log("[info] set-data-directory event: ", directory)
     saveConfig({ dataDirectory: directory });
   });
 
+  ipcMainHandle('get-data-directory', async () => {
+    return getConfig().dataDirectory || null;
+  });
 
   ipcMainHandle('get-downloaded-exercises', async () => {
     const exerciseDirectory = getExerciseDirectory();

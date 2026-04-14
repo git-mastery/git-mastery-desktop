@@ -2,21 +2,33 @@ import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electron", {
 
-
+  // Terminal
   spawn: (cols: number, rows: number) => ipcSend('pty-spawn', { cols, rows }),
   write: (data: string) => ipcSend('pty-write', { data }),
   onData: (callback: (data: string) => void) => ipcOn('pty-data', callback),
   resize: (cols: number, rows: number) => ipcSend('pty-resize', { cols, rows }),
+
+  // WebContentsView
   navigate: (url: string) => ipcSend('wcv-navigate', { url }),
   setContentsViewSize: (x: number, y: number, width: number, height: number) => ipcSend('wcv-size', { x, y, width, height }),
   hide: () => ipcSend('wcv-hide', null),
   show: () => ipcSend('wcv-show', null),
 
+  // Config
   setExeLocation: (location: string) => ipcSend('set-exe-location', { location }),
-  setExerciseDirectory: (directory: string) => ipcSend('set-exercise-directory', { directory }),
+  setDataDirectory: (directory: string) => ipcSend('set-data-directory', { directory }),
+  getDataDirectory: () => ipcInvoke('get-data-directory', null),
   selectFolder: () => ipcInvoke('select-folder', null),
   selectFile: () => ipcInvoke('select-file', "exe"),
 
+  // Setup
+  checkGit: () => ipcInvoke('check-git', null),
+  checkGithubCli: () => ipcInvoke('check-github-cli', null),
+  downloadGitMasteryApp: () => ipcInvoke('download-gitmastery-app', null),
+  getGitMasteryVersion: () => ipcInvoke('get-gitmastery-version', null),
+
+
+  // GitMastery
   getDownloadedExercises: () => ipcInvoke('get-downloaded-exercises', null),
 
   startGitMasteryTask: (command: string) => ipcInvoke('gitmastery-start-task', { command }),
@@ -24,6 +36,9 @@ contextBridge.exposeInMainWorld("electron", {
   // GM_TASK_DATA_CHANNEL is inlined here (not imported) due to the Electron build boundary rule
   onGitMasteryTaskData: (callback: (originalCommand: string, data: GitMasteryTaskData) => void) => ipcOn('gitmastery-task-data', (payload) => callback(payload.originalCommand, payload.data)),
   startExercise: (exerciseIdentifier: string) => ipcSend('gitmastery-start-exercise', { exerciseIdentifier }),
+
+  // Shell
+  openExternal: (url: string) => ipcSend('open-external', { url }),
 } satisfies Window['electron'])
 
 // Note: you canNOT import external files into the preload script, due to Electron sandboxing

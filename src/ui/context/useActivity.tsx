@@ -55,6 +55,8 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     defaultValue: true,
   });
 
+  const showOnboardingRef = useRef<HTMLInputElement>(null);
+
   const { rescanDownloadedExercises } = useLocalExercises();
 
 
@@ -73,13 +75,27 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
             <Text> You are about to begin doing an exericse. Blah blah blah.</Text>
 
             <Checkbox
+              ref={showOnboardingRef}
               label="Don't show this again"
-              checked={!showOnboardingExercise}
-              onChange={(event) => setShowOnboardingExercise(event.currentTarget.checked)}
+            // checked={!showOnboardingExercise}
+            // onChange={(event) => { console.log(event); setShowOnboardingExercise((prev) => !prev) }}
+            // checked={!showOnboardingRef.current}
+            // onChange={(event) => {
+            //   showOnboardingRef.current = event.currentTarget.checked;
+            //   setShowOnboardingExercise(event.currentTarget.checked);
+            // }}
             />
             <Flex justify={"end"}>
 
-              <Button onClick={() => { close(modalId); window.electron.startExercise(exercise.identifier) }}>
+              <Button onClick={() => {
+                close(modalId);
+                window.electron.startExercise(exercise.identifier);
+                // use the ref to update the localstorage
+                if (showOnboardingRef.current) {
+                  setShowOnboardingExercise(!showOnboardingRef.current.checked);
+                }
+
+              }}>
                 Start
               </Button>
             </Flex>
@@ -240,6 +256,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         },
         onCancel: () => {
           // TOOD: redownload
+          close(modalId)
         },
         onConfirm: () => close(modalId)
         // confirmProps: { children: "OK" },
@@ -262,6 +279,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         },
         onCancel: () => {
           // TOOD: redownload
+          close(modalId);
         },
         onConfirm: () => close(modalId)
         // confirmProps: { children: "OK" },
@@ -284,7 +302,19 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   const _onExerciseVerifiedFailure = (originalCommand: string, data: GitMasteryTaskData) => {
     // TODO: Show a toast OR show a success
     const id = `${originalCommand}-${data.exerciseIdentifier}`
+    updateNotification({
+      id: activeNotifications[id],
+      title: "Verification failed",
+      message: "",
+      loading: false,
+      icon: <IconInfoCircle color="red" size={18} />,
+      autoClose: 5000,
+      withCloseButton: true,
+    })
+
     delete activeNotifications[id];
+
+
 
   }
   const { } = useElectronStream({
