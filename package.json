@@ -1,7 +1,7 @@
 {
-  "name": "electron-git-mastery",
+  "name": "git-mastery",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -14,7 +14,8 @@
     "transpile:electron": "tsc --project src/electron/tsconfig.json",
     "dist:mac": "npm run transpile:electron && npm run build && electron-builder --mac --arm64",
     "dist:win": "npm run transpile:electron && npm run build && electron-builder --win --x64",
-    "dist:linux": "npm run transpile:electron && npm run build && electron-builder --linux --x64"
+    "dist:linux": "npm run transpile:electron && npm run build && electron-builder --linux --x64",
+    "postinstall": "electron-rebuild -f -w node-pty"
   },
   "dependencies": {
     "@mantine/core": "^8.3.15",
