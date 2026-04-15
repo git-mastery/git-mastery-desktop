@@ -2,7 +2,7 @@ import { ipcMain, shell } from 'electron';
 import { ipcMainHandle } from "../utils/util.js"
 import { exec } from "child_process"
 import { promisify } from "util"
-import { getGitMasteryExecutable } from "../utils/cli/getters.js";
+import { getGitMasteryExecutable, getEnvironmentWithHomebrew } from "../utils/cli/getters.js";
 import { getConfig } from "../storage.js";
 import { logGM } from "../utils/logger.js";
 import { downloadGitMasteryExe } from "../utils/win32/downloadExe.js";
@@ -45,7 +45,7 @@ export const setupPrereqIpc = () => {
     // mac
     if (process.platform === "darwin") {
       // spawn a terminal and check if gitmastery is installed
-      const { stdout } = await execAsync("gitmastery version");
+      const { stdout } = await execAsync("gitmastery version", { env: getEnvironmentWithHomebrew() });
       return parseOutput(stdout);
     }
     // TODO(linux)
@@ -71,7 +71,7 @@ export const setupPrereqIpc = () => {
 async function checkGit(): Promise<boolean> {
   try {
     // If git is found, this command will succeed.
-    await execAsync('git --version');
+    await execAsync('git --version', { env: getEnvironmentWithHomebrew() });
     return true;
   } catch (error) {
     console.error('[checkGit] Git not found:', error);
@@ -83,7 +83,7 @@ async function checkGit(): Promise<boolean> {
 async function checkGithubCli(): Promise<boolean> {
   try {
     // If GitHub CLI is found, this command will succeed.
-    await execAsync('gh --version');
+    await execAsync('gh --version', { env: getEnvironmentWithHomebrew() });
     return true;
   } catch (error) {
     console.error('[checkGithubCli] GitHub CLI not found:', error);
@@ -119,7 +119,7 @@ async function downloadGitMasteryApp() {
     logGM('download', 'darwin', 'Done.');
   }
 
-  // 2c. Download binary from GitHub releases (Linux only)
+  // 2c. Download binary from GitHub releases (Linuxonly)
   if (process.platform === "linux") {
     logGM('download', 'linux', 'Downloading gitmastery binary from GitHub releases...');
     await downloadAppLinux(dataDirectory);

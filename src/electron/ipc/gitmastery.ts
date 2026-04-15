@@ -552,6 +552,9 @@ const _checkIncorrectSolution = (stdout: string) => {
     if (line.includes("INFO  Status: Incomplete")) {
       return true;
     }
+    if (line.includes("INFO  Status: Error")) {
+      return true
+    }
   }
   return false;
 }

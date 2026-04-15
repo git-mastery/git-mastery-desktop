@@ -3,10 +3,8 @@ import path from "path";
 import { isDev } from "./utils/util.js";
 
 export function getPreloadPath() {
-  // reference the video at 52 minutes.
   return path.join(
     app.getAppPath(),
-    isDev() ? "." : "..",
     "dist-electron",
     "preload.cjs"
   )
@@ -14,13 +12,12 @@ export function getPreloadPath() {
 
 /**
  * Returns the path to the WebContentsView-specific preload script.
- * This is a separate, minimal preload used only for the WCV (external pages).
+ * This is a separate, minimal preload usåed only for the WCV (external pages).
  * It exposes window.wcvBridge.send() so injected JS can fire IPC events.
  */
 export function getWcvPreloadPath() {
   return path.join(
     app.getAppPath(),
-    isDev() ? "." : "..",
     "dist-electron",
     "wcv-preload.cjs"
   )
@@ -32,5 +29,5 @@ export function getUIPath() {
 }
 
 export function getAssetPath() {
-  return path.join(app.getAppPath(), isDev() ? '.' : '..', '/src/assets');
+  return path.join(app.getAppPath(), 'src/assets');
 }

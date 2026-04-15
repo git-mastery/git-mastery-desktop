@@ -79,7 +79,7 @@ export const WebsiteWrapper = () => {
       </Breadcrumbs>
     </Box>
     <Flex ref={webViewRef} id="webcontentsview-placeholder" style={{ width: "100%", height: "100%", flexGrow: 1, justifyContent: "center", alignItems: "center" }}>
-      {currentUrl ? <></> : <Alert style={{ transform: "scale(2)" }} variant="light" color="gm-green" icon={<Image src={logo} alt="Git Mastery" />} title="Get started with lessons or exercises">
+      {currentUrl ? <></> : <Alert style={{ transform: "scale(1.25)" }} variant="light" color="gm-green" icon={<Image src={logo} alt="Git Mastery" />} title="Get started with lessons or exercises">
         Choose a tour from the left sidebar, or download an exercise and start doing it!
       </Alert>}
 

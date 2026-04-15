@@ -28,6 +28,9 @@ export const downloadApp = async (): Promise<void> => {
   // This ensures clicking the button always gets the latest version.
   logGM("download", "darwin", "Running: brew upgrade gitmastery || brew install gitmastery");
   try {
+    const { stdout: tapStdout, stderr: tapStderr } = await execAsync('brew tap git-mastery/gitmastery')
+    if (tapStdout) logGM("download", "darwin", tapStdout.trim());
+    if (tapStderr) logGM("download", "darwin", tapStderr.trim());
     const { stdout, stderr } = await execAsync(
       "brew upgrade gitmastery || brew install gitmastery",
       { env }
