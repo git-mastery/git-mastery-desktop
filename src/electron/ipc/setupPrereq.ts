@@ -44,9 +44,13 @@ export const setupPrereqIpc = () => {
     }
     // mac
     if (process.platform === "darwin") {
-      // spawn a terminal and check if gitmastery is installed
-      const { stdout } = await execAsync("gitmastery version", { env: getEnvironmentWithHomebrew() });
-      return parseOutput(stdout);
+      // gitmastery may not be installed yet — treat a missing command as version ""
+      try {
+        const { stdout } = await execAsync("gitmastery version", { env: getEnvironmentWithHomebrew() });
+        return parseOutput(stdout);
+      } catch {
+        return { version: "" };
+      }
     }
     // TODO(linux)
     if (process.platform === "linux") {
@@ -119,7 +123,7 @@ async function downloadGitMasteryApp() {
     logGM('download', 'darwin', 'Done.');
   }
 
-  // 2c. Download binary from GitHub releases (Linuxonly)
+  // 2c. Download binary from GitHub releases (Linux only)
   if (process.platform === "linux") {
     logGM('download', 'linux', 'Downloading gitmastery binary from GitHub releases...');
     await downloadAppLinux(dataDirectory);

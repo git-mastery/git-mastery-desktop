@@ -198,7 +198,12 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
     const display = screen.getDisplayNearestPoint(centerPt);
     const scalingFactor = display.scaleFactor;
     console.log({ scalingFactor })
-    bounds = { x: screen.screenToDipPoint({ x, y }).x / scalingFactor, y: screen.screenToDipPoint({ x, y }).y / scalingFactor, width: width / scalingFactor, height: height / scalingFactor }
+
+    // screen.screenToDipPoint is Windows-only. On macOS/Linux, Electron already
+    // works in DIP (logical pixel) space, so raw x/y values need no conversion.
+    const dipX = process.platform === "win32" ? screen.screenToDipPoint({ x, y }).x : x;
+    const dipY = process.platform === "win32" ? screen.screenToDipPoint({ x, y }).y : y;
+    bounds = { x: dipX / scalingFactor, y: dipY / scalingFactor, width: width / scalingFactor, height: height / scalingFactor }
 
     if (!isHidden) {
       getOrCreateWcv(mainWindow).setBounds(bounds)
