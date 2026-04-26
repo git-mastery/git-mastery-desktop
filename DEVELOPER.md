@@ -11,7 +11,7 @@ git clone https://github.com/HollaG/electron-git-mastery.git
 2. cd into it:
 
 ```
-cd eletron-git-mastery
+cd electron-git-mastery
 ```
 
 3. Install dependencies:
@@ -84,7 +84,7 @@ Fix: install Visual Studio Build Tools
 C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(524,5): error MSB8040: Spectre-mitigated libraries are required for this project. Install them from the Visual Studio installer (Individual components tab) for any toolsets and architectures being used. Learn more: https://aka.ms/Ofhn4c [I:\Coding\electron\electron-git-mastery\node_modules\node-pty\build\conpty.vcxproj]
 ```
 
-Fix: Install (Spectre libraries)[https://chatgpt.com/s/t_69ee079450d88191b6407ea2876ce5d7]
+Fix: Install [Spectre libraries](https://chatgpt.com/s/t_69ee079450d88191b6407ea2876ce5d7)
 
 ### MacOS
 
