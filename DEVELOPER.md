@@ -41,7 +41,8 @@ npm run dist:mac
 ```
 
 Outputs:
-1. `.dmg` in `dist/git-mastery-{version}-arm64.dmg
+1. `.dmg` in `dist/git-mastery-{version}-arm64.dmg`
+
 2. `.app` (portable) in `dist/mac-arm64/git-mastery.app`
 
 Special note for MacOS: Due to Apple restricting unsigned builds, users must run the following command before opening the app:
@@ -50,7 +51,7 @@ Special note for MacOS: Due to Apple restricting unsigned builds, users must run
 xattr -rc /Applications/git-mastery.app
 ```
 
-Failure to run this command will result in an error saying that the app is damaged.
+Failure to run this command will result in an error saying that the app can't be opened.
 
 
 
