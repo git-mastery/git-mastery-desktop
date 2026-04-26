@@ -16,25 +16,36 @@ import { ipcMainOn } from "../utils/util.js";
  * Returns null if git is not on PATH or bash.exe cannot be found.
  */
 function findGitBash(): string | null {
-  if (os.platform() !== 'win32') return null;
+  if (os.platform() !== "win32") return null;
   try {
     // `where git` may return multiple lines; take the first valid one
-    const gitPath = execSync('where git', { encoding: 'utf8' })
+    const gitPath = execSync("where git", { encoding: "utf8" })
       .trim()
-      .split('\n')[0]
+      .split("\n")[0]
       .trim();
     // git.exe lives at <git-root>\cmd\git.exe or <git-root>\bin\git.exe
     // Go up two levels to reach the Git install root
-    const gitRoot = path.resolve(gitPath, '..', '..');
-    const bashPath = path.join(gitRoot, 'bin', 'bash.exe');
+    const gitRoot = path.resolve(gitPath, "..", "..");
+    const bashPath = path.join(gitRoot, "bin", "bash.exe");
     if (fs.existsSync(bashPath)) {
       console.log(`[terminal] found Git Bash at: ${bashPath}`);
       return bashPath;
     }
-    console.warn(`[terminal] git found at ${gitPath} but bash.exe not found at ${bashPath}`);
+
+    // try C:\Program Files\Git\git-bash.exe
+    const bashPathAlt = path.join("C:\\Program Files\\Git\\bin", "bash.exe");
+    if (fs.existsSync(bashPathAlt)) {
+      console.log(`[terminal] found Git Bash at: ${bashPathAlt}`);
+      return bashPathAlt;
+    }
+    console.warn(
+      `[terminal] git found at ${gitPath} but bash.exe not found at ${bashPath}`,
+    );
     return null;
   } catch {
-    console.warn('[terminal] could not locate git on PATH; falling back to COMSPEC');
+    console.warn(
+      "[terminal] could not locate git on PATH; falling back to COMSPEC",
+    );
     return null;
   }
 }
@@ -49,10 +60,10 @@ function findGitBash(): string | null {
  *  4. macOS/Linux fallback: /bin/bash
  */
 function resolveShell(): string {
-  if (os.platform() === 'win32') {
-    return findGitBash() ?? process.env.COMSPEC ?? 'cmd.exe';
+  if (os.platform() === "win32") {
+    return findGitBash() ?? process.env.COMSPEC ?? "cmd.exe";
   }
-  return process.env.SHELL ?? '/bin/bash';
+  return process.env.SHELL ?? "/bin/bash";
 }
 
 let ptyProcess: pty.IPty;
@@ -62,7 +73,7 @@ let cwd: string = process.env.HOME || process.env.USERPROFILE || os.homedir();
 
 /** Returns the current working directory of the pty process. */
 export function getCwd(): string {
-  console.log(`[debug] cwd of simulated terminal is ${cwd}`)
+  console.log(`[debug] cwd of simulated terminal is ${cwd}`);
   return cwd;
 }
 
@@ -77,7 +88,7 @@ function updateCwdFromCdCommand(input: string): void {
 
   const target = match[1].trim();
 
-  if (!target || target === '~') {
+  if (!target || target === "~") {
     cwd = process.env.HOME || process.env.USERPROFILE || os.homedir();
   } else {
     // path.resolve handles absolute, relative, and `..` segments
@@ -98,10 +109,9 @@ export function writeToPty(data: string) {
 
 // This handles the simulated git terminal
 export function setupTerminalIpc(mainWindow: BrowserWindow) {
-
   // Handle pty spawn request from renderer
 
-  ipcMainOn('pty-spawn', ({ cols, rows }: { cols: number; rows: number }) => {
+  ipcMainOn("pty-spawn", ({ cols, rows }: { cols: number; rows: number }) => {
     // Kill existing pty if the renderer reloaded (e.g. page refresh)
     if (ptyProcess) {
       ptyProcess.kill();
@@ -112,31 +122,30 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
 
     const shell = resolveShell();
     ptyProcess = pty.spawn(shell, [], {
-      name: 'xterm-256color',
+      name: "xterm-256color",
       cols,
       rows,
       cwd,
-      env: process.env
+      env: process.env,
     });
 
-    ptyProcess.onData(data => {
+    ptyProcess.onData((data) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('pty-data', data);
+        mainWindow.webContents.send("pty-data", data);
       }
     });
   });
 
   // Handle pty input from renderer
   // writeToPty already handles cwd tracking for cd commands
-  ipcMainOn('pty-write', ({ data }: { data: string }) => {
+  ipcMainOn("pty-write", ({ data }: { data: string }) => {
     writeToPty(data);
   });
 
   // Handle resize from renderer
-  ipcMainOn('pty-resize', ({ cols, rows }) => {
+  ipcMainOn("pty-resize", ({ cols, rows }) => {
     if (ptyProcess) {
       ptyProcess.resize(cols, rows);
     }
   });
-
 }
