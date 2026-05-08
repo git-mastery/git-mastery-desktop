@@ -72,7 +72,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         title: "Exercise",
         children: (
           <Stack>
-            <Text> You are about to begin doing an exericse. Blah blah blah.</Text>
+            <Text> You are about to begin doing an exercise. Work through the exercise in the terminal and click Verify when you think you are done.</Text>
 
             <Checkbox
               ref={showOnboardingRef}
