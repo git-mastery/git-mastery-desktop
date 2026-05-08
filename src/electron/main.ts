@@ -19,6 +19,8 @@ export function getMainWindow() {
 
 app.on("ready", () => {
   mainWindow = new BrowserWindow({
+    minWidth: 1024,
+    minHeight: 680,
     webPreferences: {
       preload: getPreloadPath()
     }
