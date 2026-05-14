@@ -20,7 +20,7 @@ const selectSaveDir = async () => {
 export const Onboarding = ({ onCompleteOnboarding }: { onCompleteOnboarding: () => void }) => {
 
   // We need this section to hide the webcontentsview for GitMastery webpage whenever this Onboarding module gets loaded
-  // Remmeber that the webcontentsview is separate from this React app.
+  // Remember that the webcontentsview is separate from this React app.
   const { hide, show } = useWebContentsView();
   useEffect(() => {
     hide()
@@ -90,7 +90,7 @@ export const Onboarding = ({ onCompleteOnboarding }: { onCompleteOnboarding: () 
           <Stepper.Step label={active == 1 ? "Setup save information" : "Save location"} description={active == 1 ? "Choose where to save your progress" : ""}>
             <Step1 setCanGoNext={setCanGoStep2} />
           </Stepper.Step>
-          <Stepper.Step label={active == 2 ? "Setup Git" : "Git"} description={active == 2 ? "Set up Git & Github CLI" : ""}>
+          <Stepper.Step label={active == 2 ? "Setup Git" : "Git"} description={active == 2 ? "Set up Git & GitHub CLI" : ""}>
             <Step2 setCanGoNext={setCanGoStep3} />
           </Stepper.Step>
           <Stepper.Step label={active == 3 ? "Setup GitMastery" : "GitMastery"} description={active == 3 ? "Install and configure GitMastery backbone" : ""}>
@@ -242,7 +242,7 @@ const Step2 = ({
     setCheckingGithubCli(true);
     notifications.show({
       id: "check-github-cli",
-      title: "Checking for Github CLI",
+      title: "Checking for GitHub CLI",
       message: "Please wait...",
       loading: true,
       autoClose: false,
@@ -254,7 +254,7 @@ const Step2 = ({
       if (installed) {
         notifications.update({
           id: "check-github-cli",
-          title: "Github CLI is installed",
+          title: "GitHub CLI is installed",
           message: "You can now proceed to the next step",
           color: "green",
           loading: false,
@@ -265,8 +265,8 @@ const Step2 = ({
       } else {
         notifications.update({
           id: "check-github-cli",
-          title: "Github CLI is not installed",
-          message: "Please install Github CLI and try again",
+          title: "GitHub CLI is not installed",
+          message: "Please install GitHub CLI and try again",
           color: "red",
           loading: false,
           autoClose: 5000,
@@ -312,7 +312,7 @@ const Step2 = ({
 
       <Button leftSection={<IconExternalLink size="1rem" />} variant="light" onClick={() => {
         window.electron.openExternal('https://github.com/cli/cli/releases')
-      }}> Download Github CLI </Button>
+      }}> Download GitHub CLI </Button>
       <Button variant="subtle" onClick={checkGithubCli} loading={checkingGithubCli} disabled={checkingGithubCli}> Check </Button>
 
 
