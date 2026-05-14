@@ -5,29 +5,6 @@ import { IconArrowsLeftRight, IconChevronRight, IconMessageCircle, IconPhoto, Ic
 import { forwardRef } from "react"
 import { useLocalStorage } from "@mantine/hooks"
 
-const selectExePath = async () => {
-  const path = await window.electron.selectFile("exe");
-  if (path) {
-    window.electron.setExeLocation(path);
-  }
-}
-
-const selectSaveDir = async () => {
-  const path = await window.electron.selectFolder();
-  if (path) {
-    window.electron.setDataDirectory(path);
-  }
-}
-
-const setupGitMastery = async () => {
-  const result = await window.electron.startGitMasteryTask("setup");
-  if (result) {
-    console.log("Git Mastery setup completed successfully");
-  }
-}
-
-
-
 export const LeftBarWrapper = () => {
 
   const [onboardingCompleted, setOnboardingCompleted] = useLocalStorage({

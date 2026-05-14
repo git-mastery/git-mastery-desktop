@@ -1,12 +1,12 @@
 import { dialog, ipcMain, BrowserWindow } from 'electron';
 import { getConfig, getUserStoragePath, saveConfig } from '../storage.js';
-import { ipcMainHandle } from '../utils/util.js';
+import { ipcMainHandle, ipcMainOn } from '../utils/util.js';
 import { getExerciseDirectory } from '../utils/cli/getters.js';
 import fs from 'fs';
 import path from 'path';
 
 export function setupConfigIpc(mainWindow: BrowserWindow) {
-  ipcMain.handle('select-folder', async () => {
+  ipcMainHandle('select-folder', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory'],
     });
@@ -18,7 +18,7 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
     return result.filePaths[0];
   });
 
-  ipcMain.handle('select-file', async (_, fileType: string) => {
+  ipcMainHandle('select-file', async (fileType: string) => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],
       filters: [
@@ -33,11 +33,7 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
     return result.filePaths[0];
   });
 
-  // ipcMain.on('set-exe-location', (_, { location }) => {
-  //   saveConfig({ exeLocation: location });
-  // });
-
-  ipcMain.on('set-data-directory', (_, { directory }) => {
+  ipcMainOn('set-data-directory', ({ directory }) => {
     console.log("[info] set-data-directory event: ", directory)
     saveConfig({ dataDirectory: directory });
   });
