@@ -1,5 +1,5 @@
 import { ipcMain, shell } from 'electron';
-import { ipcMainHandle } from "../utils/util.js"
+import { ipcMainHandle, ipcMainOn } from "../utils/util.js"
 import { exec } from "child_process"
 import { promisify } from "util"
 import { getGitMasteryExecutable, getEnvironmentWithHomebrew } from "../utils/cli/getters.js";
@@ -66,7 +66,7 @@ export const setupPrereqIpc = () => {
 
   // Open a URL in the system's default browser.
   // Uses shell.openExternal which is the Electron-safe way to open external links.
-  ipcMain.on('open-external', (_, { url }: { url: string }) => {
+  ipcMainOn('open-external', ({ url }: { url: string }) => {
     shell.openExternal(url);
   });
 }
