@@ -1,4 +1,4 @@
-import { Avatar, Divider, Menu, Text, UnstyledButton } from "@mantine/core"
+import { Avatar, Box, Divider, Flex, Group, Menu, Stack, Text, UnstyledButton } from "@mantine/core"
 import { TourList } from "./TourList"
 import { ExerciseList } from "./ExerciseList"
 import { IconChevronRight, IconSettings } from "@tabler/icons-react"
@@ -11,19 +11,19 @@ export const LeftBarWrapper = () => {
     key: 'onboarding-completed',
     defaultValue: false,
   })
-  return <div className="flex flex-col justify-between h-full">
+  return <Stack justify="space-between" h="100%">
     {/* Tours */}
-    <div className="flex flex-col overflow-y-scroll">
+    <Stack style={{ overflowY: "scroll" }}>
       <TourList />
       {/* Lessons (scrollable) */}
-      <div className="flex flex-1">
+      <Flex flex={1}>
         <ExerciseList />
-      </div>
-    </div>
+      </Flex>
+    </Stack>
 
     {/* User profile (fixed)*/}
     <Divider />
-    <div className="shrink-0 w-full">
+    <Flex style={{ flexShrink: 0 }} w="100%">
       <Menu shadow="md" width={200}>
         <Menu.Target>
           <UserButton
@@ -40,8 +40,8 @@ export const LeftBarWrapper = () => {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
-    </div>
-  </div>
+    </Flex>
+  </Stack>
 }
 
 interface UserButtonProps extends React.ComponentPropsWithoutRef<'button'> {
@@ -55,21 +55,21 @@ const UserButton = forwardRef<HTMLButtonElement, UserButtonProps>(
   ({ image, name, email, icon, ...others }: UserButtonProps, ref) => (
     <UnstyledButton
       ref={ref}
-      className="p-0 w-full rounded-(--mantine-radius-sm) text-(--mantine-color-text)"
+      style={{ padding: 0, color: 'var(--mantine-color-text)', borderRadius: 'var(--mantine-radius-sm)', width: "100%" }}
       {...others}
     >
-      <div className="flex items-center gap-2">
+      <Group>
         <Avatar src={image} radius="xl" />
-        <div className="flex-1">
+        <Box style={{ flex: 1 }}>
           <Text size="sm" fw={500}>
             {name}
           </Text>
           <Text c="dimmed" size="xs">
             {email}
           </Text>
-        </div>
+        </Box>
         {icon || <IconChevronRight size={16} />}
-      </div>
+      </Group>
     </UnstyledButton>
   )
 );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useWebContentsView } from "../context/useWebContentsView"
-import { Accordion, Alert, Button, Image, Stack, Stepper, Text, Title } from "@mantine/core";
+import { Accordion, Alert, Box, Button, Center, Flex, Group, Image, Stack, Stepper, Text, Title } from "@mantine/core";
 
 import logo from "../assets/logo.png"
 import { IconAlertCircle, IconCheck, IconCircleCheck, IconCircleX, IconExternalLink, IconFolder, IconGitBranch, IconX } from "@tabler/icons-react";
@@ -49,8 +49,8 @@ export const Onboarding = ({ onCompleteOnboarding }: { onCompleteOnboarding: () 
     }
   }
 
-  return <div className="flex w-full h-screen justify-center items-center flex-col gap-8 bg-gm-bone">
-    <div className="flex justify-center items-center flex-col gap-8 w-[30%] min-w-200">
+  return <Flex bg="gm-bone" style={{ width: "100%", height: "100vh", justifyContent: "center", alignItems: "center", flexDirection: "column", gap: '2rem' }}>
+    <Flex style={{ justifyContent: "center", alignItems: "center", flexDirection: "column", gap: '2rem', width: "30%", minWidth: "800px" }}>
       {active != 0 &&
         <Stepper active={active} onStepClick={setActive} allowNextStepsSelect={false}
           styles={{
@@ -84,19 +84,19 @@ export const Onboarding = ({ onCompleteOnboarding }: { onCompleteOnboarding: () 
         </Stepper>}
       {active == 0 && <Step0 />}
 
-      <div className="flex justify-center gap-2 mt-8">
+      <Group justify="center" mt="xl">
         {active != 0 && <Button variant="default" onClick={prevStep}>Back</Button>}
         {active == 4 ? <Button size="xl" onClick={onCompleteOnboarding}> Let's go! </Button> : <Button onClick={nextStep} disabled={!canGoNext(active)}>{active == 0 ? "Begin" : "Next step"}</Button>}
-      </div>
-    </div>
-  </div>
+      </Group>
+    </Flex>
+  </Flex>
 }
 
 const Step0 = () => {
-  return <div className="flex items-center justify-center gap-8">
-    <div className="w-32 h-32">
+  return <Group align="center" justify="center" gap="2rem">
+    <Box style={{ width: "128px", height: "128px" }}>
       <Image width={128} height={128} src={logo} alt="Git Mastery Logo" />
-    </div>
+    </Box>
     <Stack>
       <Title> Welcome to GitMastery!</Title>
       <Stack gap={"xs"}>
@@ -105,7 +105,7 @@ const Step0 = () => {
         <Text> Follow the steps below to get started.</Text>
       </Stack>
     </Stack>
-  </div>
+  </Group>
 }
 
 const Step1 = ({ setCanGoNext }: {
@@ -120,24 +120,24 @@ const Step1 = ({ setCanGoNext }: {
     });
 
   }, [])
-  return <div className="flex flex-col gap-1">
-    <div className="flex items-center gap-2">
+  return <Stack gap={"0.25rem"}>
+    <Group align="center">
       <Title order={3}> Choose a save location </Title>
       {saveLoc ? <IconCircleCheck color="green" /> : <IconCircleX color="red" />}
-    </div>
+    </Group>
     <Text> GitMastery needs to know where to save your in-progress exercises. These exercises are stored as folders on your hard drive.</Text>
-    <div className="flex justify-center items-center gap-2 mt-8">
+    <Group mt="xl" justify="center" align="center">
       <Button variant="light" onClick={async () => {
         const path = await selectSaveDir();
         setSaveLoc(path || "");
         setCanGoNext(path != "");
       }}> Choose save location </Button>
-      <div className="flex items-center gap-1">
+      <Group gap={"xs"}>
         <IconFolder />
         <Text> {saveLoc}</Text>
-      </div>
-    </div>
-  </div>
+      </Group>
+    </Group>
+  </Stack>
 }
 
 // If windows, open https://git-scm.com/install/windows
@@ -253,36 +253,36 @@ const Step2 = ({
     setCanGoNext(gitInstalled && githubCliInstalled);
   }, [gitInstalled, githubCliInstalled]);
 
-  return <div className="flex flex-col gap-1">
-    <div className="flex items-center gap-2">
+  return <Stack gap={"0.25rem"}>
+    <Group align="center">
       <Title order={3}> Install Git </Title>
       {gitInstalled ? <IconCircleCheck color="green" /> : <IconCircleX color="red" />}
-    </div>
+    </Group>
     <Text> To fully understand Git, you must have Git on your local machine. GitMastery uses Git behind-the-hood to run all the lessons and exercises.</Text>
-    <div className="flex justify-center items-center gap-2 my-4">
+    <Group my={"md"} justify="center" align="center">
       <Button leftSection={<IconExternalLink size="1rem" />} variant="light" onClick={() => {
         window.electron.openExternal("https://git-scm.com/install/");
       }}> Download Git </Button>
       <Button variant="subtle" onClick={checkGit} loading={checkingGit} disabled={checkingGit}> Check </Button>
-    </div>
-    <div className="flex items-center gap-2">
+    </Group>
+    <Group align="center">
       <Title order={3}> Install GitHub CLI </Title>
       {githubCliInstalled ? <IconCircleCheck color="green" /> : <IconCircleX color="red" />}
-    </div>
+    </Group>
     <Text> This tool lets GitMastery sync your progress to your GitHub account.</Text>
-    <div className="flex justify-center items-center gap-2 my-4">
+    <Group my={"md"} justify="center" align="center">
       <Button leftSection={<IconExternalLink size="1rem" />} variant="light" onClick={() => {
         window.electron.openExternal('https://github.com/cli/cli/releases')
       }}> Download GitHub CLI </Button>
       <Button variant="subtle" onClick={checkGithubCli} loading={checkingGithubCli} disabled={checkingGithubCli}> Check </Button>
-    </div>
-    <Accordion variant="separated" >
+    </Group>
+    <Accordion variant="separated">
       <Accordion.Item key="iframe" value="iframe">
         <Accordion.Control icon={<IconGitBranch size={12} />}>Installation help</Accordion.Control>
         <Accordion.Panel><iframe src="https://git-mastery.org/companion-app/index.html#1-setting-up-git" className="w-full h-125"> </iframe></Accordion.Panel>
       </Accordion.Item>
     </Accordion>
-  </div>
+  </Stack>
 }
 
 const Step3 = ({
@@ -456,46 +456,46 @@ const Step3 = ({
 
   let statusComponent = <></>
   if (versionData?.latest && versionData.version !== versionData.latest) {
-    statusComponent = <div className="flex items-center gap-1.5"> <IconAlertCircle color="yellow" /> <Text className="leading-normal">{`Update available ${versionData.version} —> ${versionData.latest}`}</Text> </div>
+    statusComponent = <Group gap={"6px"}> <IconAlertCircle color="yellow" /> <Text style={{ lineHeight: 'normal' }}>{`Update available ${versionData.version} —> ${versionData.latest}`}</Text> </Group>
   } else if (versionData?.version) {
-    statusComponent = <div className="flex items-center gap-1.5"> <IconCircleCheck color="green" /> <Text className="leading-normal">{`Version ${versionData.version}`}</Text> </div>
+    statusComponent = <Group gap={"6px"}> <IconCircleCheck color="green" /> <Text style={{ lineHeight: 'normal' }}>{`Version ${versionData.version}`}</Text> </Group>
   } else {
     statusComponent = <IconCircleX color="red" />
   }
 
-  return <div className="flex flex-col gap-1">
-    <div className="flex items-center gap-2">
+  return <Stack gap={"0.25rem"}>
+    <Group align="center">
       <Title order={3}> Download Git Parser </Title>
       {statusComponent}
-    </div>
+    </Group>
     <Text> This is a custom in-house command line tool that GitMastery uses to check the correctness of your answers.</Text>
-    <div className="flex justify-center items-center gap-2 my-4">
+    <Group my={"md"} justify="center" align="center">
       <Button variant="light" onClick={downloadGitMasteryApp} loading={downloadingGitMastery} disabled={downloadingGitMastery || checkingGitMastery}> Download </Button>
       <Button variant="subtle" onClick={checkGitMastery} loading={checkingGitMastery} disabled={checkingGitMastery || downloadingGitMastery}> Check </Button>
-    </div>
-    <div className="flex items-center gap-2">
+    </Group>
+    <Group align="center">
       <Title order={3}> Setup Git Mastery </Title>
       {gitMasterySetup ? <IconCircleCheck color="green" /> : <IconCircleX color="red" />}
-    </div>
+    </Group>
     <Text> Configure your system for GitMastery. </Text>
-    <div className="flex justify-center items-center gap-2 my-4">
+    <Group my={"md"} justify="center" align="center">
       <Button variant="light" onClick={setupGitMastery} loading={settingUpGitMastery} disabled={settingUpGitMastery}> Setup </Button>
-    </div>
-    <Accordion variant="separated" >
+    </Group>
+    <Accordion variant="separated">
       <Accordion.Item key="iframe" value="iframe">
         <Accordion.Control icon={<IconGitBranch size={12} />}>Installation help</Accordion.Control>
         <Accordion.Panel><iframe src="https://git-mastery.org/companion-app/index.html#1-setting-up-git" className="w-full h-125"> </iframe></Accordion.Panel>
       </Accordion.Item>
     </Accordion>
-  </div>
+  </Stack>
 }
 
 const Step4 = () => {
-  return <div className="flex flex-col gap-4">
-    <div className="flex justify-center items-center m-6">
+  return <Stack gap="lg">
+    <Center style={{ margin: "1.5rem" }}>
       <Alert className="scale-150" variant="outline" color="gm-green" title="Setup complete" icon={<IconCheck />}>
         You are now ready to use GitMastery!
       </Alert>
-    </div>
-  </div>
+    </Center>
+  </Stack>
 }

@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Button, Select, Stack, Text } from "@mantine/core"
+import { ActionIcon, Box, Button, Flex, Select, Stack, Text } from "@mantine/core"
 import { IconCheck, IconPlus, IconX } from "@tabler/icons-react"
 import { buildExerciseUrl, buildLessonUrl, useWebContentsView } from "../../context/useWebContentsView"
 import { useExercises } from "../../hooks/query/useExercises";
@@ -236,20 +236,20 @@ export const ExerciseList = () => {
 
 
   return <>
-    <div className="flex flex-col gap-2 w-full">
-      <div className="flex justify-between items-center w-full">
-        <Text variant="subheading" className="grow"> Lessons </Text>
+    <Stack w="100%" gap="xs">
+      <Flex justify="space-between" align="center" w="100%">
+        <Text variant="subheading" style={{ flexGrow: 1 }}> Lessons </Text>
         <ActionIcon size="xs">
           <IconPlus onClick={onAddSelectedClicked} />
         </ActionIcon>
-      </div>
+      </Flex>
 
-      <div className="flex flex-col gap-2">
+      <Stack gap="xs">
         {downloadedExercises?.map(exerciseData => (
           <DownloadedExercise key={exerciseData?.exercise.identifier} exercise={exerciseData.exercise} status={exerciseData.status} />
         ))}
-      </div>
-    </div>
+      </Stack>
+    </Stack>
     {/* <Modal opened={opened} onClose={onModalClose} title="Add Exercises" centered>
 
       <Select
@@ -274,14 +274,13 @@ export const DownloadedExercise = ({ exercise, status }: { exercise: Exercise, s
   const { navigate } = useWebContentsView();
   const { startExercise } = useActivity();
 
-  return <div className="flex w-full items-center">
+  return <Flex w="100%" align="center">
     {statusMap[status as keyof typeof statusMap]()}
     <NavigationButton title={exercise.identifier} onClick={() => {
       navigate(buildExerciseUrl(exercise));
       startExercise(exercise);
-
     }} />
-  </div>
+  </Flex>
 }
 
 
