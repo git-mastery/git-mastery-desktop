@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react"
 import { useWebContentsView } from "../context/useWebContentsView"
-import { Accordion, Alert, Box, Button, Center, Container, Flex, Group, Image, Stack, Stepper, Text, Timeline, Title, Tooltip } from "@mantine/core";
+import { Accordion, Alert, Box, Button, Center, Flex, Group, Image, Stack, Stepper, Text, Title } from "@mantine/core";
 
 import logo from "../assets/logo.png"
-import { IconAlertCircle, IconCheck, IconCheckFilled, IconCircleCheck, IconCircleX, IconCross, IconExternalLink, IconFolder, IconGitBranch, IconGitCommit, IconGitPullRequest, IconMessageDots, IconX } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconCircleCheck, IconCircleX, IconExternalLink, IconFolder, IconGitBranch, IconX } from "@tabler/icons-react";
 import { useElectronStream } from "../hooks/useElectronStream";
 import { notifications } from "@mantine/notifications";
-import { useGitMasteryTask } from "../contexts/GitMasteryTaskContext";
 
 const selectSaveDir = async () => {
   const path = await window.electron.selectFolder();
@@ -50,24 +49,8 @@ export const Onboarding = ({ onCompleteOnboarding }: { onCompleteOnboarding: () 
     }
   }
 
-  return <Flex bg="gm-bone" style={{
-
-    width: "100%",
-    height: "100vh",
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "column",
-    gap: '2rem'
-
-  }}>
-    <Flex style={{
-      justifyContent: "center",
-      alignItems: "center",
-      flexDirection: "column",
-      gap: '2rem',
-      width: "30%",
-      minWidth: "800px"
-    }}>
+  return <Flex bg="gm-bone" style={{ width: "100%", height: "100vh", justifyContent: "center", alignItems: "center", flexDirection: "column", gap: '2rem' }}>
+    <Flex style={{ justifyContent: "center", alignItems: "center", flexDirection: "column", gap: '2rem', width: "30%", minWidth: "800px" }}>
       {active != 0 &&
         <Stepper active={active} onStepClick={setActive} allowNextStepsSelect={false}
           styles={{
@@ -80,9 +63,7 @@ export const Onboarding = ({ onCompleteOnboarding }: { onCompleteOnboarding: () 
               paddingBottom: "4rem"
             }
           }}
-          style={{
-            width: "100%"
-          }}
+          className="w-full"
         >
           <Stepper.Step label={active == 0 ? "Overview" : "Start"} description={active == 0 ? "Welcome to GitMastery!" : ""}>
             <Step0 />
@@ -113,19 +94,10 @@ export const Onboarding = ({ onCompleteOnboarding }: { onCompleteOnboarding: () 
 
 const Step0 = () => {
   return <Group align="center" justify="center" gap="2rem">
-    <Box style={{
-      width: "128px",
-      height: "128px"
-    }}>
-
-
+    <Box style={{ width: "128px", height: "128px" }}>
       <Image width={128} height={128} src={logo} alt="Git Mastery Logo" />
-
     </Box>
-
-
     <Stack>
-
       <Title> Welcome to GitMastery!</Title>
       <Stack gap={"xs"}>
         <Text> GitMastery is an open-source tool for anyone looking to upgrade their mastery of Git.</Text>
@@ -134,7 +106,6 @@ const Step0 = () => {
       </Stack>
     </Stack>
   </Group>
-
 }
 
 const Step1 = ({ setCanGoNext }: {
@@ -156,21 +127,16 @@ const Step1 = ({ setCanGoNext }: {
     </Group>
     <Text> GitMastery needs to know where to save your in-progress exercises. These exercises are stored as folders on your hard drive.</Text>
     <Group mt="xl" justify="center" align="center">
-
       <Button variant="light" onClick={async () => {
         const path = await selectSaveDir();
         setSaveLoc(path || "");
         setCanGoNext(path != "");
       }}> Choose save location </Button>
-
-      <Group gap={'xs'}>
-
+      <Group gap={"xs"}>
         <IconFolder />
         <Text> {saveLoc}</Text>
       </Group>
     </Group>
-
-
   </Stack>
 }
 
@@ -294,14 +260,10 @@ const Step2 = ({
     </Group>
     <Text> To fully understand Git, you must have Git on your local machine. GitMastery uses Git behind-the-hood to run all the lessons and exercises.</Text>
     <Group my={"md"} justify="center" align="center">
-
       <Button leftSection={<IconExternalLink size="1rem" />} variant="light" onClick={() => {
-        // open https://git-scm.com/install/ in browser
         window.electron.openExternal("https://git-scm.com/install/");
       }}> Download Git </Button>
       <Button variant="subtle" onClick={checkGit} loading={checkingGit} disabled={checkingGit}> Check </Button>
-
-
     </Group>
     <Group align="center">
       <Title order={3}> Install GitHub CLI </Title>
@@ -309,24 +271,17 @@ const Step2 = ({
     </Group>
     <Text> This tool lets GitMastery sync your progress to your GitHub account.</Text>
     <Group my={"md"} justify="center" align="center">
-
       <Button leftSection={<IconExternalLink size="1rem" />} variant="light" onClick={() => {
         window.electron.openExternal('https://github.com/cli/cli/releases')
       }}> Download GitHub CLI </Button>
       <Button variant="subtle" onClick={checkGithubCli} loading={checkingGithubCli} disabled={checkingGithubCli}> Check </Button>
-
-
     </Group>
-
-    <Accordion variant="separated" >
+    <Accordion variant="separated">
       <Accordion.Item key="iframe" value="iframe">
         <Accordion.Control icon={<IconGitBranch size={12} />}>Installation help</Accordion.Control>
-        <Accordion.Panel><iframe src="https://git-mastery.org/companion-app/index.html#1-setting-up-git" style={{ "width": "100%", height: "500px" }}> </iframe></Accordion.Panel>
+        <Accordion.Panel><iframe src="https://git-mastery.org/companion-app/index.html#1-setting-up-git" className="w-full h-125"> </iframe></Accordion.Panel>
       </Accordion.Item>
     </Accordion>
-
-
-
   </Stack>
 }
 
@@ -512,16 +467,11 @@ const Step3 = ({
     <Group align="center">
       <Title order={3}> Download Git Parser </Title>
       {statusComponent}
-      {/* {gitMasteryInstalled ? <IconCircleCheck color="green" /> : <IconCircleX color="red" />} */}
-
     </Group>
     <Text> This is a custom in-house command line tool that GitMastery uses to check the correctness of your answers.</Text>
     <Group my={"md"} justify="center" align="center">
-
       <Button variant="light" onClick={downloadGitMasteryApp} loading={downloadingGitMastery} disabled={downloadingGitMastery || checkingGitMastery}> Download </Button>
       <Button variant="subtle" onClick={checkGitMastery} loading={checkingGitMastery} disabled={checkingGitMastery || downloadingGitMastery}> Check </Button>
-
-
     </Group>
     <Group align="center">
       <Title order={3}> Setup Git Mastery </Title>
@@ -529,31 +479,23 @@ const Step3 = ({
     </Group>
     <Text> Configure your system for GitMastery. </Text>
     <Group my={"md"} justify="center" align="center">
-
       <Button variant="light" onClick={setupGitMastery} loading={settingUpGitMastery} disabled={settingUpGitMastery}> Setup </Button>
-      {/* <Button variant="subtle"> Check </Button> */}
-
-
     </Group>
-
-    <Accordion variant="separated" >
+    <Accordion variant="separated">
       <Accordion.Item key="iframe" value="iframe">
         <Accordion.Control icon={<IconGitBranch size={12} />}>Installation help</Accordion.Control>
-        <Accordion.Panel><iframe src="https://git-mastery.org/companion-app/index.html#1-setting-up-git" style={{ "width": "100%", height: "500px" }}> </iframe></Accordion.Panel>
+        <Accordion.Panel><iframe src="https://git-mastery.org/companion-app/index.html#1-setting-up-git" className="w-full h-125"> </iframe></Accordion.Panel>
       </Accordion.Item>
     </Accordion>
-
-
-
   </Stack>
 }
 
 const Step4 = () => {
-  return <Stack gap={"lg"}>
-    {/* <Title style={{ textAlign: "center" }} order={1}> Setup complete </Title> */}
+  return <Stack gap="lg">
     <Center style={{ margin: "1.5rem" }}>
-      <Alert style={{ transform: "scale(1.5)" }} variant="outline" color="gm-green" title="Setup complete" icon={<IconCheck />}>
+      <Alert className="scale-150" variant="outline" color="gm-green" title="Setup complete" icon={<IconCheck />}>
         You are now ready to use GitMastery!
       </Alert>
-    </Center></Stack>
+    </Center>
+  </Stack>
 }
