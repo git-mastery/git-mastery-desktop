@@ -42,7 +42,7 @@ const XTermComponent = () => {
   return (
     <div
       ref={terminalRef}
-      style={{ width: "100%", height: "100%", backgroundColor: "#000" }}
+      className="w-full h-full bg-black"
     />
   );
 };

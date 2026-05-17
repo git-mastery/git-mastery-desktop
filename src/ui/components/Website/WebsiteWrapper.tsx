@@ -1,4 +1,4 @@
-import { Alert, Badge, Box, Breadcrumbs, Center, Flex, Image, Text } from "@mantine/core"
+import { Alert, Badge, Breadcrumbs, Image, Text } from "@mantine/core"
 import { useEffect, useRef } from "react"
 import { useWebContentsView } from "../../context/useWebContentsView"
 import { formatBreadcrumb } from "../../utils/format"
@@ -66,23 +66,20 @@ export const WebsiteWrapper = () => {
 
 
 
-  return <Flex direction={"column"} style={{ width: "100%", flexGrow: 1 }}>
-    <Box p="md">
-
+  return <div className="flex flex-col w-full grow">
+    <div className="p-4">
       <Breadcrumbs>
         {/* Map all except last one */}
         {breadcrumbs.slice(0, -1).map((breadcrumb, index) => (
           <Text variant="subheading" size="sm" key={index}>{formatBreadcrumb(breadcrumb).toUpperCase()}</Text>
         ))}
-
         {breadcrumbs.length > 0 ? <Badge>{formatBreadcrumb(breadcrumbs[breadcrumbs.length - 1])}</Badge> : <></>}
       </Breadcrumbs>
-    </Box>
-    <Flex ref={webViewRef} id="webcontentsview-placeholder" style={{ width: "100%", height: "100%", flexGrow: 1, justifyContent: "center", alignItems: "center" }}>
-      {currentUrl ? <></> : <Alert style={{ transform: "scale(1.25)" }} variant="light" color="gm-green" icon={<Image src={logo} alt="Git Mastery" />} title="Get started with lessons or exercises">
+    </div>
+    <div ref={webViewRef} id="webcontentsview-placeholder" className="flex w-full h-full grow justify-center items-center">
+      {currentUrl ? <></> : <Alert className="scale-125" variant="light" color="gm-green" icon={<Image src={logo} alt="Git Mastery" />} title="Get started with lessons or exercises">
         Choose a tour from the left sidebar, or download an exercise and start doing it!
       </Alert>}
-
-    </Flex>
-  </Flex>
+    </div>
+  </div>
 }

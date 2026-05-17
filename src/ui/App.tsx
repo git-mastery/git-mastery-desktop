@@ -66,7 +66,7 @@ function App() {
         </Box>
 
       </AppShell.Navbar>
-      <AppShell.Main style={{ display: "flex", height: "100%" }}>
+      <AppShell.Main className="flex h-full">
         <WebsiteWrapper />
       </AppShell.Main>
       <AppShell.Aside>

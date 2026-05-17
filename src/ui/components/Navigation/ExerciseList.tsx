@@ -1,4 +1,4 @@
-import { ActionIcon, Autocomplete, Box, Button, Flex, Modal, Select, Stack, Text } from "@mantine/core"
+import { ActionIcon, Box, Button, Select, Stack, Text } from "@mantine/core"
 import { IconCheck, IconPlus, IconX } from "@tabler/icons-react"
 import { buildExerciseUrl, buildLessonUrl, useWebContentsView } from "../../context/useWebContentsView"
 import { useExercises } from "../../hooks/query/useExercises";
@@ -236,25 +236,20 @@ export const ExerciseList = () => {
 
 
   return <>
-    <Stack w="100%">
-      <Flex justify={'space-between'} align={'center'} w="100%">
-
-        <Text variant="subheading" style={{ flexGrow: 1 }}> Lessons </Text>
+    <div className="flex flex-col gap-2 w-full">
+      <div className="flex justify-between items-center w-full">
+        <Text variant="subheading" className="grow"> Lessons </Text>
         <ActionIcon size="xs">
           <IconPlus onClick={onAddSelectedClicked} />
         </ActionIcon>
-      </Flex>
+      </div>
 
-      <Stack>
+      <div className="flex flex-col gap-2">
         {downloadedExercises?.map(exerciseData => (
           <DownloadedExercise key={exerciseData?.exercise.identifier} exercise={exerciseData.exercise} status={exerciseData.status} />
         ))}
-
-
-      </Stack>
-
-
-    </Stack>
+      </div>
+    </div>
     {/* <Modal opened={opened} onClose={onModalClose} title="Add Exercises" centered>
 
       <Select
@@ -279,57 +274,25 @@ export const DownloadedExercise = ({ exercise, status }: { exercise: Exercise, s
   const { navigate } = useWebContentsView();
   const { startExercise } = useActivity();
 
-  return <Flex style={{ width: "100%", alignItems: 'center' }}>
+  return <div className="flex w-full items-center">
     {statusMap[status as keyof typeof statusMap]()}
     <NavigationButton title={exercise.identifier} onClick={() => {
       navigate(buildExerciseUrl(exercise));
       startExercise(exercise);
 
     }} />
-  </Flex >
+  </div>
 }
 
 
 
-const InProgress = () => {
-  return <Box style={{
-    backgroundColor: "var(--mantine-color-yellow-5)",
-    borderRadius: "var(--mantine-radius-default)",
-    // padding: "var(--mantine-spacing-md)",
-    width: "12px",
-    height: '12px'
-  }}>
+const StatusDot = ({ color }: { color: string }) => (
+  <Box className={`w-3 h-3 rounded-(--mantine-radius-default) ${color}`} />
+)
 
-  </Box>
-}
-
-const Correct = () => {
-  return <Box style={{
-    backgroundColor: "var(--mantine-color-green-5)",
-    borderRadius: "var(--mantine-radius-default)",
-    // padding: "var(--mantine-spacing-md)",
-    width: "12px",
-    height: '12px'
-  }}>
-
-  </Box>
-}
-
-const Incorrect = () => {
-  return <Box style={{
-    backgroundColor: "var(--mantine-color-red-5)",
-    borderRadius: "var(--mantine-radius-default)",
-    // padding: "var(--mantine-spacing-md)",
-    width: "12px",
-    height: '12px'
-  }}>
-
-  </Box>
-}
-
-const statusMap = {
-  "correct": Correct,
-  "incorrect": Incorrect,
-  "in-progress": InProgress,
-  "not-started": InProgress,
+const statusMap: Record<ProgressState, () => ReturnType<typeof StatusDot>> = {
+  "correct": () => <StatusDot color="bg-(--mantine-color-green-5)" />,
+  "incorrect": () => <StatusDot color="bg-(--mantine-color-red-5)" />,
+  "in-progress": () => <StatusDot color="bg-(--mantine-color-yellow-5)" />,
+  "not-started": () => <StatusDot color="bg-(--mantine-color-yellow-5)" />,
 }
