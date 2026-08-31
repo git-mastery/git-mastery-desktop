@@ -58,6 +58,34 @@ contextBridge.exposeInMainWorld("electron", {
 
   // Shell
   openExternal: (url: string) => ipcSend("open-external", { url }),
+
+  // OpenRouter key
+  setOpenRouterKey: (key: string) => ipcInvoke("set-openrouter-key", { key }),
+  getOpenRouterKey: () => ipcInvoke("get-openrouter-key", null),
+  hasOpenRouterKey: () => ipcInvoke("has-openrouter-key", null),
+  clearOpenRouterKey: () => ipcInvoke("clear-openrouter-key", null),
+  validateOpenRouterKey: (key?: string) =>
+    ipcInvoke("validate-openrouter-key", { key }),
+
+  // AI hints chat
+  chatDragBegin: () => ipcInvoke("chat-drag-begin", null),
+  chatDragEnd: (rect: ChatPanelRect) => ipcInvoke("chat-drag-end", rect),
+  chatClose: () => ipcSend("chat-close", null),
+  getChatSession: () => ipcInvoke("get-chat-session", null),
+  onChatSession: (callback: (session: ChatSession) => void) =>
+    ipcOn("chat-session", callback),
+
+  // AI SDK UI message stream
+  aiChatStart: (payload: {
+    streamId: string;
+    exerciseId: string;
+    messages: GitMasteryUIMessage[];
+  }) => ipcInvoke("ai-chat-start", payload),
+  aiChatAbort: (streamId: string) => ipcSend("ai-chat-abort", { streamId }),
+  onAiChatChunk: (callback: (streamId: string, chunk: AiChatChunk) => void) =>
+    ipcOn("ai-chat-chunk", ({ streamId, chunk }) => callback(streamId, chunk)),
+  onAiChatEnd: (callback: (streamId: string) => void) =>
+    ipcOn("ai-chat-end", ({ streamId }) => callback(streamId)),
 } satisfies Window["electron"]);
 
 // Note: you canNOT import external files into the preload script, due to Electron sandboxing

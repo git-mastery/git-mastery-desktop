@@ -14,6 +14,10 @@ interface Config {
   theme?: SitePageTheme;
   /** Parent folder chosen by older builds. Migrated to `exercisesRoot` on read. */
   dataDirectory?: string;
+  /** OpenRouter API key encrypted with Electron safeStorage, as base64. */
+  openRouterApiKeyEnc?: string;
+  /** Plaintext fallback when safeStorage encryption is unavailable. */
+  openRouterApiKeyPlain?: string;
 }
 
 const appBasePath = app.getPath("userData");

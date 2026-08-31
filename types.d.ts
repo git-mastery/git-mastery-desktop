@@ -62,6 +62,41 @@ interface Window {
 
     // for opening URLs in the system's default browser
     openExternal: (url: string) => void;
+
+    // OpenRouter bring-your-own-key
+    setOpenRouterKey: (
+      key: string,
+    ) => Promise<{ ok: boolean; encrypted: boolean }>;
+    getOpenRouterKey: () => Promise<{
+      key: string | null;
+      storedEncrypted: boolean;
+      encryptionAvailable: boolean;
+    }>;
+    hasOpenRouterKey: () => Promise<boolean>;
+    clearOpenRouterKey: () => Promise<void>;
+    validateOpenRouterKey: (
+      key?: string,
+    ) => Promise<{ ok: boolean; error?: string }>;
+
+    // AI hints chat panel (second WebContentsView)
+    chatDragBegin: () => Promise<ChatDragBeginResult>;
+    chatDragEnd: (rect: ChatPanelRect) => Promise<void>;
+    chatClose: () => void;
+    getChatSession: () => Promise<ChatSession | null>;
+    onChatSession: (callback: (session: ChatSession) => void) => () => void;
+
+    // Carries the AI SDK's UI message stream between main and the chat view.
+    // Consumed by IpcChatTransport, not by components directly.
+    aiChatStart: (payload: {
+      streamId: string;
+      exerciseId: string;
+      messages: GitMasteryUIMessage[];
+    }) => Promise<AiChatStartResult>;
+    aiChatAbort: (streamId: string) => void;
+    onAiChatChunk: (
+      callback: (streamId: string, chunk: AiChatChunk) => void,
+    ) => () => void;
+    onAiChatEnd: (callback: (streamId: string) => void) => () => void;
   };
 }
 
@@ -93,6 +128,13 @@ type IpcHandlerChannelMapping = {
 
   // open a URL in the system default browser
   "open-external": { url: string };
+
+  "chat-close": null;
+  "chat-session": ChatSession;
+
+  "ai-chat-abort": { streamId: string };
+  "ai-chat-chunk": { streamId: string; chunk: AiChatChunk };
+  "ai-chat-end": { streamId: string };
 };
 
 type IIpcInvoke<U, V> = {
@@ -133,7 +175,73 @@ type IpcInvokeChannelMapping = {
     { exerciseIdentifier: string },
     StartExerciseResult
   >;
+
+  "set-openrouter-key": IIpcInvoke<
+    { key: string },
+    { ok: boolean; encrypted: boolean }
+  >;
+  "get-openrouter-key": IIpcInvoke<
+    null,
+    {
+      key: string | null;
+      storedEncrypted: boolean;
+      encryptionAvailable: boolean;
+    }
+  >;
+  "has-openrouter-key": IIpcInvoke<null, boolean>;
+  "clear-openrouter-key": IIpcInvoke<null, void>;
+  "validate-openrouter-key": IIpcInvoke<
+    { key?: string },
+    { ok: boolean; error?: string }
+  >;
+
+  "chat-drag-begin": IIpcInvoke<null, ChatDragBeginResult>;
+  "chat-drag-end": IIpcInvoke<ChatPanelRect, void>;
+  "get-chat-session": IIpcInvoke<null, ChatSession | null>;
+
+  "ai-chat-start": IIpcInvoke<
+    { streamId: string; exerciseId: string; messages: GitMasteryUIMessage[] },
+    AiChatStartResult
+  >;
 };
+
+type ChatPanelRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type ChatDragBeginResult = {
+  windowWidth: number;
+  windowHeight: number;
+  panel: ChatPanelRect;
+};
+
+type ChatSession = {
+  exerciseId: string;
+  exerciseTitle: string;
+};
+
+type AiContextBlock = {
+  id: string;
+  label: string;
+  text: string;
+};
+
+/**
+ * Conversation shape shared by main and the chat renderer. The `context` data
+ * part carries what was scraped and sent for a turn, so the panel's context
+ * chip is attached to the message it actually applied to.
+ */
+type GitMasteryUIMessage = import("ai").UIMessage<
+  never,
+  { context: AiContextBlock[] }
+>;
+
+type AiChatChunk = import("ai").UIMessageChunk;
+
+type AiChatStartResult = { ok: true } | { ok: false; error: string };
 
 /** A first-Start step that is still outstanding. */
 type FirstRunStep = "intro" | "tools" | "folder";

@@ -9,6 +9,8 @@ import { getWcvPreloadPath } from "../pathResolver.js";
 import { startExercise, _verify } from "./gitmastery.js";
 import { getMainWindow } from "../main.js";
 import { sendToRenderer } from "./ipcUtils.js";
+import { hasApiKey } from "../aiKey.js";
+import { showChat } from "./chatView.js";
 import {
   getAppliedResolvedTheme,
   registerThemeBackgroundTarget,
@@ -243,6 +245,11 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
       const { exerciseId } = args[0] as { exerciseId: string };
       console.log("[wcv] verify exercise clicked:", exerciseId);
       _verify(mainWindow, exerciseId);
+    } else if (channel === "wcv-ai-hints") {
+      const { exerciseId } = args[0] as { exerciseId: string };
+      console.log("[wcv] ai hints clicked:", exerciseId);
+      if (!hasApiKey()) return;
+      void showChat(exerciseId);
     }
   });
 
@@ -268,6 +275,8 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
 
         var ICON_DOWNLOAD = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>';
         var ICON_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg>';
+        var ICON_SPARKLES = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>';
+        var AI_ENABLED = ${hasApiKey() ? "true" : "false"};
 
         var BASE_STYLE = "display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:6px; font-size:14px; font-weight:500; font-family:Inter,system-ui,sans-serif; cursor:pointer; line-height:20px;";
 
@@ -283,6 +292,32 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           btn.addEventListener("mouseenter", function () { btn.style.background = colors.hoverBg; });
           btn.addEventListener("mouseleave", function () { btn.style.background = "transparent"; });
         }
+
+        function styleSecondary(btn) {
+          var colors = isDark()
+            ? { text: "#dee2e6", border: "#495057", bg: "#212529", hoverBg: "#343a40" }
+            : { text: "#404040", border: "#d4d4d4", bg: "#fff", hoverBg: "#fafafa" };
+          btn.style.cssText = BASE_STYLE + "background:" + colors.bg + "; color:" + colors.text + "; border:1px solid " + colors.border + ";";
+          btn.addEventListener("mouseenter", function () {
+            if (btn.dataset.gmDisabled === "true") return;
+            btn.style.background = colors.hoverBg;
+          });
+          btn.addEventListener("mouseleave", function () { btn.style.background = colors.bg; });
+        }
+
+        function applyAiButtonState(btn) {
+          var enabled = !!window.__gmAiEnabled;
+          btn.dataset.gmDisabled = enabled ? "false" : "true";
+          btn.style.opacity = enabled ? "1" : "0.5";
+          btn.style.cursor = enabled ? "pointer" : "not-allowed";
+          btn.title = enabled ? "Ask for a hint on this exercise" : "Set up AI features in Settings first";
+        }
+
+        window.__gmAiEnabled = AI_ENABLED;
+        window.__gmSetAiEnabled = function (enabled) {
+          window.__gmAiEnabled = !!enabled;
+          document.querySelectorAll("[data-gm-ai-hints]").forEach(applyAiButtonState);
+        };
 
         function createStartButton(id, label) {
           var btn = document.createElement("button");
@@ -300,6 +335,19 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           styleOutline(btn);
           btn.addEventListener("click", function () {
             window.wcvBridge.send("wcv-verify-exercise", { exerciseId: id });
+          });
+          return btn;
+        }
+
+        function createAiHintsButton(id) {
+          var btn = document.createElement("button");
+          btn.setAttribute("data-gm-ai-hints", "true");
+          btn.innerHTML = ICON_SPARKLES + '<span>AI Hints for this exercise</span>';
+          styleSecondary(btn);
+          applyAiButtonState(btn);
+          btn.addEventListener("click", function () {
+            if (!window.__gmAiEnabled) return;
+            window.wcvBridge.send("wcv-ai-hints", { exerciseId: id });
           });
           return btn;
         }
@@ -375,9 +423,10 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           document.querySelectorAll('div[id^="ex-verify-info-"]').forEach(function (el) {
             var id = el.id.replace("ex-verify-info-", "");
             var container = document.createElement("div");
-            container.style.cssText = "display:flex; align-items:center; gap:8px; margin-top:12px; padding-bottom:20px;";
+            container.style.cssText = "display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px; padding-bottom:20px;";
             container.appendChild(createStartButton(id));
             container.appendChild(createVerifyButton(id));
+            container.appendChild(createAiHintsButton(id));
             el.replaceWith(container);
           });
 
@@ -465,6 +514,38 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
   wcv.webContents.addListener("dom-ready", handler);
   return () => wcv.webContents.removeListener("dom-ready", handler);
 }
+
+export function setAiHintsEnabled(enabled: boolean) {
+  if (!wcv || wcv.webContents.isDestroyed()) return;
+  void wcv.webContents
+    .executeJavaScript(
+      `if (typeof window.__gmSetAiEnabled === "function") window.__gmSetAiEnabled(${enabled ? "true" : "false"});`,
+    )
+    .catch(() => {});
+}
+
+export async function getExerciseText(
+  exerciseId: string,
+): Promise<string | null> {
+  if (!wcv || wcv.webContents.isDestroyed()) return null;
+  try {
+    const text = await wcv.webContents.executeJavaScript(`
+      (function () {
+        var el = document.getElementById(${JSON.stringify("exercise-" + exerciseId)});
+        if (!el) return null;
+        var card = el.closest(".card");
+        var body = card && card.querySelector(".card-body");
+        if (body && body.innerText) return body.innerText;
+        return el.innerText || null;
+      })()
+    `);
+    return typeof text === "string" && text.trim() ? text.trim() : null;
+  } catch (err) {
+    console.warn("[wcv] failed to scrape exercise text:", err);
+    return null;
+  }
+}
+
 export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
   registerThemeBackgroundTarget((color) => {
     wcv?.setBackgroundColor(color);
