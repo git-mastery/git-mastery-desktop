@@ -50,9 +50,9 @@ export async function runChat(options: {
   const stream = createUIMessageStream<GitMasteryUIMessage>({
     onError: toUserMessage,
     execute: async ({ writer }) => {
-      // Collected per send, not per panel open, so a future git-state provider
-      // sees the repo as it is after the student's latest attempt.
-      const context = await collectContext(exerciseId);
+      // Collected per send, not per panel open, so the git-state provider sees
+      // the repo as it is after the student's latest attempt.
+      const context = await collectContext(exerciseId, controller.signal);
       writer.write({ type: "data-context", id: "context", data: context });
 
       const result = streamText({
@@ -60,6 +60,9 @@ export async function runChat(options: {
         system: buildSystemPrompt(context),
         messages: await convertToModelMessages(messages),
         abortSignal: controller.signal,
+        // The panel is small and the free tier is rate-limited; a run-on answer
+        // costs the student both readability and quota.
+        maxOutputTokens: 600,
       });
 
       writer.merge(result.toUIMessageStream());

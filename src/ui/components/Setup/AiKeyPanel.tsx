@@ -212,6 +212,14 @@ export const AiKeyPanel = ({
         </p>
       )}
 
+      <p className="text-[13px] text-neutral-500">
+        When you ask for a hint, the app sends OpenRouter the exercise text,
+        your branch names, and the names and status of files inside that
+        exercise folder. It never sends file contents, and never looks outside
+        the exercise folder. You can see exactly what was sent under
+        &ldquo;Context attached&rdquo; on any answer.
+      </p>
+
       <div className="flex gap-2">
         <Button onClick={save} loading={saving} disabled={!key.trim()}>
           Save key

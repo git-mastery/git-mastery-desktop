@@ -16,6 +16,7 @@ import {
   setupTheme,
   THEME_BACKGROUND,
 } from "./theme.js";
+import { prefetchCurriculum } from "./ai/curriculum.js";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -47,6 +48,9 @@ app.on("ready", () => {
   setupStartPrereqIpc();
   setupChatViewIpc(mainWindow);
   setupAiIpc();
+
+  // Warmed once at startup so the AI context path never awaits the network.
+  prefetchCurriculum();
 
   console.log("isDev: ", isDev());
   if (isDev()) {

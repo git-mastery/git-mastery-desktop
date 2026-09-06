@@ -353,6 +353,43 @@ different: they hand the question to another application and give up control of 
 
 ---
 
+## What the app sends to the model
+
+This was previously an open question. It is now a stated policy, so that the compliance
+conversation has a concrete artifact to point at rather than a question.
+
+**Sent, when the student asks for a hint:**
+
+- the exercise brief, as rendered on the lesson page;
+- the student's course position and the lessons still ahead of them;
+- the current branch, the recent commit subjects, branch names, remote names, and the **names and
+  staged/unstaged status** of files inside the exercise folder.
+
+**Never sent:**
+
+- the contents of any file;
+- anything outside the exercise folder;
+- terminal scrollback;
+- any credential.
+
+Two properties make that boundary real rather than aspirational:
+
+1. **Containment is enforced, not promised.** Git searches upwards for a repository, so in an
+   exercise that has no repository yet — `under-control`, where running `git init` _is_ the task —
+   a naive `git status` succeeds against whatever repository happens to sit above the exercises
+   folder. A student whose home or coursework directory is a Git repository would leak unrelated
+   branch names and filenames. The app therefore resolves the repository root first and refuses to
+   read anything unless that root **is** the exercise's own directory, with
+   `GIT_CEILING_DIRECTORIES` as a second line of defence.
+2. **Disclosure is by construction.** Every block sent is rendered in the chat panel's expandable
+   "Context attached" chip, so a student can read exactly what left their machine, per answer. The
+   same summary is shown at the point the API key is entered.
+
+Adding `git diff`, file contents, or terminal output would cross this boundary and needs to be
+treated as a new decision, not an extension of this one.
+
+---
+
 ## Open questions
 
 These would change the assessment and cannot be resolved from inside the codebase.
@@ -361,12 +398,9 @@ These would change the assessment and cannot be resolved from inside the codebas
    Option 4 concrete and changes the cost picture for Option 3.
 2. **Would the department fund and own a proxy?** Option 3's technical cost is low; its
    organisational cost is the whole question.
-3. **Is sending local repository state and terminal output to a third-party free tier acceptable
-   under NUS data policy?** This constrains Options 1 and 2 differently from Options 3 and 4, and is a
-   compliance question rather than a technical one.
-4. **How much per-student setup is acceptable?** This is the axis on which Options 1, 3 and 8 differ
+3. **How much per-student setup is acceptable?** This is the axis on which Options 1, 3 and 8 differ
    most, and it is a judgement about the cohort rather than about the technology.
-5. **What are Gemini's current free-tier daily limits?** Reported figures range from 250 to 1,500
+4. **What are Gemini's current free-tier daily limits?** Reported figures range from 250 to 1,500
    requests per day; the difference matters if Gemini is presented as a default.
 
 ---
