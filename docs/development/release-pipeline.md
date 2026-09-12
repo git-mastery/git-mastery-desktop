@@ -26,7 +26,7 @@ Every allowed type maps to at least a patch. A manual run with only `chore:` / `
 
 **Build & Publish Release** (`build-release.yml`) is reusable and also dispatchable on its own (bootstrap and retry):
 
-1. Package unsigned installers in parallel: macOS arm64 `.dmg` on `macos-15`, Windows x64 portable `.exe` + `.msi` on `windows-latest`. `CSC_IDENTITY_AUTO_DISCOVERY=false` so electron-builder does not look for a signing identity.
+1. Package unsigned installers in parallel: macOS arm64 `.dmg` on `macos-15`, Windows x64 portable `.exe` + `.msi` on `windows-latest`. `CSC_IDENTITY_AUTO_DISCOVERY=false` so electron-builder does not look for a signing identity. `--publish never` so it does not try to create a GitHub Release itself (CI would otherwise demand `GH_TOKEN` after the DMG is already built).
 2. Create (or update) one GitHub Release with the installers and notes taken from the top `CHANGELOG.md` section, plus the macOS `xattr` instruction.
 
 Artifact names are `${name}-${version}-${os}-${arch}.${ext}`, for example `git-mastery-0.0.1-mac-arm64.dmg`. `latest*.yml` and `.blockmap` files are not attached; there is no in-app updater.
