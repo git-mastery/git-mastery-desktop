@@ -5,3 +5,4 @@ dist-electron
 build
 .mypy_cache
 package-lock.json
+CHANGELOG.md

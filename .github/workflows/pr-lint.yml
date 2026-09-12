@@ -1,0 +1,140 @@
+name: PR lint
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+      - ready_for_review
+
+concurrency:
+  group: pr-lint-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+
+jobs:
+  lint:
+    name: Title and description
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Lint PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            chore
+            refactor
+            perf
+            build
+            ci
+            style
+            test
+            revert
+          requireScope: false
+          subjectPattern: "^(?![A-Z]).+[^.]$"
+          subjectPatternError: |
+            The subject "{subject}" must start with a lowercase letter and must not end with a period.
+
+      - name: Lint PR description
+        if: always()
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          node <<'EOF'
+          const fs = require("fs");
+          const body = process.env.PR_BODY ?? "";
+          const errors = [];
+          const required = ["Overview", "Solution", "Test cases"];
+
+          if (!body.trim()) {
+            errors.push("PR description is empty.");
+          } else {
+            const headingRe = /^## (.+)$/gm;
+            const headings = [];
+            let match;
+            while ((match = headingRe.exec(body))) {
+              headings.push({
+                title: match[1].trim(),
+                index: match.index,
+                end: match.index + match[0].length,
+              });
+            }
+
+            for (const name of required) {
+              const heading = headings.find((item) => item.title === name);
+              if (!heading) {
+                errors.push(`Missing \`## ${name}\` heading.`);
+                continue;
+              }
+              const next = headings.find((item) => item.index > heading.index);
+              const section = body
+                .slice(heading.end, next ? next.index : body.length)
+                .trim();
+              if (!section) {
+                errors.push(`\`## ${name}\` has no content.`);
+              } else if (
+                name === "Test cases" &&
+                !/^- \[[ xX]\] .+/m.test(section)
+              ) {
+                errors.push(
+                  "\`## Test cases\` must contain at least one markdown checkbox (\`- [ ] ...\`).",
+                );
+              }
+            }
+          }
+
+          if (errors.length > 0) {
+            const markdown = errors.map((error) => `- ${error}`).join("\n");
+            fs.writeFileSync("pr-lint-errors.md", markdown + "\n");
+            console.error(markdown);
+            process.exit(1);
+          }
+
+          console.log("PR description matches the required template.");
+          EOF
+
+      - name: Comment on failure
+        if: failure()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo "PR lint failed. Please fix the following:"
+            echo
+            echo "### Title"
+            echo "Use a conventional commit title: \`type: subject\` (lowercase subject, no trailing period)."
+            echo "Allowed types: feat, fix, docs, chore, refactor, perf, build, ci, style, test, revert."
+            echo
+            echo "### Description"
+            if [ -f pr-lint-errors.md ]; then
+              cat pr-lint-errors.md
+            else
+              echo "- Description looks fine; the title check failed."
+            fi
+            echo
+            echo "Expected description template:"
+            echo
+            echo '```'
+            echo "## Overview"
+            echo "<1–2 sentences: what changed and why>"
+            echo
+            echo "## Solution"
+            echo "- <how it was done; key approach only>"
+            echo
+            echo "## Test cases"
+            echo "- [ ] <manual check a reviewer can run>"
+            echo '```'
+          } > comment.md
+          gh pr comment "$PR_NUMBER" --body-file comment.md

@@ -4,6 +4,7 @@
     "buildResources": "resources"
   },
   "icon": "icon.png",
+  "artifactName": "${name}-${version}-${os}-${arch}.${ext}",
   "files": ["dist-react", "dist-electron"],
   "win": {
     "target": ["portable", "msi"]
