@@ -41,7 +41,7 @@ jobs:
             test
             revert
           requireScope: false
-          subjectPattern: "^(?![A-Z]).+[^.]$"
+          subjectPattern: "^[a-z].+[^.]$"
           subjectPatternError: |
             The subject "{subject}" must start with a lowercase letter and must not end with a period.
 
