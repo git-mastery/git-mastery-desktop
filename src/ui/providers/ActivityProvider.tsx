@@ -22,6 +22,7 @@ import { useToast, type ToastOptions } from "../contexts/ToastContext";
 import { ActivityContext } from "../contexts/ActivityContext";
 import { Button } from "../components/ui/Button";
 import { Checkbox } from "../components/ui/Checkbox";
+import { formatExerciseIdentifier } from "../utils/format";
 
 const isVerifyCommand = (cmd: string) => cmd.startsWith("verify");
 
@@ -86,12 +87,20 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   /**
    * The main process reports every start, whether it came from the app or from
    * the button injected into the embedded lesson page, once the terminal is in
-   * the exercise directory. Verification runs in whatever directory the terminal
-   * is in, so a failure here has to be surfaced rather than swallowed.
+   * the exercise directory. Verify refuses to run until that has happened, so a
+   * failure here has to be surfaced rather than swallowed.
    */
   const onStartExerciseResult = (result: StartExerciseResult) => {
     if (result.ok) {
       showExerciseOnboarding();
+      const name = result.exerciseIdentifier
+        ? formatExerciseIdentifier(result.exerciseIdentifier)
+        : "the exercise";
+      showToast({
+        title: `You are now attempting exercise ${name}`,
+        tone: "info",
+        icon: <IconInfoCircle size={18} className="text-[#0369a1]" />,
+      });
       return;
     }
 
@@ -118,6 +127,20 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         onStartExerciseResultRef.current(result),
       ),
     [],
+  );
+
+  useEffect(
+    () =>
+      window.electron.onVerifyBlocked(() => {
+        showToast({
+          title: "Not in the exercise folder",
+          message:
+            "Click Start Exercise to enter this exercise's folder, then verify again.",
+          tone: "info",
+          icon: <IconInfoCircle size={18} className="text-[#0369a1]" />,
+        });
+      }),
+    [showToast],
   );
 
   /**

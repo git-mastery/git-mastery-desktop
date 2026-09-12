@@ -47,6 +47,7 @@ interface Window {
     onStartExerciseResult: (
       callback: (result: StartExerciseResult) => void,
     ) => () => void;
+    onVerifyBlocked: (callback: (payload: VerifyBlocked) => void) => () => void;
 
     // for opening URLs in the system's default browser
     openExternal: (url: string) => void;
@@ -78,6 +79,7 @@ type IpcHandlerChannelMapping = {
 
   "gitmastery-task-data": { originalCommand: string; data: GitMasteryTaskData };
   "start-exercise-result": StartExerciseResult;
+  "verify-blocked": VerifyBlocked;
 
   // open a URL in the system default browser
   "open-external": { url: string };
@@ -130,10 +132,16 @@ type ExerciseFolderStatus = {
 /** Outcome of moving the terminal into an exercise's working directory. */
 type StartExerciseResult = {
   ok: boolean;
+  exerciseIdentifier?: string;
   cwd?: string;
   error?: string;
   downloaded?: boolean;
   needsRestart?: boolean;
+};
+
+/** Verify was clicked while the terminal was not in the exercise directory. */
+type VerifyBlocked = {
+  exerciseIdentifier: string;
 };
 
 type GitMasteryTaskData = {

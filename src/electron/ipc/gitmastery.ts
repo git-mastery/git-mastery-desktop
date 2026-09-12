@@ -17,6 +17,32 @@ import { sendToRenderer } from "./ipcUtils.js";
 
 const GM_TASK_DATA_CHANNEL = "gitmastery-task-data" as const;
 const START_EXERCISE_RESULT_CHANNEL = "start-exercise-result" as const;
+const VERIFY_BLOCKED_CHANNEL = "verify-blocked" as const;
+
+const isSameDirectory = (a: string, b: string): boolean => {
+  const left = path.resolve(a);
+  const right = path.resolve(b);
+  return process.platform === "win32"
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
+};
+
+/**
+ * The directory Start would `cd` into, or null if the exercise is not ready
+ * (invalid id, no exercises folder, not downloaded, corrupt, incomplete).
+ */
+const resolveReadyExerciseCwd = (exerciseIdentifier: string): string | null => {
+  if (!isPathSegment(exerciseIdentifier)) return null;
+  try {
+    const resolved = resolveExerciseCwd(
+      path.join(getExerciseDirectory(), exerciseIdentifier),
+    );
+    if (resolved.state === "ready") return resolved.cwd;
+  } catch {
+    // No configured exercise directory.
+  }
+  return null;
+};
 
 // -----------------------
 // The below handles the functions for GitMastery invocation
@@ -362,30 +388,23 @@ export const _download = (
 };
 
 /**
- * Verify runs relative to its cwd, so it uses the exercise's own working
- * directory when it can be resolved, rather than wherever the learner has since
- * navigated the terminal.
+ * Verify only runs once the terminal is already in the directory Start would
+ * `cd` into. If it is not, the CLI is not spawned — the renderer asks the
+ * learner to click Start Exercise instead.
  */
-const _verifyCwd = (exerciseIdentifier: string): string => {
-  if (!isPathSegment(exerciseIdentifier)) return getCwd();
-  try {
-    const resolved = resolveExerciseCwd(
-      path.join(getExerciseDirectory(), exerciseIdentifier),
-    );
-    if (resolved.state === "ready") return resolved.cwd;
-  } catch {
-    // No configured exercise directory; fall back to the terminal's cwd.
-  }
-  return getCwd();
-};
-
 export const _verify = (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
 ) => {
+  const exerciseCwd = resolveReadyExerciseCwd(exerciseIdentifier);
+  if (exerciseCwd === null || !isSameDirectory(getCwd(), exerciseCwd)) {
+    sendToRenderer(mainWindow, VERIFY_BLOCKED_CHANNEL, { exerciseIdentifier });
+    return;
+  }
+
   const childProcess = _spawnChildProcess({
     args: ["verify"],
-    cwd: _verifyCwd(exerciseIdentifier),
+    cwd: exerciseCwd,
   });
   const taskPayload: GitMasteryTaskData = {
     exerciseIdentifier: exerciseIdentifier,
@@ -550,7 +569,12 @@ const _startExercise = async (
   switch (resolved.state) {
     case "ready":
       cdIfCurrent(resolved.cwd);
-      return report({ ok: true, cwd: resolved.cwd, downloaded: false });
+      return report({
+        ok: true,
+        exerciseIdentifier,
+        cwd: resolved.cwd,
+        downloaded: false,
+      });
 
     case "not-downloaded": {
       const downloaded = await _download(mainWindow, exerciseIdentifier);
@@ -573,7 +597,12 @@ const _startExercise = async (
       }
 
       cdIfCurrent(afterDownload.cwd);
-      return report({ ok: true, cwd: afterDownload.cwd, downloaded: true });
+      return report({
+        ok: true,
+        exerciseIdentifier,
+        cwd: afterDownload.cwd,
+        downloaded: true,
+      });
     }
 
     // Something is on disk but unusable. Downloading over it would destroy

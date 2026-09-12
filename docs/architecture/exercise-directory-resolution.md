@@ -143,7 +143,8 @@ refuses correctly if anything ever does issue it.
 Callers reject the exercise identifier unless it is a single path segment (not `.`, `..`,
 absolute, or containing `/` or `\`) **before** `path.join` onto the exercises directory. That
 keeps `../hp-foo` and absolute paths from escaping the exercises root. Verify uses the same
-check and falls back to the terminal cwd rather than joining.
+check: an identifier that fails it never joins, never spawns, and asks the learner to click
+Start Exercise.
 
 `resolveExerciseCwd(exerciseRoot)` then returns a discriminated result. No heuristics. Paths
 must be directories, not merely exist:
@@ -168,8 +169,8 @@ Without the prefix check they would all resolve as `corrupt`. An empty leftover 
 hands-on download is `incomplete` so Start will not silently `cd` into it and skip retry.
 
 `repo_name` is read off disk and joined onto the exercise root, so it is rejected unless it is a
-single path segment — the resolved cwd is `cd`-ed into and used as verify's cwd, and neither
-should be able to escape the exercise root.
+single path segment — the resolved cwd is `cd`-ed into by Start and, once the terminal is
+already there, used as verify's spawn cwd. Neither should be able to escape the exercise root.
 
 The `ready` rule is a direct transcription of how the CLI computes the `cd` hint it prints
 (`app/commands/download.py`):
@@ -218,11 +219,13 @@ A's completion steal the terminal.
 
 The outcome is broadcast on `start-exercise-result` as well as returned, because the embedded
 button dispatches through `wcv-start-exercise` and has no return value to inspect. The renderer
-drives both the first-run explainer and the error toast off that one signal, so every entry
-point behaves identically and the explainer is shown once per start, after the `cd`, rather than
-once when the button is pressed and again when the download finishes. Download failures are the
-exception: they are already visible on the task stream, so broadcasting them would stack a
-second, less informative toast.
+drives the first-run explainer, the "You are now attempting exercise …" info toast, and the
+error toast off that one signal, so every entry point behaves identically: the attempting toast
+fires after a `cd`-only resume as well as after a download, once the terminal is in the folder.
+The explainer is shown once per start, after the `cd`, rather than once when the button is
+pressed and again when the download finishes. Download failures are the exception: they are
+already visible on the task stream, so broadcasting them would stack a second, less informative
+toast.
 
 ### Entry points after the change
 
@@ -264,16 +267,25 @@ two when this is picked up.
 
 ## 9. The `verify` working directory
 
-`_verify` used to spawn with `cwd: getCwd()` — the pty's regex-guessed directory
-(`updateCwdFromCdCommand` in `src/electron/ipc/terminal.ts`, which misses `pushd`, `cd -`,
-subshells, and chained commands). A learner who typed `cd ~` got "You are not inside a
-Git-Mastery exercise folder."
+Verify uses the same resolver as Start (`resolveExerciseCwd`) to know which directory the
+learner should be in. It then compares that to the terminal's tracked cwd (`getCwd()`). Only an
+exact match (case-insensitive on Windows) is accepted.
 
-It now resolves the exercise's own directory from the identifier it is already given, falling
-back to the terminal's cwd when the identifier is not a path segment or the folder cannot be
-resolved. The CLI is tolerant of where inside the exercise it runs: `verify` is decorated
+If the identifier is invalid, the exercise is not `ready`, or the terminal is somewhere else,
+`gitmastery verify` is **not** spawned. The renderer shows an info toast asking the learner to
+click Start Exercise, which is the path that downloads if needed and `cd`s. Spawning anyway
+from a synthetic cwd hid the fact that the learner was not in the exercise folder, and made
+Start look optional.
+
+When the check passes, verify still spawns with `cwd` set to the resolved exercise directory —
+the same path Start would `cd` into — rather than trusting `getCwd()` as the subprocess cwd.
+`getCwd()` is regex-guessed (`updateCwdFromCdCommand` in `src/electron/ipc/terminal.ts`) and
+misses `pushd`, `cd -`, subshells, and chained commands; it is only used as the gate.
+
+The CLI itself is tolerant of where inside the exercise it runs: `verify` is decorated
 `@in_exercise_root()` with `must=False` (`app/commands/verify.py`) and `find_root` walks
-_upward_ (`app/configs/utils.py`).
+_upward_ (`app/configs/utils.py`). The gate still requires the Start directory, not a nested
+folder, so a stray `cd` into a subdirectory is sent back through Start.
 
 ## 10. Process spawn failures
 
