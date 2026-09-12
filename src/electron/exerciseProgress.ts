@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { getConfig } from "./storage.js";
 import { getExerciseDirectory } from "./utils/cli/getters.js";
+import { HANDS_ON_PREFIX } from "./exerciseManifest.js";
 
 type CliProgressRecord = {
   exercise_name?: string;
@@ -54,6 +55,11 @@ function computeExerciseProgress(): ProgressData {
   const downloaded: ProgressData = {};
 
   for (const exerciseId of exerciseFolders) {
+    if (exerciseId.startsWith(HANDS_ON_PREFIX)) {
+      downloaded[exerciseId] = { status: "downloaded" };
+      continue;
+    }
+
     const cliStatus = cliStatusByName.get(exerciseId);
     if (!cliStatus) {
       downloaded[exerciseId] = { status: "downloaded" };

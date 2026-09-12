@@ -11,7 +11,11 @@ import {
   getGitMasteryExecutable,
 } from "../utils/cli/getters.js";
 import { patchExerciseProgress } from "../exerciseProgress.js";
-import { isPathSegment, resolveExerciseCwd } from "../exerciseManifest.js";
+import {
+  HANDS_ON_PREFIX,
+  isPathSegment,
+  resolveExerciseCwd,
+} from "../exerciseManifest.js";
 import { changeDirectory, getCwd } from "./terminal.js";
 import { sendToRenderer } from "./ipcUtils.js";
 
@@ -502,10 +506,12 @@ export const _verify = (
         data: taskPayload,
       });
 
-      patchExerciseProgress(
-        exerciseIdentifier,
-        correct ? "completed" : "in-progress",
-      );
+      if (!exerciseIdentifier.startsWith(HANDS_ON_PREFIX)) {
+        patchExerciseProgress(
+          exerciseIdentifier,
+          correct ? "completed" : "in-progress",
+        );
+      }
     } else {
       // Failure
 

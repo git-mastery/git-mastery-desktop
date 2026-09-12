@@ -22,7 +22,11 @@ import { useToast, type ToastOptions } from "../contexts/ToastContext";
 import { ActivityContext } from "../contexts/ActivityContext";
 import { Button } from "../components/ui/Button";
 import { Checkbox } from "../components/ui/Checkbox";
-import { formatExerciseIdentifier } from "../utils/format";
+import {
+  formatExerciseIdentifier,
+  formatHandsOnTitle,
+  isHandsOnIdentifier,
+} from "../utils/format";
 
 const isVerifyCommand = (cmd: string) => cmd.startsWith("verify");
 
@@ -92,12 +96,19 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
    */
   const onStartExerciseResult = (result: StartExerciseResult) => {
     if (result.ok) {
-      showExerciseOnboarding();
+      const handsOn = isHandsOnIdentifier(result.exerciseIdentifier ?? "");
+      if (!handsOn) showExerciseOnboarding();
       const name = result.exerciseIdentifier
-        ? formatExerciseIdentifier(result.exerciseIdentifier)
-        : "the exercise";
+        ? handsOn
+          ? formatHandsOnTitle(result.exerciseIdentifier)
+          : formatExerciseIdentifier(result.exerciseIdentifier)
+        : handsOn
+          ? "the hands-on"
+          : "the exercise";
       showToast({
-        title: `You are now attempting exercise ${name}`,
+        title: handsOn
+          ? `You are now attempting hands-on ${name}`
+          : `You are now attempting exercise ${name}`,
         tone: "info",
         icon: <IconInfoCircle size={18} className="text-[#0369a1]" />,
       });
@@ -222,6 +233,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     }
 
     const exerciseIdentifier = data.exerciseIdentifier;
+    if (exerciseIdentifier && isHandsOnIdentifier(exerciseIdentifier)) {
+      return;
+    }
     if (exerciseIdentifier && correct) {
       patchExerciseStatus(exerciseIdentifier, "completed");
     } else if (exerciseIdentifier && incorrect) {

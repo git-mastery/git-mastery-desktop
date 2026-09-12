@@ -223,15 +223,16 @@ drives the first-run explainer, the "You are now attempting exercise …" info t
 error toast off that one signal, so every entry point behaves identically: the attempting toast
 fires after a `cd`-only resume as well as after a download, once the terminal is in the folder.
 The explainer is shown once per start, after the `cd`, rather than once when the button is
-pressed and again when the download finishes. Download failures are the exception: they are
-already visible on the task stream, so broadcasting them would stack a second, less informative
-toast.
+pressed and again when the download finishes. Hands-on starts skip the explainer (there is no
+Verify step). Download failures are the exception: they are already visible on the task stream,
+so broadcasting them would stack a second, less informative toast.
 
 ### Entry points after the change
 
 | Trigger                            | Path                                                             |
 | ---------------------------------- | ---------------------------------------------------------------- |
 | Embedded "Start Exercise"          | `wcv-start-exercise` → `startExercise()` (no longer `_download`) |
+| Embedded "Start Hands-on"          | `wcv-start-exercise` → `startExercise()` with `hp-*`             |
 | App-side Start                     | `gitmastery-start-exercise` → `startExercise()`                  |
 | `gitmastery-start-task` `download` | `startExercise()`, so the guard cannot be bypassed               |
 | Restart (deferred, see §8)         | `gitmastery download <id> --force`, then `cd`                    |
@@ -296,3 +297,19 @@ uncaught exception in the main process. `_download` must still settle its promis
 events: `close` logs `String(code)` (never `code!`), skips a second `completed` payload if
 `error` already settled, and `settle`s in a `finally` so Start cannot hang with a poisoned
 in-flight map.
+
+## 11. Hands-on practicals
+
+Hands-on practicals (`gitmastery download hp-<name>`) are not in `exercises.json`. The website
+declares them in each lesson's `text.md` as `show_hop_prep('hp-…')`, with no `ex-verify-info-*`
+hook. The app therefore:
+
+- **Discovers** them by fetching those `text.md` files (cached like other remote catalogs) and
+  listing each unique `hp-*` identifier under the lesson in the left nav as `Hands-on:`.
+- **Starts** them through the same `startExercise()` path as exercises: resolve, download only
+  if the folder is missing, then `cd`. The in-page control is **Start Hands-on** only — it
+  replaces the hop-prep "Create a fresh sandbox" / "Manually set up a sandbox" option panels
+  rather than sitting beside them. Verify is not offered.
+- **Tracks progress** as downloaded vs absent. A folder named `hp-*` is always recorded as
+  `downloaded`; CLI `progress.json` is ignored, and verify must not promote them to
+  in-progress or completed.
