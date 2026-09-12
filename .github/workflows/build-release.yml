@@ -1,0 +1,148 @@
+name: Build & Publish Release
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Git tag to build and publish
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Git tag to build and publish (leave empty to use the selected ref)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Package ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            artifact: macos-arm64
+            dist-cmd: dist:mac
+            glob: "*.dmg"
+          - os: windows-latest
+            artifact: windows-x64
+            dist-cmd: dist:win
+            glob: "*.{exe,msi}"
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag != '' && inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build installer
+        run: npm run ${{ matrix.dist-cmd }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.glob }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      INPUT_TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag != '' && inputs.tag || github.ref }}
+
+      - name: Resolve tag
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="v$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")"
+          fi
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "TAG must be a version tag like v0.0.1, got: ${TAG}"
+            exit 1
+          fi
+          echo "TAG=${TAG}" >> "$GITHUB_ENV"
+          echo "Publishing ${TAG}"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Compose release notes
+        run: |
+          {
+            if [ -f CHANGELOG.md ]; then
+              awk '
+                /^## / {
+                  if (found) exit
+                  found = 1
+                }
+                found { print }
+              ' CHANGELOG.md
+              echo
+            else
+              echo "Initial release ${TAG}."
+              echo
+            fi
+            echo "## macOS note"
+            echo
+            echo "This build is unsigned. After installing, clear the quarantine flag:"
+            echo
+            echo '```bash'
+            echo "xattr -rc /Applications/git-mastery.app"
+            echo '```'
+          } > notes.md
+
+      - name: Create or update release
+        run: |
+          shopt -s nullglob
+          files=(artifacts/*.dmg artifacts/*.exe artifacts/*.msi)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No installers found in artifacts/"
+            ls -la artifacts || true
+            exit 1
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${files[@]}" --clobber
+            gh release edit "$TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file notes.md \
+              "${files[@]}"
+          fi

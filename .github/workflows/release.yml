@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npx tsc -b
+
+  version:
+    name: Version
+    needs: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run semantic-release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          BEFORE=$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")
+          npx semantic-release
+          AFTER=$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")
+          if [ "$BEFORE" = "$AFTER" ]; then
+            echo "semantic-release did not publish a new version."
+            exit 1
+          fi
+          git fetch --tags origin
+          if ! git rev-parse "v${AFTER}" >/dev/null 2>&1; then
+            echo "Expected tag v${AFTER} was not created."
+            exit 1
+          fi
+          echo "version=${AFTER}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build & publish
+    needs: version
+    uses: ./.github/workflows/build-release.yml
+    with:
+      tag: v${{ needs.version.outputs.version }}
+    secrets: inherit
+    permissions:
+      contents: write
