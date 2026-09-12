@@ -1,4 +1,3 @@
-import { curriculumProvider } from "./providers/curriculum.js";
 import { exerciseBriefProvider } from "./providers/exerciseBrief.js";
 import { gitStateProvider } from "./providers/gitState.js";
 
@@ -29,11 +28,7 @@ const PROVIDER_TIMEOUT_MS = 1500;
  * provider here. collectContext, the system prompt, IPC, and the context chip
  * all stay unchanged.
  */
-const PROVIDERS: ContextProvider[] = [
-  exerciseBriefProvider,
-  gitStateProvider,
-  curriculumProvider,
-];
+const PROVIDERS: ContextProvider[] = [exerciseBriefProvider, gitStateProvider];
 
 function withTimeout<T>(
   promise: Promise<T>,
@@ -109,28 +104,25 @@ function fence(text: string): string {
 }
 
 export function buildSystemPrompt(blocks: ContextBlock[]): string {
-  const preamble = `You are a teaching assistant for Git-Mastery, a tool that teaches Git through hands-on exercises.
+  const preamble = `You are a Git tutor inside Git-Mastery, a course that teaches Git through hands-on exercises.
 
-Give hints and ask what the student has already tried. Do not hand over the full sequence of commands that would complete the exercise. Prefer short, stepwise guidance.`;
+Read the attached repository state before you answer. It is a live snapshot of the student's exercise repo, captured the moment they sent this message, and it already tells you what they have done: their branch, their commits, what is staged, what is modified, what is untracked. Infer their progress from it, and refer to it concretely — "you have README.md staged but not committed" — rather than in generalities. Never ask the student what they have already tried or already run; you can see it.
+
+If the state genuinely does not settle the question, say what you can see, name what is ambiguous, and ask one specific question.
+
+Keep answers short and stepwise. Give the next step, not the full sequence of commands that would complete the exercise.`;
 
   if (blocks.length === 0) {
     return `${preamble}
 
-No exercise text could be collected for this session. Answer from the student's question alone.`;
+No exercise or repository context could be collected for this turn, so you cannot see the student's repository. Tell them that rather than guessing at what they have done, and answer from their question alone.`;
   }
-
-  const hasCurriculum = blocks.some((block) => block.id === "curriculum");
-  const curriculumRule = hasCurriculum
-    ? `
-
-Stay inside the course. The "Course position" block below says where the student has reached and lists the lessons still ahead of them. Never introduce a command or idea from a later lesson, even when it would solve the exercise faster — the student has not met it yet.`
-    : "";
 
   const attached = blocks
     .map((block) => `## ${block.label}\n${fence(block.text)}`)
     .join("\n\n");
 
-  return `${preamble}${curriculumRule}
+  return `${preamble}
 
 The following context is attached for this exercise:
 

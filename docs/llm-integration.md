@@ -361,7 +361,6 @@ conversation has a concrete artifact to point at rather than a question.
 **Sent, when the student asks for a hint:**
 
 - the exercise brief, as rendered on the lesson page;
-- the student's course position and the lessons still ahead of them;
 - the current branch, the recent commit subjects, branch names, remote names, and the **names and
   staged/unstaged status** of files inside the exercise folder.
 
