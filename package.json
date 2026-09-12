@@ -1,7 +1,7 @@
 {
   "name": "git-mastery",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.1",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -13,9 +13,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "transpile:electron": "tsc --project src/electron/tsconfig.json",
-    "dist:mac": "npm run transpile:electron && npm run build && electron-builder --mac --arm64",
-    "dist:win": "npm run transpile:electron && npm run build && electron-builder --win --x64",
-    "dist:linux": "npm run transpile:electron && npm run build && electron-builder --linux --x64",
+    "dist:mac": "npm run transpile:electron && npm run build && electron-builder --mac --arm64 --publish never",
+    "dist:win": "npm run transpile:electron && npm run build && electron-builder --win --x64 --publish never",
+    "dist:linux": "npm run transpile:electron && npm run build && electron-builder --linux --x64 --publish never",
     "postinstall": "electron-rebuild -f -w node-pty"
   },
   "dependencies": {

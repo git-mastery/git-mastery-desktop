@@ -5,6 +5,7 @@
   },
   "icon": "icon.png",
   "artifactName": "${name}-${version}-${os}-${arch}.${ext}",
+  "publish": null,
   "files": ["dist-react", "dist-electron"],
   "win": {
     "target": ["portable", "msi"]
