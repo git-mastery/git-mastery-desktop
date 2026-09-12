@@ -70,3 +70,7 @@ export function buildExerciseUrl(exercise: Exercise) {
 
   return `${SITE_ORIGIN}/lessons/${lessonName}/#exercise-${exercise.identifier}`;
 }
+
+export function buildHandsOnUrl(lesson: Lesson, identifier: string) {
+  return `${SITE_ORIGIN}/lessons/${lesson.lesson_name}/#hands-on-${identifier}`;
+}

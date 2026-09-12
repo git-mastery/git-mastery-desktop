@@ -4,6 +4,7 @@ import type { Exercise } from "../../../types/Exercise";
 import type { Lesson, Tour, TourData } from "../../../types/Tour";
 import {
   buildExerciseUrl,
+  buildHandsOnUrl,
   buildLessonUrl,
   buildTourHomeUrl,
   isLessonUrlActive,
@@ -12,9 +13,14 @@ import {
 } from "../../contexts/WebContentsViewContext";
 import { useCustomQuery } from "../../hooks/query/useCustomQuery";
 import { useExercises } from "../../hooks/query/useExercises";
+import { useHandsOn, type HandsOn } from "../../hooks/query/useHandsOn";
 import { IconButton } from "../ui/IconButton";
 import { StatusPill } from "../ui/StatusPill";
-import { formatExerciseTitle, getExerciseLessonName } from "../../utils/format";
+import {
+  formatExerciseTitle,
+  formatHandsOnTitle,
+  getExerciseLessonName,
+} from "../../utils/format";
 import { useLocalExercises } from "../../hooks/query/useLocalExercises";
 
 export const ToursMenu = ({
@@ -43,9 +49,25 @@ export const ToursPanel = () => {
   const { downloadedExerciseData } = useLocalExercises();
   const { navigate, currentUrl } = useWebContentsView();
 
-  const tours = tourList
-    ? Object.values(tourList).filter((tour) => tour.folder !== "all")
-    : [];
+  const tours = useMemo(
+    () =>
+      tourList
+        ? Object.values(tourList).filter((tour) => tour.folder !== "all")
+        : [],
+    [tourList],
+  );
+
+  const lessonNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const tour of tours) {
+      for (const lesson of Object.values(tour.lessons)) {
+        names.add(lesson.lesson_name);
+      }
+    }
+    return [...names].sort();
+  }, [tours]);
+
+  const { data: handsOnByLesson } = useHandsOn(lessonNames);
 
   const exercisesByLesson = useMemo(() => {
     const map = new Map<string, Exercise[]>();
@@ -76,6 +98,7 @@ export const ToursPanel = () => {
               tour={tour}
               currentUrl={currentUrl}
               exercisesByLesson={exercisesByLesson}
+              handsOnByLesson={handsOnByLesson}
               downloadedExerciseData={downloadedExerciseData}
               onNavigate={navigate}
             />
@@ -95,12 +118,14 @@ const TourItem = ({
   tour,
   currentUrl,
   exercisesByLesson,
+  handsOnByLesson,
   downloadedExerciseData,
   onNavigate,
 }: {
   tour: Tour;
   currentUrl: string | null;
   exercisesByLesson: Map<string, Exercise[]>;
+  handsOnByLesson: Record<string, HandsOn[]> | undefined;
   downloadedExerciseData: ProgressData | undefined;
   onNavigate: (url: string) => void;
 }) => {
@@ -140,6 +165,7 @@ const TourItem = ({
               lesson={lesson}
               currentUrl={currentUrl}
               exercises={exercisesByLesson.get(lesson.lesson_name) ?? []}
+              handsOn={handsOnByLesson?.[lesson.lesson_name] ?? []}
               downloadedExerciseData={downloadedExerciseData}
               onNavigate={onNavigate}
             />
@@ -154,16 +180,18 @@ const LessonItem = ({
   lesson,
   currentUrl,
   exercises,
+  handsOn,
   downloadedExerciseData,
   onNavigate,
 }: {
   lesson: Lesson;
   currentUrl: string | null;
   exercises: Exercise[];
+  handsOn: HandsOn[];
   downloadedExerciseData: ProgressData | undefined;
   onNavigate: (url: string) => void;
 }) => {
-  const hasExercises = exercises.length > 0;
+  const hasItems = exercises.length > 0 || handsOn.length > 0;
   const isActive = isLessonUrlActive(lesson, currentUrl);
   const [opened, setOpened] = useState(isActive);
   const [wasActive, setWasActive] = useState(isActive);
@@ -194,26 +222,51 @@ const LessonItem = ({
       </button>
       {opened && (
         <div className="pl-3">
-          {hasExercises ? (
-            exercises.map((exercise) => {
-              const status =
-                downloadedExerciseData?.[exercise.identifier]?.status;
-              return (
-                <button
-                  key={exercise.identifier}
-                  type="button"
-                  className={listItemClasses}
-                  onClick={() => onNavigate(buildExerciseUrl(exercise))}
-                >
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 truncate">
-                      Exercise: {formatExerciseTitle(exercise)}
+          {hasItems ? (
+            <>
+              {exercises.map((exercise) => {
+                const status =
+                  downloadedExerciseData?.[exercise.identifier]?.status;
+                return (
+                  <button
+                    key={exercise.identifier}
+                    type="button"
+                    className={listItemClasses}
+                    onClick={() => onNavigate(buildExerciseUrl(exercise))}
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate">
+                        Exercise: {formatExerciseTitle(exercise)}
+                      </span>
+                      {status && <StatusPill status={status} />}
                     </span>
-                    {status && <StatusPill status={status} />}
-                  </span>
-                </button>
-              );
-            })
+                  </button>
+                );
+              })}
+              {handsOn.map((item) => {
+                const status =
+                  downloadedExerciseData?.[item.identifier]?.status;
+                return (
+                  <button
+                    key={item.identifier}
+                    type="button"
+                    className={listItemClasses}
+                    onClick={() =>
+                      onNavigate(buildHandsOnUrl(lesson, item.identifier))
+                    }
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate">
+                        Hands-on: {formatHandsOnTitle(item.identifier)}
+                      </span>
+                      {status === "downloaded" && (
+                        <StatusPill status="downloaded" />
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </>
           ) : (
             <span className="block px-2 py-1.5 text-[13px] text-neutral-400">
               No exercises

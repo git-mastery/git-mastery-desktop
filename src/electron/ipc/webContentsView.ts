@@ -105,10 +105,11 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
 }
 
 /**
- * Injects the "Start Exercise" / "Verify Solution" buttons into the WCV page.
+ * Injects the "Start Exercise" / "Verify Solution" buttons into the WCV page,
+ * and replaces hands-on hop-prep option panels with a "Start Hands-on" button.
  * The download-info div is removed outright; the verify-info div is replaced
- * with both buttons side by side, so they sit together at the bottom of the
- * exercise box. Clicking either uses window.wcvBridge (exposed by
+ * with both exercise buttons side by side, so they sit together at the bottom of
+ * the exercise box. Clicking uses window.wcvBridge (exposed by
  * wcv-preload.cts) to fire an IPC event back to the main process.
  *
  * Returns a cleanup function that removes the dom-ready listener.
@@ -158,9 +159,9 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           btn.addEventListener("mouseleave", function () { btn.style.background = "transparent"; });
         }
 
-        function createStartButton(id) {
+        function createStartButton(id, label) {
           var btn = document.createElement("button");
-          btn.innerHTML = ICON_DOWNLOAD + '<span>Start Exercise</span>';
+          btn.innerHTML = ICON_DOWNLOAD + '<span>' + (label || 'Start Exercise') + '</span>';
           styleSolid(btn);
           btn.addEventListener("click", function () {
             window.wcvBridge.send("wcv-start-exercise", { exerciseId: id });
@@ -181,9 +182,66 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
         /**
          * Removes the old download-info divs (their button now lives
          * alongside Verify) and replaces each verify-info div with both
-         * buttons side by side. Safe to call multiple times: already-handled
-         * elements no longer match either selector.
+         * buttons side by side. Hands-on hop-prep option panels (fresh
+         * sandbox + optional manual setup) are replaced by a single
+         * Start Hands-on button. Safe to call multiple times.
          */
+        function cardHeaderText(el) {
+          var header = el.querySelector('.card-header');
+          return (header && header.textContent) || '';
+        }
+
+        function extractHandsOnId(card) {
+          var codes = card.querySelectorAll('code');
+          for (var i = 0; i < codes.length; i++) {
+            var match = (codes[i].textContent || '').trim().match(/^gitmastery download (hp-[a-z0-9-]+)$/);
+            if (match) return match[1];
+          }
+          return null;
+        }
+
+        function removeBothOptionsIntro(container) {
+          var prev = container.previousElementSibling;
+          if (!prev || prev.tagName !== 'P') return;
+          var text = prev.textContent || '';
+          if (text.indexOf('manually') === -1) return;
+          if (text.indexOf('Git-Mastery') === -1 && text.indexOf('both options') === -1) return;
+          prev.remove();
+        }
+
+        function injectHandsOnButtons() {
+          document.querySelectorAll('.card').forEach(function (card) {
+            if (cardHeaderText(card).indexOf('Create a fresh sandbox') === -1) return;
+            var container = card.closest('.card-container');
+            if (!container || container.getAttribute('data-gm-hands-on-injected')) return;
+
+            var id = extractHandsOnId(card);
+            if (!id) {
+              var header = card.querySelector('.card-header');
+              if (isCardCollapsed(card) && header) {
+                header.click();
+                setTimeout(injectButtons, 50);
+              }
+              return;
+            }
+
+            var next = container.nextElementSibling;
+            if (next && cardHeaderText(next).indexOf('Manually set up a sandbox') !== -1) {
+              next.remove();
+            }
+
+            removeBothOptionsIntro(container);
+
+            var wrapperId = 'hands-on-' + id;
+            var wrapper = document.createElement('div');
+            if (!document.getElementById(wrapperId)) wrapper.id = wrapperId;
+            wrapper.setAttribute('data-gm-hands-on-injected', '1');
+            wrapper.style.cssText = 'display:flex; align-items:center; gap:8px; margin-top:12px; padding-bottom:8px;';
+            wrapper.appendChild(createStartButton(id, 'Start Hands-on'));
+            container.replaceWith(wrapper);
+          });
+        }
+
         function injectButtons() {
           document.querySelectorAll('div[id^="ex-download-info-"]').forEach(function (el) {
             el.remove();
@@ -197,6 +255,8 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
             container.appendChild(createVerifyButton(id));
             el.replaceWith(container);
           });
+
+          injectHandsOnButtons();
         }
 
         var observedCollapses = window.__gmObservedCollapses || (window.__gmObservedCollapses = new WeakSet());
@@ -223,9 +283,26 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           return !card.querySelector('.card-body');
         }
 
+        function expandHandsOnHash(id) {
+          if (id.indexOf('hands-on-hp-') !== 0) return false;
+          injectButtons();
+          var el = document.getElementById(id);
+          if (el) {
+            el.scrollIntoView({ block: 'start' });
+            return true;
+          }
+          setTimeout(function () {
+            injectButtons();
+            var target = document.getElementById(id);
+            if (target) target.scrollIntoView({ block: 'start' });
+          }, 50);
+          return true;
+        }
+
         function expandHashTarget() {
           var id = (location.hash || '').replace(/^#/, '');
           if (!id) return;
+          if (expandHandsOnHash(id)) return;
           var el = document.getElementById(id);
           if (!el) return;
           var card = el.closest('.card');
@@ -247,8 +324,8 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           injectButtons();
         }
 
-        injectButtons();
         observeCardCollapses();
+        injectButtons();
         expandHashTarget();
 
         if (!window.__gmExercisePageHooks) {

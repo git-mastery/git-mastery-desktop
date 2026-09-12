@@ -51,6 +51,8 @@ contextBridge.exposeInMainWorld("electron", {
     ipcInvoke("gitmastery-start-exercise", { exerciseIdentifier }),
   onStartExerciseResult: (callback: (result: StartExerciseResult) => void) =>
     ipcOn("start-exercise-result", callback),
+  onVerifyBlocked: (callback: (payload: VerifyBlocked) => void) =>
+    ipcOn("verify-blocked", callback),
 
   // Shell
   openExternal: (url: string) => ipcSend("open-external", { url }),

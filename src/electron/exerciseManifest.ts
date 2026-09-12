@@ -29,7 +29,7 @@ export const EXERCISE_MANIFEST_NAME = ".gitmastery-exercise.json";
  * Hands-on practices are set up by a download script rather than a manifest, so
  * there is nothing to read and the learner works at the exercise root.
  */
-const HANDS_ON_PREFIX = "hp-";
+export const HANDS_ON_PREFIX = "hp-";
 
 /**
  * `repo_name` and the exercise identifier are joined onto a parent path, so
