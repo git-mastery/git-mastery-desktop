@@ -6,25 +6,22 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WebContentsViewProvider } from "./providers/WebContentsViewProvider";
 import { ActivityProvider } from "./providers/ActivityProvider";
 import { GitMasteryTaskProvider } from "./providers/GitMasteryTaskProvider";
-import { ModalProvider } from "./providers/ModalProvider";
 import { ToastProvider } from "./providers/ToastProvider";
 
 const queryClient = new QueryClient();
 
-// Ordering matters: modals and toasts are rendered by their providers, so those
-// providers sit inside every context their content reads from — and inside
-// WebContentsViewProvider, whose suppression they claim while on screen.
+// Ordering matters: toasts are rendered by their provider, so ToastProvider
+// sits inside every context its content reads from — and inside
+// WebContentsViewProvider, whose suppression it claims while on screen.
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <GitMasteryTaskProvider>
         <WebContentsViewProvider>
           <ToastProvider>
-            <ModalProvider>
-              <ActivityProvider>
-                <App />
-              </ActivityProvider>
-            </ModalProvider>
+            <ActivityProvider>
+              <App />
+            </ActivityProvider>
           </ToastProvider>
         </WebContentsViewProvider>
       </GitMasteryTaskProvider>

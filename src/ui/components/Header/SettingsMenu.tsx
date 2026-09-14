@@ -9,7 +9,7 @@ import { Modal } from "../ui/Modal";
 type SettingsPanel = "file-location" | "setup";
 
 const PANEL_TITLES: Record<SettingsPanel, string> = {
-  "file-location": "Configure file location",
+  "file-location": "File location",
   setup: "Setup",
 };
 

@@ -3,7 +3,6 @@ import path from "path";
 import fs from "fs";
 
 interface Config {
-  // exeLocation?: string;
   // This is where the exercises are downloaded to. The exercises themselves live under ${dataDirectory}/gitmastery-exercises/
   dataDirectory?: string;
 }
