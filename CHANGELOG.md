@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/git-mastery/git-mastery-desktop/compare/v1.0.0...v1.0.1) (2026-09-14)
+
+### Bug Fixes
+
+* lock the exercise folder after setup and tidy start/verify UX ([#20](https://github.com/git-mastery/git-mastery-desktop/issues/20)) ([b586b82](https://github.com/git-mastery/git-mastery-desktop/commit/b586b8267c1e63f84ec90faec5322fb38b005f90))
+
 ## 1.0.0 (2026-09-13)
 
 ### Features
