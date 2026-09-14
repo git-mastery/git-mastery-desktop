@@ -219,13 +219,11 @@ A's completion steal the terminal.
 
 The outcome is broadcast on `start-exercise-result` as well as returned, because the embedded
 button dispatches through `wcv-start-exercise` and has no return value to inspect. The renderer
-drives the first-run explainer, the "You are now attempting exercise …" info toast, and the
-error toast off that one signal, so every entry point behaves identically: the attempting toast
-fires after a `cd`-only resume as well as after a download, once the terminal is in the folder.
-The explainer is shown once per start, after the `cd`, rather than once when the button is
-pressed and again when the download finishes. Hands-on starts skip the explainer (there is no
-Verify step). Download failures are the exception: they are already visible on the task stream,
-so broadcasting them would stack a second, less informative toast.
+drives the "You are now attempting exercise …" info toast and the error toast off that one
+signal, so every entry point behaves identically: the attempting toast fires after a `cd`-only
+resume as well as after a download, once the terminal is in the folder. Download failures are
+the exception: they are already visible on the task stream, so broadcasting them would stack a
+second, less informative toast.
 
 ### Entry points after the change
 

@@ -19,13 +19,10 @@ contextBridge.exposeInMainWorld("electron", {
     ipcOn("wcv-url-changed", ({ url }) => callback(url)),
 
   // Config
-  setExeLocation: (location: string) =>
-    ipcSend("set-exe-location", { location }),
   setDataDirectory: (directory: string) =>
     ipcSend("set-data-directory", { directory }),
   getDataDirectory: () => ipcInvoke("get-data-directory", null),
   selectFolder: () => ipcInvoke("select-folder", null),
-  selectFile: () => ipcInvoke("select-file", "exe"),
 
   // Setup
   checkGit: () => ipcInvoke("check-git", null),

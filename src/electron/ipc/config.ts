@@ -21,19 +21,6 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
     return result.filePaths[0];
   });
 
-  ipcMainHandle("select-file", async (fileType: string) => {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      properties: ["openFile"],
-      filters: [{ name: fileType, extensions: [fileType] }],
-    });
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
-
-    return result.filePaths[0];
-  });
-
   ipcMainOn("set-data-directory", ({ directory }) => {
     console.log("[info] set-data-directory event: ", directory);
     saveConfig({ dataDirectory: directory });

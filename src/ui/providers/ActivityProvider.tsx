@@ -16,12 +16,8 @@ import type { Exercise } from "../../types/Exercise";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useElectronStream } from "../hooks/useElectronStream";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
-import { useLocalStorage } from "../hooks/useLocalStorage";
-import { useModal } from "../contexts/ModalContext";
 import { useToast, type ToastOptions } from "../contexts/ToastContext";
 import { ActivityContext } from "../contexts/ActivityContext";
-import { Button } from "../components/ui/Button";
-import { Checkbox } from "../components/ui/Checkbox";
 import {
   formatExerciseIdentifier,
   formatHandsOnTitle,
@@ -34,55 +30,12 @@ const verifyNotificationId = (data: GitMasteryTaskData) =>
   `verify-${data.exerciseIdentifier ?? "exercise"}`;
 
 export function ActivityProvider({ children }: { children: ReactNode }) {
-  const { openModal, closeModal } = useModal();
   const { showToast, updateToast } = useToast();
-
-  const [showOnboardingExercise, setShowOnboardingExercise] = useLocalStorage({
-    key: "showOnboardingExercise",
-    defaultValue: true,
-  });
-
-  const showOnboardingRef = useRef<HTMLInputElement>(null);
 
   const { downloadedExerciseData, patchExerciseStatus } = useLocalExercises();
 
   /** Verify notifications currently on screen, keyed by notification id. */
   const openVerifyNotifications = useRef<Set<string>>(new Set());
-
-  /** First-run explainer for the exercise workflow. */
-  const showExerciseOnboarding = () => {
-    if (showOnboardingExercise) {
-      const modalId = openModal({
-        title: "Exercise",
-        size: "sm",
-        children: (
-          <div className="flex flex-col gap-4 text-sm text-[#333]">
-            <p>
-              You are about to begin doing an exercise. Work through the
-              exercise in the terminal and click Verify when you think you are
-              done.
-            </p>
-
-            <Checkbox ref={showOnboardingRef} label="Don't show this again" />
-            <div className="flex justify-end">
-              <Button
-                onClick={() => {
-                  closeModal(modalId);
-                  if (showOnboardingRef.current) {
-                    setShowOnboardingExercise(
-                      !showOnboardingRef.current.checked,
-                    );
-                  }
-                }}
-              >
-                Start
-              </Button>
-            </div>
-          </div>
-        ),
-      });
-    }
-  };
 
   const startExercise = (exercise: Exercise) => {
     void window.electron.startExercise(exercise.identifier);
@@ -97,7 +50,6 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   const onStartExerciseResult = (result: StartExerciseResult) => {
     if (result.ok) {
       const handsOn = isHandsOnIdentifier(result.exerciseIdentifier ?? "");
-      if (!handsOn) showExerciseOnboarding();
       const name = result.exerciseIdentifier
         ? handsOn
           ? formatHandsOnTitle(result.exerciseIdentifier)
@@ -161,10 +113,13 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   const settleVerifyNotification = (
     notification: ToastOptions & { id: string },
   ) => {
+    // The in-progress toast sets `autoClose: false`; an update merges over it, so
+    // the countdown has to be handed back to the tone default explicitly.
+    const settled = { autoClose: undefined, ...notification };
     if (openVerifyNotifications.current.delete(notification.id)) {
-      updateToast(notification.id, notification);
+      updateToast(notification.id, settled);
     } else {
-      showToast(notification);
+      showToast(settled);
     }
   };
 

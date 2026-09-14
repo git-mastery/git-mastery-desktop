@@ -19,11 +19,9 @@ interface Window {
     onWcvUrlChanged: (callback: (url: string) => void) => () => void;
 
     // for configuration
-    setExeLocation: (location: string) => void;
     setDataDirectory: (directory: string) => void;
     getDataDirectory: () => Promise<string | null>;
     selectFolder: () => Promise<string | null>;
-    selectFile: (fileType: string) => Promise<string | null>;
 
     checkGit: () => Promise<boolean>;
     checkGithubCli: () => Promise<boolean>;
@@ -71,9 +69,6 @@ type IpcHandlerChannelMapping = {
   "wcv-loading": { loading: boolean };
   "wcv-url-changed": { url: string };
 
-  // to be saved on backend to run the exe if needed (Win)
-  "set-exe-location": { location: string };
-
   // to be saved on backend to reference whenever a new exercise needs to be downloaded
   "set-data-directory": { directory: string };
 
@@ -98,7 +93,6 @@ type IIpcInvoke<U, V> = {
 type IpcInvokeChannelMapping = {
   // config
   "select-folder": IIpcInvoke<null, string | null>;
-  "select-file": IIpcInvoke<string, string | null>;
   "get-data-directory": IIpcInvoke<null, string | null>;
 
   // setup
@@ -114,7 +108,6 @@ type IpcInvokeChannelMapping = {
 
   // gitmastery
   "get-downloaded-exercises": IIpcInvoke<null, ProgressData>;
-  "gitmastery-setup": IIpcInvoke<null, string | null>;
   "gitmastery-start-task": IIpcInvoke<{ command: string }, boolean>;
   "gitmastery-start-exercise": IIpcInvoke<
     { exerciseIdentifier: string },

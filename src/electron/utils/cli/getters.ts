@@ -14,18 +14,6 @@ export function getGitMasteryExecutable(): string {
 
   // on Windows
   return path.join(getConfig().dataDirectory!, "gitmastery.exe");
-
-  // if (getConfig().exeLocation) {
-  //   return getConfig().exeLocation!;
-  // }
-
-  // if (process.platform === 'darwin') {
-  //   // On macOS, use Homebrew-installed gitmastery
-  //   return 'gitmastery';
-  // } else {
-  //   // On Windows, use bundled executable
-  //   return path.join(__dirname, '../gitmastery.exe');
-  // }
 }
 
 // Helper function to get environment with Homebrew paths added
@@ -68,9 +56,7 @@ export function getEnvironmentWithHomebrew(): NodeJS.ProcessEnv {
 export function getExerciseDirectory(): string {
   const dataDirectory = getConfig().dataDirectory;
   if (!dataDirectory) {
-    throw new Error(
-      "Exercise directory not found, please configure them in settings.",
-    );
+    throw new Error("Exercise directory not found. Finish setup to create it.");
   }
   return path.join(dataDirectory, "gitmastery-exercises");
 }

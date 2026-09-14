@@ -3,9 +3,9 @@ import { IconFolder } from "@tabler/icons-react";
 import { Button } from "../ui/Button";
 
 /**
- * Lets the user pick the folder that exercise files are written to. This is the
- * one setting GitMastery cannot work without, so it is shown on its own both
- * during first run and from the settings menu.
+ * Lets the user pick the folder that exercise files are written to. Shown on
+ * first run and from Settings. Changing the location is deferred: once the
+ * exercise folder exists, the picker is locked and the path is read-only.
  */
 export const FileLocationPanel = ({
   onChange,
@@ -13,6 +13,7 @@ export const FileLocationPanel = ({
   onChange?: (path: string | null) => void;
 }) => {
   const [folder, setFolder] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
   const [isPicking, setIsPicking] = useState(false);
   const hasLoadedRef = useRef(false);
 
@@ -21,10 +22,11 @@ export const FileLocationPanel = ({
     hasLoadedRef.current = true;
 
     window.electron
-      .getDataDirectory()
-      .then((dataDirectory) => {
-        setFolder(dataDirectory);
-        onChange?.(dataDirectory);
+      .checkExerciseFolder()
+      .then((status) => {
+        setFolder(status.dataDirectory);
+        setLocked(status.ready);
+        onChange?.(status.dataDirectory);
       })
       .catch(() => setFolder(null));
   }, [onChange]);
@@ -37,6 +39,8 @@ export const FileLocationPanel = ({
       window.electron.setDataDirectory(path);
       setFolder(path);
       onChange?.(path);
+      const status = await window.electron.checkExerciseFolder();
+      setLocked(status.ready);
     } finally {
       setIsPicking(false);
     }
@@ -50,11 +54,18 @@ export const FileLocationPanel = ({
           GitMastery creates a folder for each exercise, with the starting files
           already set up for you.
         </p>
-        <p>
-          Pick a folder to keep them in — somewhere you can find easily, like
-          your Documents or Desktop. You can move it later, but exercises
-          already in progress will need to be downloaded again.
-        </p>
+        {locked ? (
+          <p>
+            The exercise folder has already been created here, so this location
+            cannot be changed.
+          </p>
+        ) : (
+          <p>
+            Pick a folder to keep them in — somewhere you can find easily, like
+            your Documents or Desktop. Once the exercise folder is created, this
+            location cannot be changed.
+          </p>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
@@ -70,15 +81,17 @@ export const FileLocationPanel = ({
         )}
       </div>
 
-      <div className="flex">
-        <Button
-          variant={folder ? "secondary" : "primary"}
-          onClick={pickFolder}
-          loading={isPicking}
-        >
-          {folder ? "Change folder" : "Choose folder"}
-        </Button>
-      </div>
+      {!locked && (
+        <div className="flex">
+          <Button
+            variant={folder ? "secondary" : "primary"}
+            onClick={pickFolder}
+            loading={isPicking}
+          >
+            {folder ? "Change folder" : "Choose folder"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
