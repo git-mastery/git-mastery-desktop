@@ -31,7 +31,7 @@ export const Onboarding = ({
   const [toolsReady, setToolsReady] = useState(false);
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-gm-bone">
+    <div className="flex h-screen w-full items-center justify-center bg-canvas">
       <Card className="w-[680px] max-w-[92vw] p-8">
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-4">
@@ -40,7 +40,7 @@ export const Onboarding = ({
               alt="GitMastery logo"
               className="h-12 w-12 shrink-0"
             />
-            <h1 className="font-heading text-[1.2rem]/[1.4] font-semibold text-[#333]">
+            <h1 className="font-heading text-[1.2rem]/[1.4] font-semibold text-fg">
               Welcome to GitMastery
             </h1>
           </div>
@@ -59,7 +59,7 @@ export const Onboarding = ({
           ) : (
             <div className="flex flex-col gap-3">
               <SetupChecklist onReadyChange={setToolsReady} />
-              <p className="text-[13px] text-neutral-500">
+              <p className="text-[13px] text-muted">
                 You can leave anything unfinished and come back to it from
                 Settings at any time.
               </p>

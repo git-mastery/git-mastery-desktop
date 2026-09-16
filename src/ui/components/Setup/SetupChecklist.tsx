@@ -200,7 +200,7 @@ export const SetupChecklist = ({
   };
 
   return (
-    <div className="flex flex-col gap-2 text-sm text-[#333]">
+    <div className="flex flex-col gap-2 text-sm text-fg">
       <p>
         GitMastery runs real Git commands on your machine, so it needs these
         tools installed. An item marked with a cross was not detected on your
@@ -217,7 +217,7 @@ export const SetupChecklist = ({
               key={item.key}
               className={
                 index > 0
-                  ? "flex items-center justify-between gap-3 border-t border-neutral-200 py-3"
+                  ? "flex items-center justify-between gap-3 border-t border-border py-3"
                   : "flex items-center justify-between gap-3 py-3"
               }
             >
@@ -225,7 +225,7 @@ export const SetupChecklist = ({
                 <StatusIcon status={status} />
                 <div className="flex min-w-0 flex-col">
                   <span className="text-sm font-medium">{item.label}</span>
-                  <span className="text-[13px] break-all text-neutral-500">
+                  <span className="text-[13px] break-all text-muted">
                     {state?.detail ?? item.description}
                   </span>
                 </div>
@@ -292,7 +292,7 @@ const StatusIcon = ({ status }: { status: RowState["status"] }) => {
   return (
     <IconCircleX
       size={20}
-      className="shrink-0 text-[#b42318]"
+      className="shrink-0 text-danger"
       aria-label="Not found"
     />
   );

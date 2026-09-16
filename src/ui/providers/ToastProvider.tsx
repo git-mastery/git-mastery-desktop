@@ -18,16 +18,16 @@ import {
 } from "../contexts/ToastContext";
 
 const ACCENTS: Record<ToastTone, string> = {
-  neutral: "border-l-neutral-300",
+  neutral: "border-l-border",
   success: "border-l-brand-600",
-  danger: "border-l-[#b42318]",
-  warning: "border-l-[#b54708]",
-  info: "border-l-[#0369a1]",
+  danger: "border-l-danger",
+  warning: "border-l-warning",
+  info: "border-l-info",
 };
 
 const DEFAULT_ICONS: Partial<Record<ToastTone, ReactNode>> = {
   success: <IconCheck size={18} className="text-brand-600" />,
-  danger: <IconX size={18} className="text-[#b42318]" />,
+  danger: <IconX size={18} className="text-danger" />,
 };
 
 const DEFAULT_AUTO_CLOSE = 4000;
@@ -157,7 +157,7 @@ const ToastViewport = ({
             key={toast.id}
             role="status"
             className={cx(
-              "pointer-events-auto flex items-start gap-2 rounded-xl border border-neutral-200 border-l-4 bg-white p-3 shadow-card",
+              "pointer-events-auto flex items-start gap-2 rounded-xl border border-border border-l-4 bg-surface p-3 shadow-card",
               ACCENTS[toast.tone ?? "neutral"],
             )}
           >
@@ -168,12 +168,10 @@ const ToastViewport = ({
             )}
             <div className="min-w-0 flex-1">
               {toast.title && (
-                <p className="text-[13px] font-medium text-[#333]">
-                  {toast.title}
-                </p>
+                <p className="text-[13px] font-medium text-fg">{toast.title}</p>
               )}
               {toast.message && (
-                <p className="text-[13px] break-words whitespace-pre-line text-neutral-500">
+                <p className="text-[13px] break-words whitespace-pre-line text-muted">
                   {toast.message}
                 </p>
               )}

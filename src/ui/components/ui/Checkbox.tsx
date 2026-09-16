@@ -8,13 +8,11 @@ type CheckboxProps = InputHTMLAttributes<HTMLInputElement> & {
 };
 
 export const Checkbox = ({ label, className, ref, ...rest }: CheckboxProps) => (
-  <label
-    className={cx("flex items-center gap-2 text-sm text-[#333]", className)}
-  >
+  <label className={cx("flex items-center gap-2 text-sm text-fg", className)}>
     <input
       ref={ref}
       type="checkbox"
-      className="h-4 w-4 shrink-0 rounded border-neutral-300 accent-[#2d864e] focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:outline-none"
+      className="h-4 w-4 shrink-0 rounded border-border accent-brand-600 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
       {...rest}
     />
     {label}

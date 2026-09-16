@@ -62,7 +62,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
           ? `You are now attempting hands-on ${name}`
           : `You are now attempting exercise ${name}`,
         tone: "info",
-        icon: <IconInfoCircle size={18} className="text-[#0369a1]" />,
+        icon: <IconInfoCircle size={18} className="text-info" />,
       });
       return;
     }
@@ -74,7 +74,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         : (result.error ??
           "Try downloading the exercise again from the exercises list."),
       tone: "danger",
-      icon: <IconInfoCircle size={18} className="text-[#b42318]" />,
+      icon: <IconInfoCircle size={18} className="text-danger" />,
       autoClose: 8000,
     });
   };
@@ -100,7 +100,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
           message:
             "Click Start Exercise to enter this exercise's folder, then verify again.",
           tone: "info",
-          icon: <IconInfoCircle size={18} className="text-[#0369a1]" />,
+          icon: <IconInfoCircle size={18} className="text-info" />,
         });
       }),
     [showToast],

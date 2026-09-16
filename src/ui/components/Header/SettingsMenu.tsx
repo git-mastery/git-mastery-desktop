@@ -1,16 +1,23 @@
 import { useState } from "react";
-import { IconChecklist, IconFolder, IconSettings } from "@tabler/icons-react";
+import {
+  IconAdjustmentsHorizontal,
+  IconChecklist,
+  IconFolder,
+  IconSettings,
+} from "@tabler/icons-react";
 import { FileLocationPanel } from "../Setup/FileLocationPanel";
 import { SetupChecklist } from "../Setup/SetupChecklist";
+import { SiteViewPanel } from "./SiteViewPanel";
 import { IconButton } from "../ui/IconButton";
 import { Menu, MenuItem, MenuLabel } from "../ui/Menu";
 import { Modal } from "../ui/Modal";
 
-type SettingsPanel = "file-location" | "setup";
+type SettingsPanel = "file-location" | "setup" | "site-view";
 
 const PANEL_TITLES: Record<SettingsPanel, string> = {
   "file-location": "File location",
   setup: "Setup",
+  "site-view": "Customise UI",
 };
 
 export const SettingsMenu = () => {
@@ -39,6 +46,12 @@ export const SettingsMenu = () => {
         >
           {PANEL_TITLES.setup}
         </MenuItem>
+        <MenuItem
+          icon={<IconAdjustmentsHorizontal size={14} />}
+          onClick={() => setPanel("site-view")}
+        >
+          {PANEL_TITLES["site-view"]}
+        </MenuItem>
       </Menu>
 
       {/* The panels are rendered here rather than through the imperative modal
@@ -52,6 +65,9 @@ export const SettingsMenu = () => {
       >
         {panel === "file-location" && <FileLocationPanel />}
         {panel === "setup" && <SetupChecklist />}
+        {panel === "site-view" && (
+          <SiteViewPanel onClose={() => setPanel(null)} />
+        )}
       </Modal>
     </>
   );

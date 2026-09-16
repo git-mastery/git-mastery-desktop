@@ -7,12 +7,12 @@ description: >-
   UI, restyling a page or component, migrating off Mantine, Tailwind v4 tokens.
   Not for Electron main-process work, IPC, or data fetching.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # git-mastery-design
 
-House design language for Git-Mastery Desktop: bone canvas, solid white surfaces, one green brand accent, semantic status color, serif headings over a dense sans body. This skill is **renderer UI only** — no IPC, packaging, or data-layer guidance.
+House design language for Git-Mastery Desktop: semantic light/dark surfaces, one green brand accent, semantic status color, serif headings over a dense sans body. This skill is **renderer UI only** — no IPC, packaging, or data-layer guidance.
 
 ```
 .agents/skills/git-mastery-design/
@@ -35,20 +35,21 @@ House design language for Git-Mastery Desktop: bone canvas, solid white surfaces
 
 1. **Read references before writing UI** — start with [`references/tokens-and-surfaces.md`](references/tokens-and-surfaces.md), then [`references/components-and-patterns.md`](references/components-and-patterns.md).
 2. **Pick a shell mode** (see below). Default to **desktop shell** unless the screen owns the whole window.
-3. **Use existing tokens** — brand green, bone canvas, neutral grays. Do not invent a palette per page.
+3. **Use existing tokens** — brand green, semantic canvas/surface/text/border, no invented palettes.
 4. **Compose from primitives** — solid `Card`, field labels, one primary CTA per cluster, semantic status pills. Reuse house patterns (checklist, modal panel).
 5. **Run the checklist** at the end of [`references/components-and-patterns.md`](references/components-and-patterns.md) before shipping.
 
 ## Design principles
 
-1. **Tool UI, not marketing.** Quiet chrome, hairline borders, flat white panels — not hero gradients, neon glow, or landing-page typography.
+1. **Tool UI, not marketing.** Quiet chrome, hairline borders, flat opaque panels — not hero gradients, neon glow, or landing-page typography.
 2. **One brand accent.** Primary actions and focus rings use brand green (`#2d864e`). Status meaning uses the same green for success plus red / amber / sky — never as decorative page chrome.
-3. **Solid surfaces by default.** Panes, cards, and modals are opaque white with a hairline border. Bone canvas shows only behind full-screen focus flows (onboarding).
+3. **Solid surfaces by default.** Panes, cards, and modals are opaque with a hairline border. Light: white on bone canvas. Dark: `#212529` matching git-mastery.org.
 4. **Serif for titles, sans for everything else.** Noto Serif carries page and section titles; Inter carries all body, control, and chip text.
 5. **Density with air.** ~13–14px body, ~11px chips and field labels. Comfortable padding inside cards; tight toolbars above lists.
 6. **Semantic color is never the only signal.** Pair color with text, icons, or `aria-label` on status dots and pills.
 7. **One solid primary per action cluster.** Everything else is secondary, outline, or ghost.
 8. **The native view wins.** Anything painted by `WebContentsView` sits above all DOM — design around it rather than over it (see [`references/components-and-patterns.md`](references/components-and-patterns.md) § Native view constraints).
+9. **One theme preference.** Light / Dark / System applies to desktop chrome and the embedded lesson pages. Reach for semantic tokens (`bg-surface`, `text-fg`), not `dark:` class variants or one-off hex.
 
 ## Shell modes
 
@@ -58,7 +59,7 @@ Two layouts. **Tokens and components are identical**; only chrome and title scal
 
 The normal running state of the app.
 
-- Fixed 64px header (lessons panel toggle on the left, settings on the right), a main content pane, and a resizable aside holding the terminal.
+- Fixed 64px header (Lessons / Exercises / Progress on the left, settings on the right), a main content pane, and a resizable aside holding the terminal. The lessons panel toggle lives in the content pane (slim bar above the native view when closed; panel header when open), not in the header.
 - **No page-level scroll.** The window is the viewport; each pane owns its own scroll container.
 - Content pane titles use the serif h1 scale; per-view toolbars sit inside the pane, not in the header.
 - The main pane may host the native web view, in which case it must stay an empty bounds placeholder.
@@ -67,7 +68,7 @@ The normal running state of the app.
 
 For first-run onboarding and any flow that owns the whole window.
 
-- Bone canvas fills the window; one centered card (~680px, `max-w-[92vw]`) holds the flow.
+- Bone canvas fills the window in light; dark uses the site page colour `#212529`. One centered card (~680px, `max-w-[92vw]`) holds the flow.
 - The native view must be suppressed for the duration — it would paint straight through the card.
 - Short progress rails (stepper) stay narrow and centered rather than stretched across the card.
 
@@ -81,15 +82,15 @@ For first-run onboarding and any flow that owns the whole window.
 | Icons      | `@tabler/icons-react`  | 14–18px in toolbars; muted neutral default                            |
 | Components | Hand-rolled primitives | Replace Mantine with recipes from references — do not add new Mantine |
 
-Tailwind v4 matters: custom colors, fonts, and shadows are declared as CSS variables in `@theme` and consumed as normal utilities (`bg-brand-600`, `font-heading`, `shadow-card`). Do not write a v3-style config file.
+Tailwind v4 matters: custom colors, fonts, and shadows are declared as CSS variables in `@theme` and consumed as normal utilities (`bg-brand-600`, `bg-surface`, `text-fg`, `font-heading`, `shadow-card`). Do not write a v3-style config file. Semantic surface tokens swap with `html[data-theme]`.
 
 ## Always
 
-- Inter body / Noto Serif headings; bone canvas `#f8f8f8`; text `#333333`.
-- Brand CTA `#2d864e` → hover `#236e3d`.
-- Surfaces: solid `bg-white`, `border-neutral-200`, 12–16px radius; `shadow-card` only on elevated panels (modals, dropdowns).
-- Inputs: 12px radius, `neutral-200` border, brand focus ring.
-- Status pills: `*-50` fill + `*-700` text + `*-200` border at 11px.
+- Inter body / Noto Serif headings; semantic canvas / surface / `text-fg`.
+- Brand CTA `#2d864e` → hover `#236e3d` in both themes.
+- Surfaces: `bg-surface`, `border-border`, 12–16px radius; `shadow-card` only on elevated panels (modals, dropdowns).
+- Inputs: 12px radius, `border-border`, brand focus ring (`ring-focus-ring`).
+- Status pills: 11px, semantic fill / text / border, paired with text or `aria-label`.
 - Custom modals and toasts — never native `alert` / `confirm`.
 - Disabled controls: ~50% opacity, no pointer.
 - Suppress the native web view whenever a modal, menu, or overlay opens above its bounds.
@@ -99,14 +100,14 @@ Tailwind v4 matters: custom colors, fonts, and shadows are declared as CSS varia
 - Mantine (or any third-party UI library) for new or migrated UI — use hand-rolled Tailwind primitives from references.
 - `backdrop-blur`, translucent `bg-white/…`, or frosted-glass panel styling — the app is flat and opaque.
 - Blue as an accent or CTA — it reads as a hyperlink and fights the brand green.
-- `slate-*` utilities. The neutral ramp is `neutral-*`, which matches the bone canvas.
+- `slate-*` utilities. The light gray ramp is `neutral-*`; themed chrome uses semantic tokens (`surface`, `fg`, `muted`, `border`).
 - Serif in body copy, buttons, labels, or chips.
 - Purple-to-indigo marketing gradients, glow stacks, or emoji decoration.
 - Broadsheet zero-radius newspaper layouts for tools.
 - Random font swaps (Roboto-only shells, monospace UI bodies).
 - Heavy drop shadows on content cards.
 - DOM overlays, blur, or z-index tricks layered over the native view region — they will not render.
-- Dark mode. The app is light-only; the black terminal pane is a deliberate surface, not a theme.
+- `dark:` class variants or one-off hex when a semantic token exists. The terminal pane stays black on purpose — do not restyle xterm from the app theme.
 
 ## Accessibility & copy
 

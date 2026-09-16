@@ -7,11 +7,10 @@ type ButtonVariant =
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: "bg-brand-600 text-white shadow-sm hover:bg-brand-700",
-  outline: "border border-brand-600 text-brand-700 hover:bg-brand-50",
-  secondary:
-    "border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50",
-  danger: "bg-[#b42318] text-white shadow-sm hover:bg-[#912018]",
-  dangerOutline: "border border-[#fecdca] text-[#b42318] hover:bg-[#fef3f2]",
+  outline: "border border-brand-600 text-accent hover:bg-accent-soft",
+  secondary: "border border-border bg-surface text-fg hover:bg-hover",
+  danger: "bg-danger-solid text-white shadow-sm hover:bg-danger-solid-hover",
+  dangerOutline: "border border-danger-border text-danger hover:bg-danger-soft",
 };
 
 const SIZES = {
@@ -42,7 +41,7 @@ export const Button = ({
     disabled={disabled || loading}
     className={cx(
       "inline-flex items-center justify-center rounded-md font-medium whitespace-nowrap hover:cursor-pointer",
-      "focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:border-brand-400 focus-visible:outline-none",
+      "focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:border-brand-400 focus-visible:outline-none",
       VARIANTS[variant],
       SIZES[size],
       (disabled || loading) && "pointer-events-none opacity-50",

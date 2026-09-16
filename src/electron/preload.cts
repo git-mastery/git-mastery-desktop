@@ -17,6 +17,13 @@ contextBridge.exposeInMainWorld("electron", {
     ipcOn("wcv-loading", ({ loading }) => callback(loading)),
   onWcvUrlChanged: (callback: (url: string) => void) =>
     ipcOn("wcv-url-changed", ({ url }) => callback(url)),
+  getSitePrefs: () => ipcInvoke("wcv-get-site-prefs", null),
+  setSitePrefs: (prefs: SiteViewPrefs & { reload: boolean }) =>
+    ipcInvoke("wcv-set-site-prefs", prefs),
+  setAppTheme: (payload: {
+    preference: SitePageTheme;
+    resolved: "light" | "dark";
+  }) => ipcSend("set-app-theme", payload),
 
   // Config
   setDataDirectory: (directory: string) =>

@@ -70,7 +70,7 @@ export const Menu = ({
         <div
           role="menu"
           onClick={() => setOpen(false)}
-          className="absolute right-0 z-[300] mt-2 w-56 rounded-xl border border-neutral-200 bg-white p-1 shadow-card"
+          className="absolute right-0 z-[300] mt-2 w-56 rounded-xl border border-border bg-surface p-1 shadow-card"
         >
           {children}
         </div>
@@ -80,7 +80,7 @@ export const Menu = ({
 };
 
 export const MenuLabel = ({ children }: { children: ReactNode }) => (
-  <div className="px-2 py-1.5 text-[11px] font-medium tracking-wide text-neutral-400 uppercase">
+  <div className="px-2 py-1.5 text-[11px] font-medium tracking-wide text-faint uppercase">
     {children}
   </div>
 );
@@ -95,13 +95,13 @@ export const MenuItem = ({
     type="button"
     role="menuitem"
     className={cx(
-      "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-[#333]",
-      "hover:cursor-pointer hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none",
+      "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-fg",
+      "hover:cursor-pointer hover:bg-hover focus-visible:bg-hover focus-visible:outline-none",
       className,
     )}
     {...rest}
   >
-    {icon && <span className="flex shrink-0 text-neutral-500">{icon}</span>}
+    {icon && <span className="flex shrink-0 text-muted">{icon}</span>}
     {children}
   </button>
 );

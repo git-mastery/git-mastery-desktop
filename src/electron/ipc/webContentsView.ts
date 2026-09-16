@@ -1,9 +1,14 @@
 import { WebContentsView, BrowserWindow, screen } from "electron";
-import { ipcMainOn } from "../utils/util.js";
+import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
 import { getWcvPreloadPath } from "../pathResolver.js";
 import { startExercise, _verify } from "./gitmastery.js";
 import { getMainWindow } from "../main.js";
 import { sendToRenderer } from "./ipcUtils.js";
+import {
+  getAppliedResolvedTheme,
+  registerThemeBackgroundTarget,
+  THEME_BACKGROUND,
+} from "../theme.js";
 
 const EMBED_CSS = `
   header .navbar,
@@ -21,6 +26,11 @@ const EMBED_CSS = `
   .fixed-header-padding {
     padding-top: 0 !important;
   }
+  /* CustardUI settings gear + intro callout — owned by desktop Settings. */
+  .cv-settings-icon,
+  .cv-callout-wrapper {
+    display: none !important;
+  }
 `;
 
 let wcv: WebContentsView | null = null;
@@ -28,6 +38,68 @@ let wcv: WebContentsView | null = null;
 let isHidden = true;
 let isLoading = false;
 let bounds = { x: 0, y: 0, width: 0, height: 0 };
+
+/** CustardUI localStorage keys on git-mastery.org (`storageKey: "git-mastery"`). */
+const SITE_STATE_KEY = "git-mastery-custardUI-state";
+const SITE_TAB_NAV_KEY = "git-mastery-cv-tab-navs-visible";
+/** MarkBind DarkModeToggle / theme-manager.js */
+const SITE_THEME_KEY = "markbind-theme";
+
+/** Latest desktop-owned prefs. Null means do not override the site's localStorage. */
+let sitePrefs: SiteViewPrefs | null = null;
+
+function hasLoadedPage() {
+  const url = wcv?.webContents.getURL();
+  return Boolean(url && url !== "about:blank");
+}
+
+function writeSitePrefsScript(prefs: SiteViewPrefs) {
+  const themeWrite =
+    prefs.theme === "light" || prefs.theme === "dark"
+      ? `localStorage.setItem(${JSON.stringify(SITE_THEME_KEY)}, ${JSON.stringify(prefs.theme)});`
+      : prefs.theme === "system"
+        ? `localStorage.removeItem(${JSON.stringify(SITE_THEME_KEY)});`
+        : "";
+
+  return `(function () {
+    try {
+      localStorage.setItem(${JSON.stringify(SITE_STATE_KEY)}, ${JSON.stringify(JSON.stringify(prefs.state))});
+      localStorage.setItem(${JSON.stringify(SITE_TAB_NAV_KEY)}, ${JSON.stringify(prefs.tabNavsVisible ? "true" : "false")});
+      ${themeWrite}
+    } catch (e) {}
+  })()`;
+}
+
+const READ_SITE_PREFS_SCRIPT = `(function () {
+  try {
+    var raw = localStorage.getItem(${JSON.stringify(SITE_STATE_KEY)});
+    var tab = localStorage.getItem(${JSON.stringify(SITE_TAB_NAV_KEY)});
+    var theme = localStorage.getItem(${JSON.stringify(SITE_THEME_KEY)});
+    if (!raw && tab === null && theme === null) return null;
+    return {
+      state: raw ? JSON.parse(raw) : {},
+      tabNavsVisible: tab === null ? true : tab === "true",
+      theme: theme === "dark" || theme === "light" ? theme : "system"
+    };
+  } catch (e) {
+    return null;
+  }
+})()`;
+
+async function applySitePrefsToPage() {
+  if (!wcv || !sitePrefs || !hasLoadedPage()) return;
+  await wcv.webContents
+    .executeJavaScript(writeSitePrefsScript(sitePrefs))
+    .catch(() => {});
+}
+
+async function readSitePrefsFromPage(): Promise<SiteViewPrefs | null> {
+  if (!wcv || !hasLoadedPage()) return null;
+  const result = (await wcv.webContents
+    .executeJavaScript(READ_SITE_PREFS_SCRIPT)
+    .catch(() => null)) as SiteViewPrefs | null;
+  return result;
+}
 
 function applyBounds() {
   if (!wcv) return;
@@ -74,7 +146,7 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     });
 
     mainWindow.contentView.addChildView(wcv);
-    wcv.setBackgroundColor("#ffffff");
+    wcv.setBackgroundColor(THEME_BACKGROUND[getAppliedResolvedTheme()]);
 
     const emitUrl = () => {
       const url = wcv?.webContents.getURL();
@@ -87,7 +159,11 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     wcv.webContents.on("did-navigate", emitUrl);
     wcv.webContents.on("did-navigate-in-page", emitUrl);
     wcv.webContents.on("dom-ready", () => {
-      void wcv!.webContents.insertCSS(EMBED_CSS);
+      // Write prefs before CustardUI finishes fetchConfig() so it reads our blob.
+      void (async () => {
+        await applySitePrefsToPage();
+        await wcv!.webContents.insertCSS(EMBED_CSS).catch(() => {});
+      })();
     });
     wcv.webContents.on("did-fail-load", () => {
       setLoading(mainWindow, false);
@@ -138,9 +214,17 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
       (function() {
         var SOLID_BG = "#2d864e";
         var SOLID_HOVER = "#236e3d";
-        var OUTLINE_TEXT = "#236e3d";
         var OUTLINE_BORDER = "#2d864e";
-        var OUTLINE_HOVER_BG = "#f2faf5";
+
+        function isDark() {
+          return document.documentElement.getAttribute("data-bs-theme") === "dark";
+        }
+
+        function outlineColors() {
+          return isDark()
+            ? { text: "#75b798", hoverBg: "#1f3932" }
+            : { text: "#236e3d", hoverBg: "#f2faf5" };
+        }
 
         var ICON_DOWNLOAD = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>';
         var ICON_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -154,8 +238,9 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
         }
 
         function styleOutline(btn) {
-          btn.style.cssText = BASE_STYLE + "background:transparent; color:" + OUTLINE_TEXT + "; border:1px solid " + OUTLINE_BORDER + ";";
-          btn.addEventListener("mouseenter", function () { btn.style.background = OUTLINE_HOVER_BG; });
+          var colors = outlineColors();
+          btn.style.cssText = BASE_STYLE + "background:transparent; color:" + colors.text + "; border:1px solid " + OUTLINE_BORDER + ";";
+          btn.addEventListener("mouseenter", function () { btn.style.background = colors.hoverBg; });
           btn.addEventListener("mouseleave", function () { btn.style.background = "transparent"; });
         }
 
@@ -341,6 +426,9 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
   return () => wcv.webContents.removeListener("dom-ready", handler);
 }
 export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
+  registerThemeBackgroundTarget((color) => {
+    wcv?.setBackgroundColor(color);
+  });
   ipcMainOn(
     "wcv-size",
     ({
@@ -417,6 +505,26 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
   ipcMainOn("wcv-hide", () => {
     isHidden = true;
     applyBounds();
+  });
+
+  ipcMainHandle("wcv-get-site-prefs", async () => {
+    getOrCreateWcv(mainWindow);
+    if (sitePrefs) return sitePrefs;
+    return await readSitePrefsFromPage();
+  });
+
+  ipcMainHandle("wcv-set-site-prefs", async ({ reload, ...prefs }) => {
+    sitePrefs = {
+      state: prefs.state,
+      tabNavsVisible: prefs.tabNavsVisible,
+      theme: prefs.theme,
+    };
+    const view = getOrCreateWcv(mainWindow);
+    await applySitePrefsToPage();
+    if (reload && hasLoadedPage()) {
+      view.webContents.reload();
+    }
+    return true;
   });
 
   // Clean up when the window is closed

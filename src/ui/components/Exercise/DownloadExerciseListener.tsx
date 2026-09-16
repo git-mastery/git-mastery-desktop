@@ -77,7 +77,7 @@ export const DownloadExerciseListener = () => {
           data.completed?.message ?? data.error?.message ?? "Download failed",
         loading: false,
         tone: "danger",
-        icon: <IconX size={18} className="text-[#b42318]" />,
+        icon: <IconX size={18} className="text-danger" />,
         autoClose: 5000,
         withCloseButton: true,
       });

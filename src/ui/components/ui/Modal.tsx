@@ -59,7 +59,7 @@ export const Modal = ({
     // Opens and closes instantly: the native view underneath cannot animate with
     // the DOM, so any transition here only reads as a flicker.
     <div
-      className="fixed inset-0 z-[300] flex items-center justify-center overflow-y-auto bg-neutral-900/25 p-6"
+      className="fixed inset-0 z-[300] flex items-center justify-center overflow-y-auto bg-overlay p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -68,12 +68,12 @@ export const Modal = ({
         role="dialog"
         aria-modal="true"
         className={cx(
-          "w-full rounded-2xl border border-neutral-200 bg-white shadow-card",
+          "w-full rounded-2xl border border-border bg-surface shadow-card",
           SIZES[size],
         )}
       >
         <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-3">
-          <h3 className="font-heading text-[1.2rem]/[1.4] font-semibold text-[#333]">
+          <h3 className="font-heading text-[1.2rem]/[1.4] font-semibold text-fg">
             {title}
           </h3>
           <IconButton

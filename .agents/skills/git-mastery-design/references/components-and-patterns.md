@@ -8,26 +8,26 @@ Component recipes and screen composition patterns. Pair with [`tokens-and-surfac
 
 Build screens from these composable pieces:
 
-| Primitive                        | Role                                                |
-| -------------------------------- | --------------------------------------------------- |
-| `AppHeader`                      | Fixed 64px bar — panel toggle left, settings right  |
-| `Card`                           | Solid white panel with border (and optional shadow) |
-| `SectionTitle`                   | Serif group header with hairline underline          |
-| `ListRow`                        | Dense catalog / result row with trailing action     |
-| `StatusPill`                     | Exercise or task state                              |
-| `Field` + `TextInput` / `Select` | Form controls with uppercase micro-labels           |
-| `SearchInput`                    | Leading icon, grows to fill the toolbar             |
-| `TabFilter`                      | Underlined tabs with counts                         |
-| `MenuDropdown`                   | Icon trigger + labelled item list                   |
-| `Modal`                          | Solid dialog over a dim overlay                     |
-| `Toast`                          | Top-right ephemeral feedback                        |
-| `Stepper`                        | Short progress rail for first-run flows             |
-| `ChecklistRow`                   | Status icon + label + detail + inline actions       |
-| `EmptyState`                     | Centered muted icon + title + hint                  |
-| `LoadingState` / `ErrorState`    | Centered spinner or failure copy                    |
-| `ResizeHandle`                   | 6px col-resize strip on a pane edge                 |
-| `TerminalPane`                   | Black full-bleed xterm surface                      |
-| `NativeViewSlot`                 | Empty bounds placeholder for the native web view    |
+| Primitive                        | Role                                                 |
+| -------------------------------- | ---------------------------------------------------- |
+| `AppHeader`                      | Fixed 64px bar — site nav left, settings right       |
+| `Card`                           | Solid opaque panel with border (and optional shadow) |
+| `SectionTitle`                   | Serif group header with hairline underline           |
+| `ListRow`                        | Dense catalog / result row with trailing action      |
+| `StatusPill`                     | Exercise or task state                               |
+| `Field` + `TextInput` / `Select` | Form controls with uppercase micro-labels            |
+| `SearchInput`                    | Leading icon, grows to fill the toolbar              |
+| `TabFilter`                      | Underlined tabs with counts                          |
+| `MenuDropdown`                   | Icon trigger + labelled item list                    |
+| `Modal`                          | Solid dialog over a dim overlay                      |
+| `Toast`                          | Top-right ephemeral feedback                         |
+| `Stepper`                        | Short progress rail for first-run flows              |
+| `ChecklistRow`                   | Status icon + label + detail + inline actions        |
+| `EmptyState`                     | Centered muted icon + title + hint                   |
+| `LoadingState` / `ErrorState`    | Centered spinner or failure copy                     |
+| `ResizeHandle`                   | 6px col-resize strip on a pane edge                  |
+| `TerminalPane`                   | Black full-bleed xterm surface                       |
+| `NativeViewSlot`                 | Empty bounds placeholder for the native web view     |
 
 ---
 
@@ -36,13 +36,13 @@ Build screens from these composable pieces:
 ### AppHeader
 
 ```text
-h-16 bg-white border-b border-neutral-200 px-4
-left:  contextual panel toggle
+h-16 bg-surface border-b border-border px-4
+left:  Lessons / Exercises / Progress (text-base bold; active is accent, no underline)
 right: settings icon button
 overflow-visible so dropdowns escape the bar
 ```
 
-The header is chrome, not a page title bar — view titles live inside the content pane.
+The header is chrome, not a page title bar — view titles live inside the content pane. The lessons panel toggle is not in the header; it sits in a slim bar above the native view (closed) or in the panel header (open), and only on Lessons URLs.
 
 ### Card
 
@@ -50,12 +50,12 @@ The header is chrome, not a page title bar — view titles live inside the conte
 {
   /* elevated panel — onboarding, modal body */
 }
-<div className="rounded-2xl border border-neutral-200 bg-white p-6" />;
+<div className="rounded-2xl border border-border bg-surface p-6" />;
 
 {
   /* full-bleed content pane */
 }
-<div className="h-full w-full overflow-y-auto bg-white" />;
+<div className="h-full w-full overflow-y-auto bg-surface" />;
 ```
 
 Add `shadow-card` only when the panel floats above other content (modal, dropdown).
@@ -65,12 +65,12 @@ Add `shadow-card` only when the panel floats above other content (modal, dropdow
 | Kind               | Style                                                                                             |
 | ------------------ | ------------------------------------------------------------------------------------------------- |
 | **Primary**        | `bg-brand-600 text-white hover:bg-brand-700 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm` |
-| **Outline**        | `border border-brand-600 text-brand-700 hover:bg-brand-50 rounded-md` — e.g. Continue vs Download |
-| **Secondary**      | `bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50 rounded-md`              |
-| **Danger solid**   | `bg-[#b42318] text-white hover:bg-[#912018]`                                                      |
-| **Danger outline** | `border border-[#fecdca] text-[#b42318] hover:bg-[#fef3f2]`                                       |
-| **Ghost icon**     | transparent, `text-neutral-500`, hover `bg-neutral-100`, `rounded-full`                           |
-| **Soft icon**      | `bg-brand-50 text-brand-700 hover:bg-brand-100`, `rounded-md` — inline fix-it actions             |
+| **Outline**        | `border border-brand-600 text-accent hover:bg-accent-soft rounded-md` — e.g. Continue vs Download |
+| **Secondary**      | `bg-surface border border-border text-fg hover:bg-hover rounded-md`                               |
+| **Danger solid**   | `bg-danger-solid text-white hover:bg-danger-solid-hover`                                          |
+| **Danger outline** | `border border-danger-border text-danger hover:bg-danger-soft`                                    |
+| **Ghost icon**     | transparent, `text-muted`, hover `bg-hover`, `rounded-full`                                       |
+| **Soft icon**      | `bg-accent-soft text-accent hover:bg-accent-soft-hover`, `rounded-md` — inline fix-it actions     |
 
 **One solid primary per action cluster.** Disabled: `opacity-50 pointer-events-none`. Busy: swap the leading icon for a spinner and keep the label so the button does not resize.
 
@@ -78,12 +78,12 @@ Add `shadow-card` only when the panel floats above other content (modal, dropdow
 
 ```text
 height 36–40px; px-3 py-2; text-sm;
-bg-white; border-neutral-200; rounded-xl;
-placeholder text-neutral-400;
-focus: border-brand-400 + ring-2 ring-brand-100;
+bg-surface; border-border; rounded-xl;
+placeholder text-faint;
+focus: border-brand-400 + ring-2 ring-focus-ring;
 ```
 
-Field labels: `text-[11.5px] font-medium uppercase tracking-[0.06em] text-neutral-500`.
+Field labels: `text-[11.5px] font-medium uppercase tracking-[0.06em] text-muted`.
 
 Wrap fields in a `div`, not a `<label>` spanning the whole control — prevents accidental focus when clicking label whitespace.
 
@@ -93,25 +93,25 @@ Wrap fields in a `div`, not a `<label>` spanning the whole control — prevents 
 <div className="relative min-w-[240px] flex-1">
   <IconSearch
     size={16}
-    className="absolute top-1/2 left-3 -translate-y-1/2 text-neutral-400"
+    className="absolute top-1/2 left-3 -translate-y-1/2 text-faint"
   />
-  <input className="h-9 w-full rounded-xl border border-neutral-200 bg-white pr-3 pl-9 text-sm placeholder:text-neutral-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 focus:outline-none" />
+  <input className="h-9 w-full rounded-xl border border-border bg-surface pr-3 pl-9 text-sm placeholder:text-faint focus:border-brand-400 focus:ring-2 focus:ring-focus-ring focus:outline-none" />
 </div>
 ```
 
 ### TabFilter
 
 ```text
-row:      flex gap-1 border-b border-neutral-200
-tab:      px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900
-active:   text-brand-700 font-medium, 2px brand-600 bottom border (-1px to sit on the row border)
-count:    same size, text-neutral-400 — "All (42)"
+row:      flex gap-1 border-b border-border
+tab:      px-3 py-2 text-sm text-muted hover:text-fg
+active:   text-accent font-medium, 2px brand-600 bottom border (-1px to sit on the row border)
+count:    same size, text-faint — "All (42)"
 ```
 
 ### StatusPill
 
 ```tsx
-<span className="inline-flex items-center rounded border border-brand-200 bg-brand-50 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-brand-700" />
+<span className="inline-flex items-center rounded border border-accent-border bg-accent-soft px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-accent" />
 ```
 
 Always include visible text plus `aria-label` or `title`. See the status table in [`tokens-and-surfaces.md`](tokens-and-surfaces.md) § Color.
@@ -121,10 +121,10 @@ Always include visible text plus `aria-label` or `title`. See the status table i
 The catalog workhorse: a clickable title block plus one trailing action.
 
 ```text
-row:      flex items-center justify-between gap-4 py-3 border-b border-neutral-200
-title:    text-brand-700 font-semibold ~16px, hover:underline, truncate
-meta:     13px text-neutral-500 — lesson · detour · status · active
-active:   bg-brand-600/[0.06], bleed 8px into the gutters via -mx-2 px-2
+row:      flex items-center justify-between gap-4 py-3 border-b border-border
+title:    text-accent font-semibold ~16px, hover:underline, truncate
+meta:     13px text-muted — lesson · detour · status · active
+active:   bg-accent-soft, bleed 8px into the gutters via -mx-2 px-2
 action:   small primary (Download) or outline (Continue) button
 ```
 
@@ -133,8 +133,8 @@ The whole title block is a button; the trailing button repeats the same action s
 ### SectionTitle
 
 ```text
-serif 1.45rem semibold text-[#333]
-pb-2 border-b border-neutral-200 mb-1.5
+serif 1.45rem semibold text-fg
+pb-2 border-b border-border mb-1.5
 optional right-side actions on the same row
 ```
 
@@ -142,10 +142,10 @@ optional right-side actions on the same row
 
 ```text
 trigger:  ghost icon button, rounded-full, aria-label required
-panel:    w-56 rounded-xl border border-neutral-200 bg-white p-1 shadow-card
-label:    11px uppercase tracking-wide text-neutral-400 px-2 py-1.5
-item:     flex gap-2 items-center rounded-lg px-2 py-1.5 text-sm hover:bg-neutral-100
-icon:     14px text-neutral-500
+panel:    w-56 rounded-xl border border-border bg-surface p-1 shadow-card
+label:    11px uppercase tracking-wide text-faint px-2 py-1.5
+item:     flex gap-2 items-center rounded-lg px-2 py-1.5 text-sm hover:bg-hover
+icon:     14px text-muted
 ```
 
 Close on outside click and `Escape`; return focus to the trigger.
@@ -153,8 +153,8 @@ Close on outside click and `Escape`; return focus to the trigger.
 ### Modal
 
 ```text
-overlay:  fixed inset-0 bg-neutral-900/25
-panel:    bg-white rounded-2xl border border-neutral-200 shadow-card
+overlay:  fixed inset-0 bg-overlay
+panel:    bg-surface rounded-2xl border border-border shadow-card
 sizes:    sm max-w-md · md max-w-2xl · lg max-w-4xl
 header:   serif 1.2rem title + ghost close (X icon)
 Escape closes the topmost modal only (stack-aware)
@@ -169,8 +169,8 @@ Two rules specific to this app:
 
 ```text
 fixed top-right stack
-white card + shadow-card, rounded-xl, max-w-sm
-left semantic accent (brand green success / red error / amber warning / sky info)
+surface card + shadow-card, rounded-xl, max-w-sm
+left semantic accent (brand green success / danger / warning / info)
 icon + 13px message, optional 13px title above it
 auto-dismiss ~4s; errors ~8s
 ```
@@ -181,9 +181,9 @@ auto-dismiss ~4s; errors ~8s
 narrow (about half the card width), centered
 step:     28–30px circle, 13px label beneath
 done:     bg-brand-600 text-white with a check icon
-current:  border-2 border-brand-600 text-brand-700
-upcoming: border border-neutral-300 text-neutral-400, not clickable
-connector: 1px neutral-200, brand-600 once passed
+current:  border-2 border-brand-600 text-accent
+upcoming: border border-border text-faint, not clickable
+connector: 1px border, brand-600 once passed
 ```
 
 ### ChecklistRow
@@ -192,7 +192,7 @@ connector: 1px neutral-200, brand-600 once passed
 row:      flex items-center justify-between gap-3 py-3, divider between rows
 icon:     20px — spinner (checking) / brand-600 check / red x
 label:    14px medium
-detail:   13px text-neutral-500, break-all for filesystem paths
+detail:   13px text-muted, break-all for filesystem paths
 actions:  soft icon button (install) + ghost icon buttons (open link, re-check)
 ```
 
@@ -201,10 +201,10 @@ Each row owns its own spinner, result, and retry — a checklist never reports t
 ### Empty / loading / error states
 
 ```text
-empty:    py-20 centered · 24px icon in a 56px rounded-2xl neutral-100 tile ·
-          14px medium title · 12.5px text-neutral-400 hint (max-w-md)
+empty:    py-20 centered · 24px icon in a 56px rounded-2xl subtle tile ·
+          14px medium title · 12.5px text-faint hint (max-w-md)
 loading:  centered spinner (brand-600) + 13px muted line
-error:    centered 13px text in danger red + a retry button when retry is possible
+error:    centered 13px text in danger + a retry button when retry is possible
 ```
 
 Empty and error must read differently — "nothing matches your search" is not "the catalog failed to load".
@@ -216,19 +216,19 @@ Empty and error must read differently — "nothing matches your search" is not "
 ### Desktop shell
 
 ```text
-┌───────────────────────────────────────────────────────────┐
-│ header 64px — panel toggle ....................  settings  │
-├──────────────┬─────────────────────────┬──────────────────┤
-│ side panel   │ main pane               │ terminal aside   │
-│ 300px        │ flex-1, min-w-0         │ resizable, 512px │
-│ collapsible  │ native view OR content  │ min 280px        │
-│              │                         │ ◀ resize handle  │
-└──────────────┴─────────────────────────┴──────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│ header 64px — Lessons  Exercises  Progress             settings │
+├──────────────┬───────────────────────────┬──────────────────────┤
+│ side panel   │ toggle bar (lessons only) │ terminal aside       │
+│ 300px        │ + native view             │ resizable, 512px     │
+│ lessons only │                           │ min 280px            │
+│              │                           │ ◀ resize handle      │
+└──────────────┴───────────────────────────┴──────────────────────┘
 ```
 
 - `html, body, #root { height: 100% }`; the shell is `h-dvh overflow-hidden`. Nothing scrolls at window level.
 - Every flex child that can hold long content needs `min-h-0 min-w-0`, otherwise it refuses to shrink and pushes the terminal off screen.
-- The main pane is a positioning context: the native view placeholder fills it, and any DOM view sits in an `absolute inset-0` layer above it with a solid white background.
+- The main pane is a positioning context: the native view placeholder fills it, and any DOM view sits in an `absolute inset-0` layer above it with a solid `bg-surface` background.
 
 ### ResizeHandle
 
@@ -263,8 +263,8 @@ Rules:
 ### First-run / setup flow
 
 ```text
-bone canvas, h-screen, centered
-card: w-[680px] max-w-[92vw] bg-white rounded-2xl border border-neutral-200 p-8
+canvas, h-screen, centered
+card: w-[680px] max-w-[92vw] bg-surface rounded-2xl border border-border p-8
   logo 48px + serif welcome title
   centered Stepper (about half width)
   active step panel
@@ -291,7 +291,7 @@ Icon trigger in the header → menu of labelled panels → one modal whose title
 ## 5. Icons
 
 - Library: `@tabler/icons-react`.
-- Toolbar / inline: 14–16px, `text-neutral-500`, hover `text-neutral-700`.
+- Toolbar / inline: 14–16px, `text-muted`, hover `text-fg`.
 - Status icons: 20px, semantic color.
 - Empty state hero: 24px inside a 56px tile.
 - Every icon-only control needs an `aria-label`.
@@ -302,12 +302,12 @@ Icon trigger in the header → menu of labelled panels → one modal whose title
 
 Copy and verify before shipping:
 
-- [ ] Tokens from `@theme` — brand green CTA, bone canvas for full-screen focus, `neutral-*` grays, no `slate-*`
+- [ ] Tokens from `@theme` — brand green CTA, semantic canvas/surface/fg/border, no `slate-*`
 - [ ] Correct shell mode (desktop shell vs full-screen focus)
 - [ ] Inter body, Noto Serif titles only — no serif in controls or chips
-- [ ] Surfaces are solid white with `border-neutral-200`; no blur or translucent panels
-- [ ] Inputs `rounded-xl` with the brand focus ring
-- [ ] Status pills 11px, `*-50` / `*-700` / `*-200`, paired with text or `aria-label`
+- [ ] Surfaces are `bg-surface` with `border-border`; no blur or translucent panels
+- [ ] Inputs `rounded-xl` with the brand focus ring (`ring-focus-ring`)
+- [ ] Status pills 11px, semantic fill / text / border, paired with text or `aria-label`
 - [ ] One solid primary per action cluster; disabled at 50% opacity
 - [ ] No Mantine (or other UI library) in new or migrated code
 - [ ] No native `alert` / `confirm`; custom modal and toast only
@@ -315,7 +315,8 @@ Copy and verify before shipping:
 - [ ] Panes carry `min-h-0` / `min-w-0`; nothing scrolls at window level
 - [ ] Empty, loading, and error states are visually and verbally distinct
 - [ ] No blue accents, purple gradients, glow stacks, or font swaps
-- [ ] No `dark:` variants — the app is light-only
+- [ ] Theme via semantic tokens (`data-theme` on `<html>`), not `dark:` variants or one-off hex
+- [ ] Terminal pane stays black — do not restyle xterm from the app theme
 
 ---
 
@@ -325,7 +326,7 @@ Copy and verify before shipping:
 {
   /* Card panel */
 }
-<div className="rounded-2xl border border-neutral-200 bg-white p-6" />;
+<div className="rounded-2xl border border-border bg-surface p-6" />;
 
 {
   /* Primary CTA */
@@ -342,7 +343,7 @@ Copy and verify before shipping:
 }
 <button
   type="button"
-  className="rounded-md border border-brand-600 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+  className="rounded-md border border-brand-600 px-3 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft"
 >
   Continue
 </button>;
@@ -350,24 +351,24 @@ Copy and verify before shipping:
 {
   /* Success pill */
 }
-<span className="inline-flex rounded border border-brand-200 bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">
+<span className="inline-flex rounded border border-accent-border bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
   Completed
 </span>;
 
 {
   /* Input */
 }
-<input className="h-9 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-[#333] placeholder:text-neutral-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 focus:outline-none" />;
+<input className="h-9 w-full rounded-xl border border-border bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-brand-400 focus:ring-2 focus:ring-focus-ring focus:outline-none" />;
 
 {
   /* Serif page title */
 }
-<h1 className="font-heading text-[2.05rem]/[1.3] font-semibold text-[#333]">
+<h1 className="font-heading text-[2.05rem]/[1.3] font-semibold text-fg">
   Git-Mastery: Setup
 </h1>;
 
 {
   /* Active list row */
 }
-<div className="-mx-2 flex items-center justify-between gap-4 border-b border-neutral-200 bg-brand-600/[0.06] px-2 py-3" />;
+<div className="-mx-2 flex items-center justify-between gap-4 border-b border-border bg-accent-soft px-2 py-3" />;
 ```
