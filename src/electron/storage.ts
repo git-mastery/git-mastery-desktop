@@ -5,6 +5,8 @@ import fs from "fs";
 interface Config {
   // This is where the exercises are downloaded to. The exercises themselves live under ${dataDirectory}/gitmastery-exercises/
   dataDirectory?: string;
+  /** Desktop + site colour preference. System follows the OS. */
+  theme?: SitePageTheme;
 }
 
 const appBasePath = app.getPath("userData");

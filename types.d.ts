@@ -17,6 +17,14 @@ interface Window {
     show: () => void;
     onWcvLoading: (callback: (loading: boolean) => void) => () => void;
     onWcvUrlChanged: (callback: (url: string) => void) => () => void;
+    getSitePrefs: () => Promise<SiteViewPrefs | null>;
+    setSitePrefs: (
+      prefs: SiteViewPrefs & { reload: boolean },
+    ) => Promise<boolean>;
+    setAppTheme: (payload: {
+      preference: SitePageTheme;
+      resolved: "light" | "dark";
+    }) => void;
 
     // for configuration
     setDataDirectory: (directory: string) => void;
@@ -68,6 +76,10 @@ type IpcHandlerChannelMapping = {
   "wcv-hide": null;
   "wcv-loading": { loading: boolean };
   "wcv-url-changed": { url: string };
+  "set-app-theme": {
+    preference: SitePageTheme;
+    resolved: "light" | "dark";
+  };
 
   // to be saved on backend to reference whenever a new exercise needs to be downloaded
   "set-data-directory": { directory: string };
@@ -106,6 +118,12 @@ type IpcInvokeChannelMapping = {
 
   "check-exercise-folder": IIpcInvoke<null, ExerciseFolderStatus>;
 
+  "wcv-get-site-prefs": IIpcInvoke<null, SiteViewPrefs | null>;
+  "wcv-set-site-prefs": IIpcInvoke<
+    SiteViewPrefs & { reload: boolean },
+    boolean
+  >;
+
   // gitmastery
   "get-downloaded-exercises": IIpcInvoke<null, ProgressData>;
   "gitmastery-start-task": IIpcInvoke<{ command: string }, boolean>;
@@ -120,6 +138,25 @@ type ExerciseFolderStatus = {
   dataDirectory: string | null;
   exercisesPath: string | null;
   ready: boolean;
+};
+
+/** CustardUI view state persisted on git-mastery.org as `git-mastery-custardUI-state`. */
+type CustardUIState = {
+  shownToggles?: string[];
+  peekToggles?: string[];
+  hiddenToggles?: string[];
+  tabs?: Record<string, string>;
+  placeholders?: Record<string, string>;
+};
+
+/** Desktop-owned copy of CustardUI prefs applied into the embedded site. */
+type SitePageTheme = "light" | "dark" | "system";
+
+type SiteViewPrefs = {
+  state: CustardUIState;
+  tabNavsVisible: boolean;
+  /** Shared Light / Dark / System preference for chrome and MarkBind. */
+  theme?: SitePageTheme;
 };
 
 /** Outcome of moving the terminal into an exercise's working directory. */

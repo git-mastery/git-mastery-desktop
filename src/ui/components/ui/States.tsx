@@ -15,6 +15,6 @@ export const LoadingState = ({
     )}
   >
     <Spinner size={24} />
-    <p className="text-[13px] text-neutral-500">{message}</p>
+    <p className="text-[13px] text-muted">{message}</p>
   </div>
 );

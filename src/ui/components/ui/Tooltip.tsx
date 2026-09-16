@@ -50,7 +50,7 @@ export const Tooltip = ({
           role="tooltip"
           style={width ? { width } : undefined}
           className={cx(
-            "pointer-events-none absolute z-[400] rounded-md bg-neutral-900 px-2 py-1 text-xs leading-snug text-white shadow-card",
+            "pointer-events-none absolute z-[400] rounded-md bg-tooltip px-2 py-1 text-xs leading-snug text-tooltip-fg shadow-card",
             !width && "whitespace-nowrap",
             POSITIONS[position],
           )}

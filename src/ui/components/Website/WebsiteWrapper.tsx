@@ -4,6 +4,7 @@ import {
   useWebContentsView,
 } from "../../contexts/WebContentsViewContext";
 import { LoadingState } from "../ui/States";
+import { readDesktopSiteViewPrefs } from "../../utils/siteViewPrefs";
 
 export const WebsiteWrapper = () => {
   const webViewRef = useRef<HTMLDivElement>(null);
@@ -15,7 +16,13 @@ export const WebsiteWrapper = () => {
   useEffect(() => {
     if (hasNavigatedRef.current) return;
     hasNavigatedRef.current = true;
-    navigate(LESSONS_HOME_URL);
+    const prefs = readDesktopSiteViewPrefs();
+    const go = () => navigate(LESSONS_HOME_URL);
+    if (!prefs) {
+      go();
+      return;
+    }
+    void window.electron.setSitePrefs({ ...prefs, reload: false }).finally(go);
   }, [navigate]);
 
   useEffect(() => {
@@ -94,7 +101,7 @@ export const WebsiteWrapper = () => {
         id="webcontentsview-placeholder"
         className="flex h-full w-full grow items-center justify-center"
       >
-        {isLoading && <LoadingState message="Loading lessons..." />}
+        {isLoading && <LoadingState message="Loading..." />}
       </div>
     </div>
   );

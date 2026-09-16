@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cx } from "../../utils/cx";
 
-/** Solid white panel. `elevated` is for surfaces that float above content. */
+/** Solid panel. `elevated` is for surfaces that float above content. */
 export const Card = ({
   elevated = false,
   className,
@@ -13,7 +13,7 @@ export const Card = ({
 }) => (
   <div
     className={cx(
-      "rounded-2xl border border-neutral-200 bg-white p-6",
+      "rounded-2xl border border-border bg-surface p-6",
       elevated && "shadow-card",
       className,
     )}

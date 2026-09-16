@@ -13,9 +13,8 @@ type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const VARIANTS = {
-  ghost:
-    "rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700",
-  soft: "rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100",
+  ghost: "rounded-full text-muted hover:bg-hover hover:text-fg",
+  soft: "rounded-md bg-accent-soft text-accent hover:bg-accent-soft-hover",
 } as const;
 
 const SIZES = { sm: "h-7 w-7", md: "h-9 w-9" } as const;
@@ -34,7 +33,7 @@ export const IconButton = ({
     disabled={disabled || loading}
     className={cx(
       "inline-flex shrink-0 items-center justify-center hover:cursor-pointer",
-      "focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:outline-none",
+      "focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none",
       VARIANTS[variant],
       SIZES[size],
       (disabled || loading) && "pointer-events-none opacity-50",

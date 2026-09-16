@@ -1,9 +1,9 @@
 import { cx } from "../../utils/cx";
 
 const TONE_CLASSES: Record<ProgressState, string> = {
-  downloaded: "border-neutral-200 bg-neutral-100 text-neutral-600",
-  "in-progress": "border-amber-200 bg-amber-50 text-amber-700",
-  completed: "border-brand-200 bg-brand-50 text-brand-700",
+  downloaded: "border-border bg-subtle text-muted",
+  "in-progress": "border-warning-border bg-warning-soft text-warning",
+  completed: "border-accent-border bg-accent-soft text-accent",
 };
 
 const STATUS_LABELS: Record<ProgressState, string> = {

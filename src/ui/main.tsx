@@ -7,6 +7,7 @@ import { WebContentsViewProvider } from "./providers/WebContentsViewProvider";
 import { ActivityProvider } from "./providers/ActivityProvider";
 import { GitMasteryTaskProvider } from "./providers/GitMasteryTaskProvider";
 import { ToastProvider } from "./providers/ToastProvider";
+import { ThemeProvider } from "./providers/ThemeProvider";
 
 const queryClient = new QueryClient();
 
@@ -16,15 +17,17 @@ const queryClient = new QueryClient();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <GitMasteryTaskProvider>
-        <WebContentsViewProvider>
-          <ToastProvider>
-            <ActivityProvider>
-              <App />
-            </ActivityProvider>
-          </ToastProvider>
-        </WebContentsViewProvider>
-      </GitMasteryTaskProvider>
+      <ThemeProvider>
+        <GitMasteryTaskProvider>
+          <WebContentsViewProvider>
+            <ToastProvider>
+              <ActivityProvider>
+                <App />
+              </ActivityProvider>
+            </ToastProvider>
+          </WebContentsViewProvider>
+        </GitMasteryTaskProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

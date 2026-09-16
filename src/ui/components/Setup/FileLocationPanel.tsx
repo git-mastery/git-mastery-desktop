@@ -47,7 +47,7 @@ export const FileLocationPanel = ({
   };
 
   return (
-    <div className="flex flex-col gap-4 text-sm text-[#333]">
+    <div className="flex flex-col gap-4 text-sm text-fg">
       <div className="flex flex-col gap-2">
         <p>
           Practising Git means working with real files on your computer.
@@ -69,15 +69,13 @@ export const FileLocationPanel = ({
       </div>
 
       <div className="flex items-center gap-3">
-        <IconFolder size={18} className="shrink-0 text-neutral-500" />
+        <IconFolder size={18} className="shrink-0 text-muted" />
         {folder ? (
-          <code className="rounded-md bg-neutral-100 px-2 py-1 font-mono text-[13px] break-all text-[#333]">
+          <code className="rounded-md bg-subtle px-2 py-1 font-mono text-[13px] break-all text-fg">
             {folder}
           </code>
         ) : (
-          <span className="text-[13px] text-neutral-500">
-            No folder chosen yet
-          </span>
+          <span className="text-[13px] text-muted">No folder chosen yet</span>
         )}
       </div>
 

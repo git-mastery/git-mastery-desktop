@@ -32,13 +32,13 @@ export const Stepper = ({
               onClick={() => onStepClick?.(index)}
               className={cx(
                 "flex h-[30px] w-[30px] items-center justify-center rounded-full text-[13px] font-medium",
-                "focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:outline-none",
+                "focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none",
                 selectable && "hover:cursor-pointer",
                 done && "bg-brand-600 text-white",
-                current && "border-2 border-brand-600 text-brand-700",
+                current && "border-2 border-brand-600 text-accent",
                 !done &&
                   !current &&
-                  "cursor-default border border-neutral-300 text-neutral-400",
+                  "cursor-default border border-border text-faint",
               )}
             >
               {done ? <IconCheck size={16} /> : index + 1}
@@ -46,7 +46,7 @@ export const Stepper = ({
             <span
               className={cx(
                 "text-center text-[13px]",
-                current || done ? "text-[#333]" : "text-neutral-400",
+                current || done ? "text-fg" : "text-faint",
               )}
             >
               {label}
@@ -56,7 +56,7 @@ export const Stepper = ({
             <div
               className={cx(
                 "mt-[15px] h-px flex-1",
-                done ? "bg-brand-600" : "bg-neutral-200",
+                done ? "bg-brand-600" : "bg-border",
               )}
             />
           )}

@@ -2,9 +2,20 @@ import { createContext, useContext } from "react";
 import type { Exercise } from "../../types/Exercise";
 import type { Lesson, Tour } from "../../types/Tour";
 import { getExerciseLessonName } from "../utils/format";
+import { readStoredGithubUsername } from "../utils/siteViewPrefs";
 
 export const SITE_ORIGIN = "https://git-mastery.org";
 export const LESSONS_HOME_URL = `${SITE_ORIGIN}/lessons/`;
+export const EXERCISES_HOME_URL = `${SITE_ORIGIN}/exercises-directory/index.html`;
+export const PROGRESS_HOME_URL = `${SITE_ORIGIN}/progress-dashboard/`;
+
+export function buildProgressUrl() {
+  const username = readStoredGithubUsername();
+  if (!username) return PROGRESS_HOME_URL;
+  return `${PROGRESS_HOME_URL}#/dashboard/${encodeURIComponent(username)}`;
+}
+
+export type SiteSection = "lessons" | "exercises" | "progress";
 
 export type WebContentsViewState = {
   currentUrl: string | null;
@@ -29,6 +40,19 @@ export function useWebContentsView() {
     );
   }
   return context;
+}
+
+export function getSiteSection(url: string | null): SiteSection | null {
+  if (!url) return null;
+  try {
+    const path = new URL(url).pathname.replace(/\/index\.html$/, "/");
+    if (path.startsWith("/lessons")) return "lessons";
+    if (path.startsWith("/exercises-directory")) return "exercises";
+    if (path.startsWith("/progress-dashboard")) return "progress";
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export function buildLessonUrl(lesson: Lesson) {

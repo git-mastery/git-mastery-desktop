@@ -20,13 +20,104 @@
   --color-gm-olive: #717c4d;
   --color-gm-dark-green: var(--color-gm-olive);
 
-  --shadow-card: 0 1px 2px rgb(23 23 23 / 0.04), 0 1px 3px rgb(23 23 23 / 0.06);
+  --color-canvas: var(--gm-canvas);
+  --color-surface: var(--gm-surface);
+  --color-subtle: var(--gm-subtle);
+  --color-hover: var(--gm-hover);
+  --color-fg: var(--gm-fg);
+  --color-muted: var(--gm-muted);
+  --color-faint: var(--gm-faint);
+  --color-border: var(--gm-border);
+  --color-overlay: var(--gm-overlay);
+  --color-accent: var(--gm-accent);
+  --color-accent-soft: var(--gm-accent-soft);
+  --color-accent-soft-hover: var(--gm-accent-soft-hover);
+  --color-accent-border: var(--gm-accent-border);
+  --color-focus-ring: var(--gm-focus-ring);
+  --color-danger: var(--gm-danger);
+  --color-danger-solid: var(--gm-danger-solid);
+  --color-danger-solid-hover: var(--gm-danger-solid-hover);
+  --color-danger-soft: var(--gm-danger-soft);
+  --color-danger-border: var(--gm-danger-border);
+  --color-warning: var(--gm-warning);
+  --color-warning-soft: var(--gm-warning-soft);
+  --color-warning-border: var(--gm-warning-border);
+  --color-info: var(--gm-info);
+  --color-info-soft: var(--gm-info-soft);
+  --color-info-border: var(--gm-info-border);
+  --color-tooltip: var(--gm-tooltip);
+  --color-tooltip-fg: var(--gm-tooltip-fg);
+
+  --shadow-card: var(--gm-shadow-card);
 }
 
 :root {
+  --gm-canvas: #f8f8f8;
+  --gm-surface: #ffffff;
+  --gm-subtle: #f5f5f5;
+  --gm-hover: #f5f5f5;
+  --gm-fg: #333333;
+  --gm-muted: #666666;
+  --gm-faint: #a3a3a3;
+  --gm-border: #e5e5e5;
+  --gm-overlay: rgb(23 23 23 / 0.25);
+  --gm-accent: #236e3d;
+  --gm-accent-soft: #f2faf5;
+  --gm-accent-soft-hover: #e1f4e8;
+  --gm-accent-border: #c8ead4;
+  --gm-focus-ring: #e1f4e8;
+  --gm-danger: #b42318;
+  --gm-danger-solid: #b42318;
+  --gm-danger-solid-hover: #912018;
+  --gm-danger-soft: #fef3f2;
+  --gm-danger-border: #fecdca;
+  --gm-warning: #b54708;
+  --gm-warning-soft: #fffaeb;
+  --gm-warning-border: #fedf89;
+  --gm-info: #0369a1;
+  --gm-info-soft: #f0f9ff;
+  --gm-info-border: #bae6fd;
+  --gm-tooltip: #171717;
+  --gm-tooltip-fg: #ffffff;
+  --gm-shadow-card:
+    0 1px 2px rgb(23 23 23 / 0.04), 0 1px 3px rgb(23 23 23 / 0.06);
+
   /* Width of the terminal aside. Written by both App state and ResizeHandle
      drags, so the native web view can track the pane without a React render. */
   --gm-aside-width: 512px;
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  --gm-canvas: #212529;
+  --gm-surface: #212529;
+  --gm-subtle: #2b3035;
+  --gm-hover: #343a40;
+  --gm-fg: #dee2e6;
+  --gm-muted: #c2c8ce;
+  --gm-faint: #adb5bd;
+  --gm-border: #495057;
+  --gm-overlay: rgb(0 0 0 / 0.5);
+  --gm-accent: #75b798;
+  --gm-accent-soft: #1f3932;
+  --gm-accent-soft-hover: #264a40;
+  --gm-accent-border: #4ab98a;
+  --gm-focus-ring: rgb(117 183 152 / 0.35);
+  --gm-danger: #ea868f;
+  --gm-danger-solid: #b42318;
+  --gm-danger-solid-hover: #912018;
+  --gm-danger-soft: #2c0b0e;
+  --gm-danger-border: #842029;
+  --gm-warning: #ffda6a;
+  --gm-warning-soft: #332701;
+  --gm-warning-border: #997404;
+  --gm-info: #6edff6;
+  --gm-info-soft: #032830;
+  --gm-info-border: #087990;
+  --gm-tooltip: #dee2e6;
+  --gm-tooltip-fg: #212529;
+  --gm-shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
 }
 
 html,
@@ -38,7 +129,7 @@ body,
 
 body {
   font-family: var(--font-body);
-  background: var(--color-gm-bone);
-  color: #333333;
+  background: var(--gm-canvas);
+  color: var(--gm-fg);
   -webkit-font-smoothing: antialiased;
 }

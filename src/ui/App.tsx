@@ -1,12 +1,15 @@
 import TerminalComponent from "./components/Terminal/Terminal";
 import { WebsiteWrapper } from "./components/Website/WebsiteWrapper";
 import { Header } from "./components/Header/Header";
-import { ToursPanel } from "./components/Header/ToursMenu";
+import { LessonsPanelToggle, ToursPanel } from "./components/Header/ToursMenu";
 import { useEffect, useState } from "react";
 import { Onboarding } from "./pages/Onboarding";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { DownloadExerciseListener } from "./components/Exercise/DownloadExerciseListener";
-import { useWebContentsView } from "./contexts/WebContentsViewContext";
+import {
+  getSiteSection,
+  useWebContentsView,
+} from "./contexts/WebContentsViewContext";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 
 const MIN_MAIN = 320;
@@ -18,9 +21,12 @@ function App() {
     key: "onboarding-completed",
     defaultValue: false,
   });
-  const { setEmbeddedVisible } = useWebContentsView();
+  const { setEmbeddedVisible, currentUrl } = useWebContentsView();
   const [asideWidth, setAsideWidth] = useState(512);
   const [lessonsPanelOpened, setLessonsPanelOpened] = useState(false);
+
+  const onLessons = getSiteSection(currentUrl) === "lessons";
+  const showLessonsPanel = onLessons && lessonsPanelOpened;
 
   // The embedded lesson site is the only thing the main pane ever shows, so it
   // stays visible for the life of the app. Overlays that need the DOM on top
@@ -47,27 +53,30 @@ function App() {
     <>
       <DownloadExerciseListener />
       <div className="flex h-dvh flex-col overflow-hidden">
-        <header className="relative z-[200] h-16 shrink-0 overflow-visible border-b border-neutral-200 bg-white px-4">
-          <Header
-            lessonsPanelOpened={lessonsPanelOpened}
-            onToggleLessonsPanel={() =>
-              setLessonsPanelOpened((opened) => !opened)
-            }
-          />
+        <header className="relative z-[200] h-16 shrink-0 overflow-visible border-b border-border bg-surface px-4">
+          <Header />
         </header>
 
         <div className="flex min-h-0 min-w-0 flex-1">
-          {lessonsPanelOpened && (
-            <nav className="w-[300px] min-w-0 shrink-0 border-r border-neutral-200 bg-white">
-              <ToursPanel />
+          {showLessonsPanel && (
+            <nav className="w-[300px] min-w-0 shrink-0 border-r border-border bg-surface">
+              <ToursPanel onClose={() => setLessonsPanelOpened(false)} />
             </nav>
           )}
 
           <main className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+            {onLessons && !lessonsPanelOpened && (
+              <div className="flex h-9 shrink-0 items-center border-b border-border bg-surface px-2">
+                <LessonsPanelToggle
+                  opened={false}
+                  onToggle={() => setLessonsPanelOpened(true)}
+                />
+              </div>
+            )}
             <WebsiteWrapper />
           </main>
 
-          <aside className="relative min-w-0 shrink-0 border-l border-neutral-200 w-[var(--gm-aside-width)]">
+          <aside className="relative min-w-0 shrink-0 border-l border-border w-[var(--gm-aside-width)]">
             <TerminalComponent />
             <ResizeHandle
               width={asideWidth}
