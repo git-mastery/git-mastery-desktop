@@ -77,7 +77,7 @@ export const SetupChecklist = ({
     () => [
       {
         key: "gitmastery-cli",
-        label: "GitMastery CLI",
+        label: "Git-Mastery CLI",
         description: "Downloads exercises and runs verify.",
         check: async () => {
           const { version, latest } =
@@ -94,7 +94,7 @@ export const SetupChecklist = ({
           };
         },
         install: {
-          label: "Download GitMastery CLI",
+          label: "Download Git-Mastery CLI",
           run: () => window.electron.downloadGitMasteryApp(),
         },
       },
@@ -169,7 +169,7 @@ export const SetupChecklist = ({
 
   return (
     <div className="flex flex-col gap-2 text-sm text-fg">
-      <p>Install the required tools to run git-mastery.</p>
+      <p>Install the required tools to run Git-Mastery.</p>
 
       <div className="mt-2 flex flex-col">
         {items.map((item, index) => {

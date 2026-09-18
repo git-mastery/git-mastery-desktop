@@ -37,11 +37,11 @@ export const Onboarding = ({
           <div className="flex items-center gap-4">
             <img
               src={logo}
-              alt="GitMastery logo"
+              alt="Git-Mastery logo"
               className="h-12 w-12 shrink-0"
             />
             <h1 className="font-heading text-[1.2rem]/[1.4] font-semibold text-fg">
-              Set up GitMastery
+              Set up Git-Mastery
             </h1>
           </div>
 

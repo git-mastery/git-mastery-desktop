@@ -110,7 +110,7 @@ const _reportSpawnFailure = (
     exerciseIdentifier,
     completed: {
       status: "failure",
-      message: `Could not run GitMastery: ${err.message}`,
+      message: `Could not run Git-Mastery: ${err.message}`,
     },
   };
   sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
@@ -220,7 +220,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
     });
 
     childProcess.on("error", (err) => {
-      echo.write(`Could not run GitMastery: ${err.message}`);
+      echo.write(`Could not run Git-Mastery: ${err.message}`);
       echo.finish();
       _reportSpawnFailure(mainWindow, "setup", undefined, err);
     });
@@ -371,7 +371,7 @@ export const _download = (
   });
 
   childProcess.on("error", (err) => {
-    echo.write(`Could not run GitMastery: ${err.message}`);
+    echo.write(`Could not run Git-Mastery: ${err.message}`);
     echo.finish();
     _reportSpawnFailure(
       mainWindow,
@@ -511,7 +511,7 @@ export const _verify = (
   });
 
   childProcess.on("error", (err) => {
-    echo.write(`Could not run GitMastery: ${err.message}`);
+    echo.write(`Could not run Git-Mastery: ${err.message}`);
     echo.finish();
     _reportSpawnFailure(mainWindow, "verify", exerciseIdentifier, err);
   });
