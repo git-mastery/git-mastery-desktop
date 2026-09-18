@@ -3,7 +3,6 @@ import {
   IconCircleCheck,
   IconCircleX,
   IconDownload,
-  IconExternalLink,
   IconRefresh,
 } from "@tabler/icons-react";
 import { useElectronStream } from "../../hooks/useElectronStream";
@@ -21,8 +20,6 @@ type SetupItem = {
   check: () => Promise<CheckResult>;
   /** Fixes the item from inside the app. */
   install?: { label: string; run: () => Promise<unknown> };
-  /** Opens an external page for items we cannot install ourselves. */
-  link?: { label: string; url: string };
 };
 
 type RowState = {
@@ -78,35 +75,6 @@ export const SetupChecklist = ({
 
   const items = useMemo<SetupItem[]>(
     () => [
-      {
-        key: "git",
-        label: "Git",
-        description: "Version control for the exercises.",
-        check: async () => {
-          const installed = await window.electron.checkGit();
-          return {
-            ok: installed,
-            detail: installed ? "Installed" : "Not found on this computer",
-          };
-        },
-        link: { label: "Download Git", url: "https://git-scm.com/install/" },
-      },
-      {
-        key: "github-cli",
-        label: "GitHub CLI",
-        description: "GitHub sign-in for exercises that need it.",
-        check: async () => {
-          const installed = await window.electron.checkGithubCli();
-          return {
-            ok: installed,
-            detail: installed ? "Installed" : "Not found on this computer",
-          };
-        },
-        link: {
-          label: "Download GitHub CLI",
-          url: "https://github.com/cli/cli/releases",
-        },
-      },
       {
         key: "gitmastery-cli",
         label: "GitMastery CLI",
@@ -201,10 +169,7 @@ export const SetupChecklist = ({
 
   return (
     <div className="flex flex-col gap-2 text-sm text-fg">
-      <p>
-        GitMastery runs Git on your machine. Install anything marked with a
-        cross, then use Check again.
-      </p>
+      <p>Install the required tools to run git-mastery.</p>
 
       <div className="mt-2 flex flex-col">
         {items.map((item, index) => {
@@ -242,20 +207,6 @@ export const SetupChecklist = ({
                       onClick={() => void runInstall(item)}
                     >
                       <IconDownload size={16} />
-                    </IconButton>
-                  </Tooltip>
-                )}
-                {item.link && status !== "ok" && (
-                  <Tooltip label={item.link.label}>
-                    <IconButton
-                      size="sm"
-                      aria-label={item.link.label}
-                      disabled={status === "checking"}
-                      onClick={() =>
-                        window.electron.openExternal(item.link!.url)
-                      }
-                    >
-                      <IconExternalLink size={16} />
                     </IconButton>
                   </Tooltip>
                 )}

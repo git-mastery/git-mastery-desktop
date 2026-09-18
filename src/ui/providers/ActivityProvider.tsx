@@ -13,79 +13,115 @@
 
 import { type ReactNode, useEffect, useRef } from "react";
 import type { Exercise } from "../../types/Exercise";
-import { IconInfoCircle } from "@tabler/icons-react";
 import { useElectronStream } from "../hooks/useElectronStream";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
 import { useToast, type ToastOptions } from "../contexts/ToastContext";
 import { ActivityContext } from "../contexts/ActivityContext";
-import {
-  formatExerciseIdentifier,
-  formatHandsOnTitle,
-  isHandsOnIdentifier,
-} from "../utils/format";
+import { isHandsOnIdentifier } from "../utils/format";
 
 const isVerifyCommand = (cmd: string) => cmd.startsWith("verify");
 
-const verifyNotificationId = (data: GitMasteryTaskData) =>
-  `verify-${data.exerciseIdentifier ?? "exercise"}`;
+const verifyToastId = (exerciseIdentifier?: string) =>
+  `verify-${exerciseIdentifier ?? "exercise"}`;
+
+const startToastId = (exerciseIdentifier?: string) =>
+  `start-${exerciseIdentifier ?? "exercise"}`;
 
 export function ActivityProvider({ children }: { children: ReactNode }) {
-  const { showToast, updateToast } = useToast();
+  const { showToast, updateToast, hideToast } = useToast();
 
   const { downloadedExerciseData, patchExerciseStatus } = useLocalExercises();
 
-  /** Verify notifications currently on screen, keyed by notification id. */
-  const openVerifyNotifications = useRef<Set<string>>(new Set());
+  /** Loading toasts currently on screen, so settle can update them in place. */
+  const openActionToasts = useRef<Set<string>>(new Set());
 
   const startExercise = (exercise: Exercise) => {
     void window.electron.startExercise(exercise.identifier);
   };
 
-  /**
-   * The main process reports every start, whether it came from the app or from
-   * the button injected into the embedded lesson page, once the terminal is in
-   * the exercise directory. Verify refuses to run until that has happened, so a
-   * failure here has to be surfaced rather than swallowed.
-   */
-  const onStartExerciseResult = (result: StartExerciseResult) => {
-    if (result.ok) {
-      const handsOn = isHandsOnIdentifier(result.exerciseIdentifier ?? "");
-      const name = result.exerciseIdentifier
-        ? handsOn
-          ? formatHandsOnTitle(result.exerciseIdentifier)
-          : formatExerciseIdentifier(result.exerciseIdentifier)
-        : null;
-      showToast({
-        title: handsOn
-          ? name
-            ? `Hands-on: ${name}`
-            : "Hands-on"
-          : name
-            ? `Exercise: ${name}`
-            : "Exercise",
-        tone: "info",
-        icon: <IconInfoCircle size={18} className="text-info" />,
-      });
-      return;
-    }
-
+  const showLoadingToast = (id: string, title: string) => {
+    if (openActionToasts.current.has(id)) return;
+    openActionToasts.current.add(id);
     showToast({
-      title: "Could not open the exercise folder",
-      message: result.needsRestart
-        ? `${result.error} Delete that folder and start the exercise again for a clean copy.`
-        : (result.error ??
-          "Try downloading the exercise again from the exercises list."),
-      tone: "danger",
-      icon: <IconInfoCircle size={18} className="text-danger" />,
-      autoClose: 8000,
+      id,
+      title,
+      loading: true,
+      autoClose: false,
+      withCloseButton: false,
     });
   };
 
-  // Freshly created each render, so it is read through a ref to subscribe once.
+  const settleToast = (id: string, patch: Omit<ToastOptions, "id">) => {
+    // Loading toasts set `autoClose: false`; an update merges over them, so the
+    // countdown has to be handed back to the tone default explicitly.
+    const settled = {
+      loading: false,
+      withCloseButton: true,
+      autoClose: undefined,
+      ...patch,
+    };
+    if (openActionToasts.current.delete(id)) {
+      updateToast(id, settled);
+    } else {
+      showToast({ id, ...settled });
+    }
+  };
+
+  const onStartExerciseStarted = (payload: StartExerciseStarted) => {
+    showLoadingToast(
+      startToastId(payload.exerciseIdentifier),
+      "Starting exercise...",
+    );
+  };
+
+  /**
+   * The main process reports every start, whether it came from the app or from
+   * the button injected into the embedded lesson page. Success is visible as a
+   * `cd` in the terminal, so the loading toast is dismissed rather than
+   * restated. Failures that are not CLI output still need a one-line toast.
+   */
+  const onStartExerciseResult = (result: StartExerciseResult) => {
+    const id = startToastId(result.exerciseIdentifier);
+    if (result.ok) {
+      openActionToasts.current.delete(id);
+      hideToast(id);
+      return;
+    }
+
+    settleToast(id, {
+      title: "Could not start exercise",
+      message: result.needsRestart
+        ? "Delete that folder and start the exercise again for a clean copy."
+        : undefined,
+      tone: "danger",
+    });
+  };
+
+  const onStartExerciseStartedRef = useRef(onStartExerciseStarted);
   const onStartExerciseResultRef = useRef(onStartExerciseResult);
-  useEffect(() => {
-    onStartExerciseResultRef.current = onStartExerciseResult;
+  const onVerifyBlockedRef = useRef((payload: VerifyBlocked) => {
+    settleToast(verifyToastId(payload.exerciseIdentifier), {
+      title: "Not in the exercise folder",
+      tone: "info",
+    });
   });
+  useEffect(() => {
+    onStartExerciseStartedRef.current = onStartExerciseStarted;
+    onStartExerciseResultRef.current = onStartExerciseResult;
+    onVerifyBlockedRef.current = (payload: VerifyBlocked) => {
+      settleToast(verifyToastId(payload.exerciseIdentifier), {
+        title: "Not in the exercise folder",
+        tone: "info",
+      });
+    };
+  });
+  useEffect(
+    () =>
+      window.electron.onStartExerciseStarted((payload) =>
+        onStartExerciseStartedRef.current(payload),
+      ),
+    [],
+  );
   useEffect(
     () =>
       window.electron.onStartExerciseResult((result) =>
@@ -93,100 +129,45 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       ),
     [],
   );
-
   useEffect(
     () =>
-      window.electron.onVerifyBlocked(() => {
-        showToast({
-          title: "Not in the exercise folder",
-          message:
-            "Click Start Exercise to enter this exercise's folder, then verify again.",
-          tone: "info",
-          icon: <IconInfoCircle size={18} className="text-info" />,
-        });
-      }),
-    [showToast],
+      window.electron.onVerifyBlocked((payload) =>
+        onVerifyBlockedRef.current(payload),
+      ),
+    [],
   );
-
-  /**
-   * Closes off a verify notification, creating it first if the run finished
-   * before any progress output arrived.
-   */
-  const settleVerifyNotification = (
-    notification: ToastOptions & { id: string },
-  ) => {
-    // The in-progress toast sets `autoClose: false`; an update merges over it, so
-    // the countdown has to be handed back to the tone default explicitly.
-    const settled = { autoClose: undefined, ...notification };
-    if (openVerifyNotifications.current.delete(notification.id)) {
-      updateToast(notification.id, settled);
-    } else {
-      showToast(settled);
-    }
-  };
 
   const _onExerciseVerifyData = (
     _originalCommand: string,
     data: GitMasteryTaskData,
   ) => {
-    const id = verifyNotificationId(data);
-
-    if (!openVerifyNotifications.current.has(id)) {
-      openVerifyNotifications.current.add(id);
-      showToast({
-        id,
-        title: "Verifying",
-        message: "Verifying…",
-        loading: true,
-        autoClose: false,
-        withCloseButton: false,
-      });
-    }
-
-    updateToast(id, { message: data.success!.message });
+    showLoadingToast(verifyToastId(data.exerciseIdentifier), "Verifying...");
   };
 
   const _onExerciseVerifiedSuccess = (
     _originalCommand: string,
     data: GitMasteryTaskData,
   ) => {
-    const { comments, incorrect, correct } = (data.completed?.data ?? {}) as {
+    const { incorrect, correct } = (data.completed?.data ?? {}) as {
       correct?: boolean;
       incorrect?: boolean;
-      comments?: string;
     };
 
-    const commentsBody = comments?.trim() ?? "";
-    const commentLine = commentsBody ? `\n${commentsBody}` : "";
-
+    const id = verifyToastId(data.exerciseIdentifier);
     if (correct) {
-      settleVerifyNotification({
-        id: verifyNotificationId(data),
-        title: "Exercise complete",
-        message: commentsBody,
-        loading: false,
+      settleToast(id, {
+        title: "Exercise answer correct",
         tone: "success",
-        autoClose: 5000,
-        withCloseButton: true,
       });
     } else if (incorrect) {
-      settleVerifyNotification({
-        id: verifyNotificationId(data),
-        title: "Exercise solution incorrect",
-        message: `Not correct yet. Fix it and run verify again.${commentLine}`,
-        loading: false,
+      settleToast(id, {
+        title: "Exercise answer incorrect",
         tone: "danger",
-        withCloseButton: true,
       });
     } else {
-      settleVerifyNotification({
-        id: verifyNotificationId(data),
+      settleToast(id, {
         title: "Verification complete",
-        message: "",
-        loading: false,
         tone: "success",
-        autoClose: 5000,
-        withCloseButton: true,
       });
     }
 
@@ -208,13 +189,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     _originalCommand: string,
     data: GitMasteryTaskData,
   ) => {
-    settleVerifyNotification({
-      id: verifyNotificationId(data),
+    settleToast(verifyToastId(data.exerciseIdentifier), {
       title: "Verification failed",
-      message: data.completed?.message ?? "Try again",
-      loading: false,
       tone: "danger",
-      withCloseButton: true,
     });
   };
 

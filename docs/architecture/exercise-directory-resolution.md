@@ -205,9 +205,9 @@ One shared `startExercise(mainWindow, exerciseIdentifier)` in the main process:
    `{ ok: true, cwd, downloaded: false }`. **Exit early — no download is issued.** This is the
    fix for both the data loss on v7.8.2 and the spurious error on the newer CLI.
 4. `not-downloaded` → run `_download`; on success, re-resolve, `cd` if still latest, and return
-   `{ ok: true, cwd, downloaded: true }`. On failure, return `{ ok: false }` to the IPC caller
-   but do **not** broadcast `start-exercise-result` — the download task stream already toasted
-   the CLI/spawn error.
+   `{ ok: true, cwd, downloaded: true }`. On failure, return `{ ok: false }` and broadcast
+   `start-exercise-result` so the "Starting exercise..." toast can settle to a one-line failure.
+   CLI download errors are already in the terminal.
 5. `corrupt` / `incomplete` → do **not** download. Return
    `{ ok: false, error, needsRestart: true }`; the renderer tells the learner to clear the
    folder out, since Restart is not built yet (§8).
@@ -218,12 +218,11 @@ ensures only the latest Start may `cd`: starting B while A is still downloading 
 A's completion steal the terminal.
 
 The outcome is broadcast on `start-exercise-result` as well as returned, because the embedded
-button dispatches through `wcv-start-exercise` and has no return value to inspect. The renderer
-drives the "Hands-on: …" / "Exercise: …" info toast and the error toast off that one
-signal, so every entry point behaves identically: the start toast fires after a `cd`-only
-resume as well as after a download, once the terminal is in the folder. Download failures are
-the exception: they are already visible on the task stream, so broadcasting them would stack a
-second, less informative toast.
+button dispatches through `wcv-start-exercise` and has no return value to inspect. A
+`start-exercise-started` event fires when the click is accepted (not already in flight) so the
+renderer can show "Starting exercise..." immediately. Success dismisses that toast — the `cd`
+is already in the terminal. Failures, including a failed download, settle the same toast to
+"Could not start exercise".
 
 ### Entry points after the change
 

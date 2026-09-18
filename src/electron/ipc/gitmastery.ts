@@ -16,10 +16,16 @@ import {
   isPathSegment,
   resolveExerciseCwd,
 } from "../exerciseManifest.js";
-import { changeDirectory, getCwd } from "./terminal.js";
+import {
+  changeDirectory,
+  echoToXterm,
+  getCwd,
+  reprintPrompt,
+} from "./terminal.js";
 import { sendToRenderer } from "./ipcUtils.js";
 
 const GM_TASK_DATA_CHANNEL = "gitmastery-task-data" as const;
+const START_EXERCISE_STARTED_CHANNEL = "start-exercise-started" as const;
 const START_EXERCISE_RESULT_CHANNEL = "start-exercise-result" as const;
 const VERIFY_BLOCKED_CHANNEL = "verify-blocked" as const;
 
@@ -65,6 +71,27 @@ const _spawnChildProcess = ({
     cwd,
     env: getEnvironmentWithHomebrew(),
   });
+};
+
+/**
+ * Mirrors a spawned CLI run into xterm scrollback. Display-only — the command
+ * still runs as child_process, not inside the interactive shell.
+ */
+const startCliEcho = (commandLabel: string) => {
+  echoToXterm(`\r\n${commandLabel}\r\n`);
+  let finished = false;
+  return {
+    write(chunk: string) {
+      if (finished || chunk.length === 0) return;
+      echoToXterm(chunk);
+    },
+    finish() {
+      if (finished) return;
+      finished = true;
+      echoToXterm("\r\n");
+      reprintPrompt();
+    },
+  };
 };
 
 /**
@@ -141,6 +168,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
       args: ["setup"],
       cwd: dataDirectory,
     });
+    const echo = startCliEcho("gitmastery setup");
 
     let stdoutBuffer = "";
     let stderrBuffer = "";
@@ -149,6 +177,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
       stdoutBuffer += data.toString() + "[[terminal-line]]";
       // Send progress updates to renderer
       logGM("stdout", "setup", data.toString());
+      echo.write(data.toString());
 
       const taskPayload: GitMasteryTaskData = {
         success: {
@@ -175,6 +204,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
       stderrBuffer += data.toString() + "[[terminal-line]]";
       // Send error updates to renderer
       logGM("stderr", "setup", data.toString());
+      echo.write(data.toString());
 
       const taskPayload: GitMasteryTaskData = {
         error: {
@@ -190,10 +220,13 @@ const _setup = async (mainWindow: BrowserWindow) => {
     });
 
     childProcess.on("error", (err) => {
+      echo.write(`Could not run GitMastery: ${err.message}`);
+      echo.finish();
       _reportSpawnFailure(mainWindow, "setup", undefined, err);
     });
 
     childProcess.on("close", (code) => {
+      echo.finish();
       logGM("close", "setup", String(code));
       if (code === 0) {
         // Success
@@ -272,6 +305,7 @@ export const _download = (
   const childProcess = _spawnChildProcess({
     args: ["download", exerciseIdentifier],
   });
+  const echo = startCliEcho(`gitmastery download ${exerciseIdentifier}`);
 
   const taskPayload: GitMasteryTaskData = {
     exerciseIdentifier: exerciseIdentifier,
@@ -296,6 +330,7 @@ export const _download = (
     stdoutBuffer += data.toString() + "[[terminal-line]]";
     // Send progress updates to renderer
     logGM("stdout", `download ${exerciseIdentifier}`, data.toString());
+    echo.write(data.toString());
 
     const taskPayload: GitMasteryTaskData = {
       exerciseIdentifier: exerciseIdentifier,
@@ -319,6 +354,7 @@ export const _download = (
     stderrBuffer += data.toString() + "[[terminal-line]]";
     // Send error updates to renderer
     logGM("stderr", `download ${exerciseIdentifier}`, data.toString());
+    echo.write(data.toString());
 
     const taskPayload: GitMasteryTaskData = {
       exerciseIdentifier: exerciseIdentifier,
@@ -335,6 +371,8 @@ export const _download = (
   });
 
   childProcess.on("error", (err) => {
+    echo.write(`Could not run GitMastery: ${err.message}`);
+    echo.finish();
     _reportSpawnFailure(
       mainWindow,
       `download ${exerciseIdentifier}`,
@@ -345,6 +383,7 @@ export const _download = (
   });
 
   childProcess.on("close", (code) => {
+    echo.finish();
     // Spawn `error` already reported the failure; `close` still fires with
     // `code === null` and must not send a second completed payload or throw.
     if (settled) return;
@@ -400,6 +439,17 @@ export const _verify = (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
 ) => {
+  sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+    originalCommand: `verify`,
+    data: {
+      exerciseIdentifier,
+      success: {
+        message: "Verifying…",
+        data: { stderr: "", stdout: "" },
+      },
+    },
+  });
+
   const exerciseCwd = resolveReadyExerciseCwd(exerciseIdentifier);
   if (exerciseCwd === null || !isSameDirectory(getCwd(), exerciseCwd)) {
     sendToRenderer(mainWindow, VERIFY_BLOCKED_CHANNEL, { exerciseIdentifier });
@@ -410,21 +460,7 @@ export const _verify = (
     args: ["verify"],
     cwd: exerciseCwd,
   });
-  const taskPayload: GitMasteryTaskData = {
-    exerciseIdentifier: exerciseIdentifier,
-    success: {
-      message: "Verifying…",
-      data: {
-        stderr: "",
-        stdout: "",
-      },
-    },
-  };
-
-  sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-    originalCommand: `verify`,
-    data: taskPayload,
-  });
+  const echo = startCliEcho("gitmastery verify");
 
   let stdoutBuffer = "";
   let stderrBuffer = "";
@@ -433,6 +469,7 @@ export const _verify = (
     stdoutBuffer += data.toString() + "[[terminal-line]]";
     // Send progress updates to renderer
     logGM("stdout", `verify`, data.toString());
+    echo.write(data.toString());
 
     const taskPayload: GitMasteryTaskData = {
       exerciseIdentifier: exerciseIdentifier,
@@ -457,6 +494,7 @@ export const _verify = (
     stderrBuffer += data.toString() + "[[terminal-line]]";
     // Send error updates to renderer
     logGM("stderr", `verify`, data.toString());
+    echo.write(data.toString());
 
     const taskPayload: GitMasteryTaskData = {
       exerciseIdentifier: exerciseIdentifier,
@@ -473,10 +511,13 @@ export const _verify = (
   });
 
   childProcess.on("error", (err) => {
+    echo.write(`Could not run GitMastery: ${err.message}`);
+    echo.finish();
     _reportSpawnFailure(mainWindow, "verify", exerciseIdentifier, err);
   });
 
   childProcess.on("close", (code) => {
+    echo.finish();
     logGM("close", `verify`, String(code));
     if (code === 0) {
       // Success
@@ -560,14 +601,22 @@ const _startExercise = async (
   };
 
   if (!isPathSegment(exerciseIdentifier)) {
-    return report({ ok: false, error: "Invalid exercise identifier." });
+    return report({
+      ok: false,
+      exerciseIdentifier,
+      error: "Invalid exercise identifier.",
+    });
   }
 
   let exerciseRoot: string;
   try {
     exerciseRoot = path.join(getExerciseDirectory(), exerciseIdentifier);
   } catch (err) {
-    return report({ ok: false, error: (err as Error).message });
+    return report({
+      ok: false,
+      exerciseIdentifier,
+      error: (err as Error).message,
+    });
   }
 
   const resolved = resolveExerciseCwd(exerciseRoot);
@@ -585,18 +634,18 @@ const _startExercise = async (
     case "not-downloaded": {
       const downloaded = await _download(mainWindow, exerciseIdentifier);
       if (!downloaded) {
-        // The download stream already toasted the CLI/spawn failure; a second
-        // start-exercise-result would stack a generic "could not open folder".
-        return report(
-          { ok: false, error: `Could not download ${exerciseIdentifier}.` },
-          { broadcast: false },
-        );
+        return report({
+          ok: false,
+          exerciseIdentifier,
+          error: `Could not download ${exerciseIdentifier}.`,
+        });
       }
 
       const afterDownload = resolveExerciseCwd(exerciseRoot);
       if (afterDownload.state !== "ready") {
         return report({
           ok: false,
+          exerciseIdentifier,
           error: `Downloaded ${exerciseIdentifier}, but could not find its folder.`,
           needsRestart: true,
         });
@@ -617,6 +666,7 @@ const _startExercise = async (
     case "incomplete":
       return report({
         ok: false,
+        exerciseIdentifier,
         error:
           resolved.state === "corrupt"
             ? `The folder at ${resolved.exerciseRoot} is not a valid exercise.`
@@ -649,6 +699,9 @@ export const startExercise = (
   const inFlight = startingExercises.get(exerciseIdentifier);
   if (inFlight) return inFlight;
 
+  sendToRenderer(mainWindow, START_EXERCISE_STARTED_CHANNEL, {
+    exerciseIdentifier,
+  });
   const started = _startExercise(mainWindow, exerciseIdentifier).finally(() =>
     startingExercises.delete(exerciseIdentifier),
   );

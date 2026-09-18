@@ -68,6 +68,7 @@ function resolveShell(): string {
 
 let ptyProcess: pty.IPty;
 let isPosixShell = true;
+let terminalWindow: BrowserWindow | null = null;
 
 /**
  * Commands issued before the shell exists (e.g. an exercise started while the
@@ -121,6 +122,28 @@ export function writeToPty(data: string) {
   }
 }
 
+function sendToXterm(data: string) {
+  if (terminalWindow && !terminalWindow.isDestroyed()) {
+    terminalWindow.webContents.send("pty-data", data);
+  }
+}
+
+/**
+ * Paints text in the xterm pane without sending it to the shell. CLI spawn
+ * output uses this so INFO lines live in scrollback instead of a toast.
+ */
+export function echoToXterm(text: string) {
+  sendToXterm(text.replace(/\r?\n/g, "\r\n"));
+}
+
+/**
+ * Clears a half-typed line and submits empty Enter so the shell reprints a
+ * prompt below display-only echo (which the PTY never saw).
+ */
+export function reprintPrompt() {
+  writeToPty("\x15\r");
+}
+
 /**
  * Writes a command to the prompt. `\x15` clears anything the user has half-typed,
  * which would otherwise be prepended to it. If the shell has not spawned yet the
@@ -145,6 +168,8 @@ export function changeDirectory(directory: string) {
 
 // This handles the simulated git terminal
 export function setupTerminalIpc(mainWindow: BrowserWindow) {
+  terminalWindow = mainWindow;
+
   // Handle pty spawn request from renderer
 
   ipcMainOn("pty-spawn", ({ cols, rows }: { cols: number; rows: number }) => {
