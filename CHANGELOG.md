@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.0.1...v1.1.0) (2026-09-18)
+
+### Features
+
+* add header nav, Customise UI, and shared theming ([#21](https://github.com/git-mastery/git-mastery-desktop/issues/21)) ([fdb5da1](https://github.com/git-mastery/git-mastery-desktop/commit/fdb5da16d1f3c14b8a8e9092071c524c5c5c7ec6))
+
 ## [1.0.1](https://github.com/git-mastery/git-mastery-desktop/compare/v1.0.0...v1.0.1) (2026-09-14)
 
 ### Bug Fixes
