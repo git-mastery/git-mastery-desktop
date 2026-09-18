@@ -181,7 +181,7 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
     return (
       <div className="flex flex-col gap-3 text-sm text-fg">
         <p>
-          Could not load the GitMastery site options. Check your connection and
+          Could not load the Git-Mastery site options. Check your connection and
           try again.
         </p>
         <div>

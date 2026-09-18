@@ -32,8 +32,6 @@ contextBridge.exposeInMainWorld("electron", {
   selectFolder: () => ipcInvoke("select-folder", null),
 
   // Setup
-  checkGit: () => ipcInvoke("check-git", null),
-  checkGithubCli: () => ipcInvoke("check-github-cli", null),
   downloadGitMasteryApp: () => ipcInvoke("download-gitmastery-app", null),
   getGitMasteryVersion: () => ipcInvoke("get-gitmastery-version", null),
   checkExerciseFolder: () => ipcInvoke("check-exercise-folder", null),
@@ -53,6 +51,8 @@ contextBridge.exposeInMainWorld("electron", {
     ),
   startExercise: (exerciseIdentifier: string) =>
     ipcInvoke("gitmastery-start-exercise", { exerciseIdentifier }),
+  onStartExerciseStarted: (callback: (payload: StartExerciseStarted) => void) =>
+    ipcOn("start-exercise-started", callback),
   onStartExerciseResult: (callback: (result: StartExerciseResult) => void) =>
     ipcOn("start-exercise-result", callback),
   onVerifyBlocked: (callback: (payload: VerifyBlocked) => void) =>

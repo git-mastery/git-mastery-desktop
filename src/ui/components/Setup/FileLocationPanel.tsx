@@ -51,8 +51,8 @@ export const FileLocationPanel = ({
       <div className="flex flex-col gap-2">
         <p>
           Practising Git means working with real files on your computer.
-          GitMastery creates a folder for each exercise, with the starting files
-          already in place.
+          Git-Mastery creates a folder for each exercise, with the starting
+          files already in place.
         </p>
         {locked ? (
           <p>

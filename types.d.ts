@@ -31,8 +31,6 @@ interface Window {
     getDataDirectory: () => Promise<string | null>;
     selectFolder: () => Promise<string | null>;
 
-    checkGit: () => Promise<boolean>;
-    checkGithubCli: () => Promise<boolean>;
     downloadGitMasteryApp: () => Promise<boolean>;
     getGitMasteryVersion: () => Promise<{ version: string; latest?: string }>;
     checkExerciseFolder: () => Promise<ExerciseFolderStatus>;
@@ -50,6 +48,9 @@ interface Window {
     startGitMasteryTask: (command: string) => Promise<boolean>;
     startExercise: (exerciseIdentifier: string) => Promise<StartExerciseResult>;
 
+    onStartExerciseStarted: (
+      callback: (payload: StartExerciseStarted) => void,
+    ) => () => void;
     onStartExerciseResult: (
       callback: (result: StartExerciseResult) => void,
     ) => () => void;
@@ -85,6 +86,7 @@ type IpcHandlerChannelMapping = {
   "set-data-directory": { directory: string };
 
   "gitmastery-task-data": { originalCommand: string; data: GitMasteryTaskData };
+  "start-exercise-started": StartExerciseStarted;
   "start-exercise-result": StartExerciseResult;
   "verify-blocked": VerifyBlocked;
 
@@ -108,8 +110,6 @@ type IpcInvokeChannelMapping = {
   "get-data-directory": IIpcInvoke<null, string | null>;
 
   // setup
-  "check-git": IIpcInvoke<null, boolean>;
-  "check-github-cli": IIpcInvoke<null, boolean>;
   "download-gitmastery-app": IIpcInvoke<null, boolean>;
   "get-gitmastery-version": IIpcInvoke<
     null,
@@ -157,6 +157,11 @@ type SiteViewPrefs = {
   tabNavsVisible: boolean;
   /** Shared Light / Dark / System preference for chrome and MarkBind. */
   theme?: SitePageTheme;
+};
+
+/** Start was clicked; the renderer shows a loading toast until the result. */
+type StartExerciseStarted = {
+  exerciseIdentifier: string;
 };
 
 /** Outcome of moving the terminal into an exercise's working directory. */

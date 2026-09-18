@@ -1,6 +1,6 @@
 # Git-Mastery Desktop
 
-Companion app for [git-mastery.org](https://git-mastery.org). Electron-based, cross-platform client for [GitMastery](https://github.com/git-mastery).
+Companion app for [git-mastery.org](https://git-mastery.org). Electron-based, cross-platform client for [Git-Mastery](https://github.com/git-mastery).
 
 Linux support is still in development.
 

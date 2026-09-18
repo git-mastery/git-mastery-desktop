@@ -16,14 +16,6 @@ import fs from "fs";
 const execAsync = promisify(exec);
 
 export const setupPrereqIpc = () => {
-  ipcMainHandle("check-git", async () => {
-    return await checkGit();
-  });
-
-  ipcMainHandle("check-github-cli", async () => {
-    return await checkGithubCli();
-  });
-
   ipcMainHandle("download-gitmastery-app", async () => {
     try {
       await downloadGitMasteryApp();
@@ -75,30 +67,6 @@ export const setupPrereqIpc = () => {
     shell.openExternal(url);
   });
 };
-
-// simply spawn a terminal and check that the git command is available
-async function checkGit(): Promise<boolean> {
-  try {
-    // If git is found, this command will succeed.
-    await execAsync("git --version", { env: getEnvironmentWithHomebrew() });
-    return true;
-  } catch (error) {
-    console.error("[checkGit] Git not found:", error);
-    return false;
-  }
-}
-
-// simply spawn a terminal and check that the gh command is available
-async function checkGithubCli(): Promise<boolean> {
-  try {
-    // If GitHub CLI is found, this command will succeed.
-    await execAsync("gh --version", { env: getEnvironmentWithHomebrew() });
-    return true;
-  } catch (error) {
-    console.error("[checkGithubCli] GitHub CLI not found:", error);
-    return false;
-  }
-}
 
 async function downloadGitMasteryApp() {
   const exeLocation = getGitMasteryExecutable();

@@ -1,5 +1,6 @@
 {
   "appId": "com.nus.gitmastery",
+  "productName": "Git-Mastery",
   "directories": {
     "buildResources": "resources"
   },
