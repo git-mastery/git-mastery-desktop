@@ -1,4 +1,9 @@
-import { WebContentsView, BrowserWindow, screen } from "electron";
+import {
+  WebContentsView,
+  BrowserWindow,
+  screen,
+  type WebContents,
+} from "electron";
 import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
 import { getWcvPreloadPath } from "../pathResolver.js";
 import { startExercise, _verify } from "./gitmastery.js";
@@ -120,6 +125,39 @@ function normalizePathname(pathname: string) {
   return pathname.replace(/\/index\.html$/, "/").replace(/\/+$/, "") || "/";
 }
 
+/**
+ * Electron's default UA is `… git-mastery/1.1.0 Chrome/… Electron/41 …`.
+ * YouTube treats that as a bot; a Chrome-like UA is the same string without
+ * those two tokens.
+ */
+function toChromeUserAgent(userAgent: string): string {
+  return userAgent
+    .replace(/\sElectron\/\S+/g, "")
+    .replace(/\s[^\s/]+\/[^\s]+(?=\sChrome\/)/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function applyChromeUserAgent(contents: WebContents) {
+  contents.setUserAgent(toChromeUserAgent(contents.getUserAgent()));
+}
+
+/**
+ * YouTube/Google sign-in uses window.open. Default Electron popups keep the
+ * Electron UA unless we create them and override it before they navigate.
+ */
+function allowPopupsWithChromeUserAgent(contents: WebContents) {
+  contents.setWindowOpenHandler(() => ({
+    action: "allow",
+    createWindow: (options) => {
+      const popup = new BrowserWindow(options);
+      applyChromeUserAgent(popup.webContents);
+      allowPopupsWithChromeUserAgent(popup.webContents);
+      return popup.webContents;
+    },
+  }));
+}
+
 /** Hash-only navigations on the same lesson must not loadURL (that hides the view). */
 function isSameDocumentHashChange(currentUrl: string, targetUrl: string) {
   try {
@@ -144,6 +182,8 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
         preload: getWcvPreloadPath(),
       },
     });
+    applyChromeUserAgent(wcv.webContents);
+    allowPopupsWithChromeUserAgent(wcv.webContents);
 
     mainWindow.contentView.addChildView(wcv);
     wcv.setBackgroundColor(THEME_BACKGROUND[getAppliedResolvedTheme()]);
