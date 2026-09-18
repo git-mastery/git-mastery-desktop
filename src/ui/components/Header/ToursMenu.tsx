@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import {
   IconChevronDown,
-  IconLayoutSidebar,
-  IconLayoutSidebarLeftCollapse,
+  IconChevronLeft,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import type { Exercise } from "../../../types/Exercise";
 import type { Lesson, Tour, TourData } from "../../../types/Tour";
@@ -18,7 +18,6 @@ import {
 import { useCustomQuery } from "../../hooks/query/useCustomQuery";
 import { useExercises } from "../../hooks/query/useExercises";
 import { useHandsOn, type HandsOn } from "../../hooks/query/useHandsOn";
-import { IconButton } from "../ui/IconButton";
 import { StatusPill } from "../ui/StatusPill";
 import {
   formatExerciseTitle,
@@ -35,17 +34,15 @@ export const LessonsPanelToggle = ({
   onToggle: () => void;
 }) => {
   return (
-    <IconButton
-      size="sm"
-      aria-label={opened ? "Close lessons panel" : "Open lessons panel"}
+    <button
+      type="button"
+      aria-label={opened ? "Close tours" : "Open tours"}
       onClick={onToggle}
+      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] text-muted hover:cursor-pointer focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
     >
-      {opened ? (
-        <IconLayoutSidebarLeftCollapse size={16} />
-      ) : (
-        <IconLayoutSidebar size={16} />
-      )}
-    </IconButton>
+      {opened ? <IconChevronLeft size={16} /> : <IconChevronRight size={16} />}
+      Tours
+    </button>
   );
 };
 
@@ -93,10 +90,7 @@ export const ToursPanel = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <div className="flex h-full flex-col bg-surface">
-      <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2">
-        <span className="px-2 text-[11px] font-medium tracking-[0.06em] text-faint uppercase">
-          Tours
-        </span>
+      <div className="flex h-9 shrink-0 items-center border-b border-border px-2">
         <LessonsPanelToggle opened onToggle={onClose} />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
