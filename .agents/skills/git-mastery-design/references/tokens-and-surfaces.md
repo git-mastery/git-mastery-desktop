@@ -29,8 +29,9 @@ semantic token exists.
 | Accent soft hover | `#e1f4e8`              | `#264a40`                 | Soft icon hover                       |
 | Accent border     | `#c8ead4`              | `#4ab98a`                 | Success pill / mint panel border      |
 | Focus ring        | `#e1f4e8`              | `rgb(117 183 152 / 0.35)` | Control focus                         |
+| Terminal          | `#f1f3f4`              | `#1a1d20`                 | xterm pane — slightly off surface     |
 
-Tailwind: `bg-canvas`, `bg-surface`, `bg-subtle`, `bg-hover`, `text-fg`, `text-muted`, `text-faint`, `border-border`, `bg-overlay`, `text-accent`, `bg-accent-soft`, `border-accent-border`, `ring-focus-ring`.
+Tailwind: `bg-canvas`, `bg-surface`, `bg-subtle`, `bg-hover`, `bg-terminal`, `text-fg`, `text-muted`, `text-faint`, `border-border`, `bg-overlay`, `text-accent`, `bg-accent-soft`, `border-accent-border`, `ring-focus-ring`.
 
 Dark chrome values match git-mastery.org’s Bootstrap 5.3 / MarkBind theme (`[data-bs-theme=dark]`): page/card `#212529`, text `#dee2e6`, muted `#c2c8ce` (site `.dimmed`), border `#495057`, green accents `#75b798` / `#4ab98a`, mint panel `#1f3932`.
 
@@ -210,7 +211,7 @@ Top-right stack; `bg-surface` + `shadow-card`; semantic left border or icon (bra
 
 ### Terminal pane
 
-Black background, monospace, flush to the window edge. Not a theme surface — do not derive dark-mode tokens from it, and do not restyle xterm when the app theme changes.
+Flush to the window edge, monospace xterm. Background is a half-step off chrome so the pane reads as a terminal: `#f1f3f4` light (off-white grey, still light), `#1a1d20` dark (slightly darker than surface `#212529`). Default text still uses `fg`. Set `term.options.theme` when the resolved theme changes — do not recreate the terminal (that respawns the pty). ANSI green / red / yellow / cyan use the same semantic hues as chrome; leave other ANSI slots at xterm defaults. Command output is not restyled as pills or buttons. The wrapper is `bg-terminal`; keep that hex in sync with the xterm `ITheme` background.
 
 ### Canvas
 

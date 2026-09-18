@@ -52,7 +52,7 @@ export const FileLocationPanel = ({
         <p>
           Practising Git means working with real files on your computer.
           GitMastery creates a folder for each exercise, with the starting files
-          already set up for you.
+          already in place.
         </p>
         {locked ? (
           <p>
@@ -61,9 +61,8 @@ export const FileLocationPanel = ({
           </p>
         ) : (
           <p>
-            Pick a folder to keep them in — somewhere you can find easily, like
-            your Documents or Desktop. Once the exercise folder is created, this
-            location cannot be changed.
+            Pick a folder you will remember (Documents or Desktop). After the
+            exercise folder is created, you cannot move it.
           </p>
         )}
       </div>

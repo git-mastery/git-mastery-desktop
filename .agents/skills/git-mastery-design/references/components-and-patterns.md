@@ -26,7 +26,7 @@ Build screens from these composable pieces:
 | `EmptyState`                     | Centered muted icon + title + hint                   |
 | `LoadingState` / `ErrorState`    | Centered spinner or failure copy                     |
 | `ResizeHandle`                   | 6px col-resize strip on a pane edge                  |
-| `TerminalPane`                   | Black full-bleed xterm surface                       |
+| `TerminalPane`                   | Full-bleed xterm; `bg-terminal` half-step off chrome |
 | `NativeViewSlot`                 | Empty bounds placeholder for the native web view     |
 
 ---
@@ -316,7 +316,7 @@ Copy and verify before shipping:
 - [ ] Empty, loading, and error states are visually and verbally distinct
 - [ ] No blue accents, purple gradients, glow stacks, or font swaps
 - [ ] Theme via semantic tokens (`data-theme` on `<html>`), not `dark:` variants or one-off hex
-- [ ] Terminal pane stays black — do not restyle xterm from the app theme
+- [ ] Terminal uses `bg-terminal` and matching xterm `ITheme` hex; do not dispose the Terminal to restyle it
 
 ---
 

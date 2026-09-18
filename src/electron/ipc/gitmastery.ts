@@ -201,7 +201,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
         const taskPayload: GitMasteryTaskData = {
           completed: {
             status: "success",
-            message: "Setup completed successfully",
+            message: "Setup finished",
           },
         };
         sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
@@ -214,7 +214,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
         const taskPayload: GitMasteryTaskData = {
           completed: {
             status: "failure",
-            message: stderrBuffer || "Setup failed! Please try again",
+            message: stderrBuffer || "Setup failed. Try again.",
             stdout: stdoutBuffer,
             stderr: stderrBuffer,
           },
@@ -276,7 +276,7 @@ export const _download = (
   const taskPayload: GitMasteryTaskData = {
     exerciseIdentifier: exerciseIdentifier,
     success: {
-      message: "Download starting...",
+      message: "Downloading…",
       data: {
         stderr: "",
         stdout: "",
@@ -356,7 +356,7 @@ export const _download = (
 
           completed: {
             status: "success",
-            message: "Download completed successfully",
+            message: "Download finished",
           },
         };
         sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
@@ -373,7 +373,7 @@ export const _download = (
             status: "failure",
             message:
               stderrBuffer ||
-              "Download failed! Please ensure GitMastery is set up properly",
+              "Download failed. Finish setup in Settings, then try again.",
             stdout: stdoutBuffer,
             stderr: stderrBuffer,
           },
@@ -413,7 +413,7 @@ export const _verify = (
   const taskPayload: GitMasteryTaskData = {
     exerciseIdentifier: exerciseIdentifier,
     success: {
-      message: "Checking correctness...",
+      message: "Verifying…",
       data: {
         stderr: "",
         stdout: "",
@@ -490,7 +490,7 @@ export const _verify = (
 
         completed: {
           status: "success",
-          message: "Verify completed successfully",
+          message: "Verify finished",
           stdout: stdoutBuffer,
           stderr: stderrBuffer,
 
@@ -520,7 +520,7 @@ export const _verify = (
 
         completed: {
           status: "failure",
-          message: stderrBuffer || "Verify failed! Please try again",
+          message: stderrBuffer || "Verify failed. Try again.",
           stdout: stdoutBuffer,
           stderr: stderrBuffer,
         },
