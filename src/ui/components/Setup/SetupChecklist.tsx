@@ -81,7 +81,7 @@ export const SetupChecklist = ({
       {
         key: "git",
         label: "Git",
-        description: "The version control system the exercises are built on.",
+        description: "Version control for the exercises.",
         check: async () => {
           const installed = await window.electron.checkGit();
           return {
@@ -94,7 +94,7 @@ export const SetupChecklist = ({
       {
         key: "github-cli",
         label: "GitHub CLI",
-        description: "Lets exercises interact with your GitHub account.",
+        description: "GitHub sign-in for exercises that need it.",
         check: async () => {
           const installed = await window.electron.checkGithubCli();
           return {
@@ -110,7 +110,7 @@ export const SetupChecklist = ({
       {
         key: "gitmastery-cli",
         label: "GitMastery CLI",
-        description: "Downloads exercises and checks your solutions.",
+        description: "Downloads exercises and runs verify.",
         check: async () => {
           const { version, latest } =
             await window.electron.getGitMasteryVersion();
@@ -202,9 +202,8 @@ export const SetupChecklist = ({
   return (
     <div className="flex flex-col gap-2 text-sm text-fg">
       <p>
-        GitMastery runs real Git commands on your machine, so it needs these
-        tools installed. An item marked with a cross was not detected on your
-        machine — use its download button, then check that item again.
+        GitMastery runs Git on your machine. Install anything marked with a
+        cross, then use Check again.
       </p>
 
       <div className="mt-2 flex flex-col">

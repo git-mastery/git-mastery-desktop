@@ -47,6 +47,7 @@
   --color-info-border: var(--gm-info-border);
   --color-tooltip: var(--gm-tooltip);
   --color-tooltip-fg: var(--gm-tooltip-fg);
+  --color-terminal: var(--gm-terminal);
 
   --shadow-card: var(--gm-shadow-card);
 }
@@ -79,6 +80,7 @@
   --gm-info-border: #bae6fd;
   --gm-tooltip: #171717;
   --gm-tooltip-fg: #ffffff;
+  --gm-terminal: #f1f3f4;
   --gm-shadow-card:
     0 1px 2px rgb(23 23 23 / 0.04), 0 1px 3px rgb(23 23 23 / 0.06);
 
@@ -116,6 +118,7 @@ html[data-theme="dark"] {
   --gm-info-border: #087990;
   --gm-tooltip: #dee2e6;
   --gm-tooltip-fg: #212529;
+  --gm-terminal: #1a1d20;
   --gm-shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
   color-scheme: dark;
 }

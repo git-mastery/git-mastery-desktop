@@ -49,7 +49,7 @@ House design language for Git-Mastery Desktop: semantic light/dark surfaces, one
 6. **Semantic color is never the only signal.** Pair color with text, icons, or `aria-label` on status dots and pills.
 7. **One solid primary per action cluster.** Everything else is secondary, outline, or ghost.
 8. **The native view wins.** Anything painted by `WebContentsView` sits above all DOM — design around it rather than over it (see [`references/components-and-patterns.md`](references/components-and-patterns.md) § Native view constraints).
-9. **One theme preference.** Light / Dark / System applies to desktop chrome and the embedded lesson pages. Reach for semantic tokens (`bg-surface`, `text-fg`), not `dark:` class variants or one-off hex.
+9. **One theme preference.** Light / Dark / System applies to desktop chrome, the embedded lesson pages, and the xterm pane. Reach for semantic tokens (`bg-surface`, `text-fg`), not `dark:` class variants or one-off hex.
 
 ## Shell modes
 
@@ -107,7 +107,7 @@ Tailwind v4 matters: custom colors, fonts, and shadows are declared as CSS varia
 - Random font swaps (Roboto-only shells, monospace UI bodies).
 - Heavy drop shadows on content cards.
 - DOM overlays, blur, or z-index tricks layered over the native view region — they will not render.
-- `dark:` class variants or one-off hex when a semantic token exists. The terminal pane stays black on purpose — do not restyle xterm from the app theme.
+- `dark:` class variants or one-off hex when a semantic token exists. xterm uses `bg-terminal` / matching `ITheme` hex — a half-step off surface, not a separate palette.
 
 ## Accessibility & copy
 

@@ -101,7 +101,7 @@ export const WebsiteWrapper = () => {
         id="webcontentsview-placeholder"
         className="flex h-full w-full grow items-center justify-center"
       >
-        {isLoading && <LoadingState message="Loading..." />}
+        {isLoading && <LoadingState message="Loading…" />}
       </div>
     </div>
   );

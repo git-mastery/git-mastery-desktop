@@ -181,7 +181,7 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
     return (
       <div className="flex flex-col gap-3 text-sm text-fg">
         <p>
-          Could not load the Git-Mastery site options. Check your connection and
+          Could not load the GitMastery site options. Check your connection and
           try again.
         </p>
         <div>
@@ -214,10 +214,7 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
 
   return (
     <div className="flex max-h-[min(70vh,36rem)] flex-col gap-6 overflow-y-auto text-sm text-fg">
-      <p>
-        Colour for the desktop app and the lesson pages. The terminal stays
-        dark.
-      </p>
+      <p>Colour for the desktop app, the lesson pages, and the terminal.</p>
 
       <div className="flex flex-col gap-1.5">
         <span className={FIELD_LABEL}>Colour</span>

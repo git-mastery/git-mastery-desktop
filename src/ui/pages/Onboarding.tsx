@@ -41,7 +41,7 @@ export const Onboarding = ({
               className="h-12 w-12 shrink-0"
             />
             <h1 className="font-heading text-[1.2rem]/[1.4] font-semibold text-fg">
-              Welcome to GitMastery
+              Set up GitMastery
             </h1>
           </div>
 
@@ -60,8 +60,8 @@ export const Onboarding = ({
             <div className="flex flex-col gap-3">
               <SetupChecklist onReadyChange={setToolsReady} />
               <p className="text-[13px] text-muted">
-                You can leave anything unfinished and come back to it from
-                Settings at any time.
+                You can skip anything unfinished and finish it later in
+                Settings.
               </p>
             </div>
           )}
@@ -69,7 +69,7 @@ export const Onboarding = ({
           <div className="flex justify-end">
             {step === 0 ? (
               <Tooltip
-                label="Choose where exercise files should be saved to continue."
+                label="Pick a save location first."
                 disabled={Boolean(folder)}
                 width={280}
               >
@@ -79,13 +79,11 @@ export const Onboarding = ({
               </Tooltip>
             ) : (
               <Tooltip
-                label="Some required tools were not detected yet. You can come back anytime via Settings to finish installing them."
+                label="Some tools are missing. You can finish setup later in Settings."
                 disabled={toolsReady}
                 width={280}
               >
-                <Button onClick={onCompleteOnboarding}>
-                  Start using GitMastery
-                </Button>
+                <Button onClick={onCompleteOnboarding}>Finish</Button>
               </Tooltip>
             )}
           </div>

@@ -54,13 +54,15 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         ? handsOn
           ? formatHandsOnTitle(result.exerciseIdentifier)
           : formatExerciseIdentifier(result.exerciseIdentifier)
-        : handsOn
-          ? "the hands-on"
-          : "the exercise";
+        : null;
       showToast({
         title: handsOn
-          ? `You are now attempting hands-on ${name}`
-          : `You are now attempting exercise ${name}`,
+          ? name
+            ? `Hands-on: ${name}`
+            : "Hands-on"
+          : name
+            ? `Exercise: ${name}`
+            : "Exercise",
         tone: "info",
         icon: <IconInfoCircle size={18} className="text-info" />,
       });
@@ -134,7 +136,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       showToast({
         id,
         title: "Verifying",
-        message: "Verifying...",
+        message: "Verifying…",
         loading: true,
         autoClose: false,
         withCloseButton: false,
@@ -154,13 +156,14 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       comments?: string;
     };
 
-    const commentLine = comments?.trim() ? `\n${comments.trim()}` : "";
+    const commentsBody = comments?.trim() ?? "";
+    const commentLine = commentsBody ? `\n${commentsBody}` : "";
 
     if (correct) {
       settleVerifyNotification({
         id: verifyNotificationId(data),
-        title: "Exercise completed successfully!",
-        message: `You successfully completed the exercise!${commentLine}`,
+        title: "Exercise complete",
+        message: commentsBody,
         loading: false,
         tone: "success",
         autoClose: 5000,
@@ -170,7 +173,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       settleVerifyNotification({
         id: verifyNotificationId(data),
         title: "Exercise solution incorrect",
-        message: `Your solution is not correct yet. Keep going and verify again when you are ready.${commentLine}`,
+        message: `Not correct yet. Fix it and run verify again.${commentLine}`,
         loading: false,
         tone: "danger",
         withCloseButton: true,
@@ -178,7 +181,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     } else {
       settleVerifyNotification({
         id: verifyNotificationId(data),
-        title: "Verification complete.",
+        title: "Verification complete",
         message: "",
         loading: false,
         tone: "success",
@@ -208,7 +211,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     settleVerifyNotification({
       id: verifyNotificationId(data),
       title: "Verification failed",
-      message: data.completed?.message ?? "Please try again",
+      message: data.completed?.message ?? "Try again",
       loading: false,
       tone: "danger",
       withCloseButton: true,

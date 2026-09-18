@@ -28,7 +28,7 @@ export const DownloadExerciseListener = () => {
         showToast({
           id: originalCommand,
           title: "Downloading",
-          message: "Downloading...",
+          message: "",
           loading: true,
           autoClose: false,
           withCloseButton: false,
