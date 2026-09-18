@@ -1,3 +1,14 @@
+## [1.2.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.1.0...v1.2.0) (2026-09-18)
+
+### Features
+
+* add site nav, shared theming, and tighter UI copy ([#22](https://github.com/git-mastery/git-mastery-desktop/issues/22)) ([4ad3e01](https://github.com/git-mastery/git-mastery-desktop/commit/4ad3e01222a35ff68d236cf333586654bac59db4))
+* persist CLI output in the terminal ([#23](https://github.com/git-mastery/git-mastery-desktop/issues/23)) ([401b779](https://github.com/git-mastery/git-mastery-desktop/commit/401b7790098523505ba92db05c44d4f28b24106d))
+
+### Bug Fixes
+
+* send a Chrome user agent so YouTube lesson embeds can play ([#24](https://github.com/git-mastery/git-mastery-desktop/issues/24)) ([4a49d03](https://github.com/git-mastery/git-mastery-desktop/commit/4a49d039e30682024bac002d1a9df7d0490cde39))
+
 ## [1.1.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.0.1...v1.1.0) (2026-09-18)
 
 ### Features
