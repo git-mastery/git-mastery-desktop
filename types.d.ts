@@ -32,7 +32,11 @@ interface Window {
     selectFolder: () => Promise<string | null>;
 
     downloadGitMasteryApp: () => Promise<boolean>;
-    getGitMasteryVersion: () => Promise<{ version: string; latest?: string }>;
+    getGitMasteryVersion: () => Promise<{
+      version: string;
+      latest?: string;
+      path?: string;
+    }>;
     checkExerciseFolder: () => Promise<ExerciseFolderStatus>;
 
     // for retrieving config settings of the backend (electron app)
@@ -113,7 +117,7 @@ type IpcInvokeChannelMapping = {
   "download-gitmastery-app": IIpcInvoke<null, boolean>;
   "get-gitmastery-version": IIpcInvoke<
     null,
-    { version: string; latest?: string }
+    { version: string; latest?: string; path?: string }
   >;
 
   "check-exercise-folder": IIpcInvoke<null, ExerciseFolderStatus>;

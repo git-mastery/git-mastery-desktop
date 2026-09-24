@@ -1,19 +1,17 @@
 import { shell } from "electron";
 import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
-import { exec, execFile } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import {
-  getGitMasteryExecutable,
-  getEnvironmentWithHomebrew,
+  getCliEnvironment,
+  resolveGitMasteryBinary,
 } from "../utils/cli/getters.js";
 import { getConfig } from "../storage.js";
 import { logGM } from "../utils/logger.js";
-import { downloadGitMasteryExe } from "../utils/win32/downloadExe.js";
+import { downloadReleaseAsset } from "../utils/cli/downloadReleaseAsset.js";
 import { downloadApp as downloadAppDarwin } from "../utils/darwin/downloadApp.js";
-import { downloadApp as downloadAppLinux } from "../utils/linux/downloadApp.js";
 import fs from "fs";
 
-const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
 export const setupPrereqIpc = () => {
@@ -27,38 +25,17 @@ export const setupPrereqIpc = () => {
   });
 
   // empty string --> not downloaded
-  //
   ipcMainHandle("get-gitmastery-version", async () => {
-    console.log("getgitmasteryversion");
-    // windows
-    if (process.platform === "win32") {
-      const exeLocation = getGitMasteryExecutable();
-      const exists = fs.existsSync(exeLocation);
-      if (!exists) return { version: "" };
-      const { stdout } = await execFileAsync(exeLocation, ["version"]);
-      return parseOutput(stdout);
+    const binary = resolveGitMasteryBinary();
+    if (!binary) return { version: "" };
+    try {
+      const { stdout } = await execFileAsync(binary, ["version"], {
+        env: getCliEnvironment(),
+      });
+      return { ...parseOutput(stdout), path: binary };
+    } catch {
+      return { version: "" };
     }
-    // mac
-    if (process.platform === "darwin") {
-      // gitmastery may not be installed yet — treat a missing command as version ""
-      try {
-        const { stdout } = await execAsync("gitmastery version", {
-          env: getEnvironmentWithHomebrew(),
-        });
-        return parseOutput(stdout);
-      } catch {
-        return { version: "" };
-      }
-    }
-    if (process.platform === "linux") {
-      const binaryLocation = getGitMasteryExecutable();
-      const exists = fs.existsSync(binaryLocation);
-      if (!exists) return { version: "" };
-      const { stdout } = await execFileAsync(binaryLocation, ["version"]);
-      return parseOutput(stdout);
-    }
-
-    return { version: "" };
   });
 
   // Open a URL in the system's default browser.
@@ -69,43 +46,46 @@ export const setupPrereqIpc = () => {
 };
 
 async function downloadGitMasteryApp() {
-  const exeLocation = getGitMasteryExecutable();
   const dataDirectory = getConfig().dataDirectory;
 
-  console.log({ exeLocation, dataDirectory });
-
-  // 1. Check if the data directory exists
   if (!dataDirectory || !fs.existsSync(dataDirectory)) {
     throw new Error(
       "Exercise directory not found - maybe you haven't chosen a save directory yet?",
     );
   }
 
-  // 2a. Check if the exe exists (windows only) — auto-download if missing
-  if (
-    process.platform === "win32"
-    //  && !fs.existsSync(exeLocation)
-  ) {
+  if (process.platform === "win32") {
     logGM("download", "exe", "Downloading gitmastery.exe from Github...");
-    await downloadGitMasteryExe(dataDirectory);
+    await downloadReleaseAsset(dataDirectory, {
+      pickAsset: (assets) => assets.find((a) => a.name === "gitmastery.exe"),
+      fileName: "gitmastery.exe",
+    });
     logGM("download", "exe", "Download complete.");
   }
 
-  // 2b. Install via Homebrew (macOS only)
   if (process.platform === "darwin") {
     logGM("download", "darwin", "Installing gitmastery via Homebrew...");
     await downloadAppDarwin();
     logGM("download", "darwin", "Done.");
   }
 
-  // 2c. Download binary from GitHub releases (Linux only)
   if (process.platform === "linux") {
+    const linuxArch = process.arch === "arm64" ? "arm64" : "amd64";
     logGM(
       "download",
       "linux",
       "Downloading gitmastery binary from GitHub releases...",
     );
-    await downloadAppLinux(dataDirectory);
+    await downloadReleaseAsset(dataDirectory, {
+      pickAsset: (assets) =>
+        assets.find((a) =>
+          new RegExp(`^gitmastery-\\d+\\.\\d+\\.\\d+-linux-${linuxArch}$`).test(
+            a.name,
+          ),
+        ),
+      fileName: "gitmastery",
+      executable: true,
+    });
     logGM("download", "linux", "Done.");
   }
 }

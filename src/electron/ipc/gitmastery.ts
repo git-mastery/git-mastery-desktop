@@ -6,9 +6,10 @@ import { ipcMainHandle } from "../utils/util.js";
 import { getConfig } from "../storage.js";
 import { logGM } from "../utils/logger.js";
 import {
-  getEnvironmentWithHomebrew,
+  CLI_BINARY,
+  getCliEnvironment,
   getExerciseDirectory,
-  getGitMasteryExecutable,
+  resolveGitMasteryBinary,
 } from "../utils/cli/getters.js";
 import { patchExerciseProgress } from "../exerciseProgress.js";
 import {
@@ -67,9 +68,9 @@ const _spawnChildProcess = ({
   args: string[];
   cwd?: string;
 }) => {
-  return spawn(getGitMasteryExecutable(), args, {
+  return spawn(resolveGitMasteryBinary() ?? CLI_BINARY, args, {
     cwd,
-    env: getEnvironmentWithHomebrew(),
+    env: getCliEnvironment(),
   });
 };
 
@@ -99,18 +100,27 @@ const startCliEcho = (commandLabel: string) => {
  * folder gone) as a task failure. Without an `error` listener Node throws this
  * as an uncaught exception and `close` never fires.
  */
+const spawnFailureMessage = (err: Error) => {
+  const code = (err as NodeJS.ErrnoException).code;
+  if (code === "ENOENT") {
+    return "Git-Mastery CLI not found. Install it from Settings, or restart the app if you just installed it yourself.";
+  }
+  return `Could not run Git-Mastery: ${err.message}`;
+};
+
 const _reportSpawnFailure = (
   mainWindow: BrowserWindow,
   originalCommand: string,
   exerciseIdentifier: string | undefined,
   err: Error,
 ) => {
-  logGM("close", originalCommand, err.message);
+  const message = spawnFailureMessage(err);
+  logGM("close", originalCommand, message);
   const taskPayload: GitMasteryTaskData = {
     exerciseIdentifier,
     completed: {
       status: "failure",
-      message: `Could not run Git-Mastery: ${err.message}`,
+      message,
     },
   };
   sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
@@ -120,10 +130,7 @@ const _reportSpawnFailure = (
 };
 
 const _setup = async (mainWindow: BrowserWindow) => {
-  const exeLocation = getGitMasteryExecutable();
   const dataDirectory = getConfig().dataDirectory;
-
-  console.log({ exeLocation, dataDirectory });
 
   // 1. Check if the data directory exists.
   // Reported as a failed task rather than thrown, so the renderer settles the
@@ -143,18 +150,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
     return;
   }
 
-  // 2a. Check if the exe exists (windows only) — auto-download if missing
-  // if (process.platform === "win32" && !fs.existsSync(exeLocation)) {
-
-  //   logGM('download', 'exe', 'gitmastery.exe not found — downloading latest release...');
-  //   await downloadGitMasteryExe(dataDirectory);
-  //   logGM('download', 'exe', 'Download complete.');
-  // }
-
-  // 2b. Check if gitmastery is installed using brew (Mac only)
-  // TODO
-
-  // 3. Check if the exercises folder is created
+  // 2. Check if the exercises folder is created
   const exerciseDirectory = path.join(dataDirectory, "gitmastery-exercises");
   if (!fs.existsSync(exerciseDirectory)) {
     // run setup process
@@ -220,7 +216,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
     });
 
     childProcess.on("error", (err) => {
-      echo.write(`Could not run Git-Mastery: ${err.message}`);
+      echo.write(spawnFailureMessage(err));
       echo.finish();
       _reportSpawnFailure(mainWindow, "setup", undefined, err);
     });
@@ -371,7 +367,7 @@ export const _download = (
   });
 
   childProcess.on("error", (err) => {
-    echo.write(`Could not run Git-Mastery: ${err.message}`);
+    echo.write(spawnFailureMessage(err));
     echo.finish();
     _reportSpawnFailure(
       mainWindow,
@@ -511,7 +507,7 @@ export const _verify = (
   });
 
   childProcess.on("error", (err) => {
-    echo.write(`Could not run Git-Mastery: ${err.message}`);
+    echo.write(spawnFailureMessage(err));
     echo.finish();
     _reportSpawnFailure(mainWindow, "verify", exerciseIdentifier, err);
   });

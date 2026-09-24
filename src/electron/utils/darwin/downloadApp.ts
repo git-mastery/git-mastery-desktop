@@ -1,7 +1,7 @@
 import { exec } from "child_process";
 import { promisify } from "util";
 import { logGM } from "../logger.js";
-import { getEnvironmentWithHomebrew } from "../cli/getters.js";
+import { getCliEnvironment } from "../cli/getters.js";
 
 const execAsync = promisify(exec);
 
@@ -13,7 +13,7 @@ const execAsync = promisify(exec);
  * gitmastery is already present. Throws if Homebrew itself is not installed.
  */
 export const downloadApp = async (): Promise<void> => {
-  const env = getEnvironmentWithHomebrew();
+  const env = getCliEnvironment();
 
   // Verify Homebrew is available before attempting anything.
   try {

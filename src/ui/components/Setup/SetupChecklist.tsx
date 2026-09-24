@@ -80,17 +80,24 @@ export const SetupChecklist = ({
         label: "Git-Mastery CLI",
         description: "Downloads exercises and runs verify.",
         check: async () => {
-          const { version, latest } =
-            await window.electron.getGitMasteryVersion();
+          const {
+            version,
+            latest,
+            path: binaryPath,
+          } = await window.electron.getGitMasteryVersion();
           if (!version) {
-            return { ok: false, detail: "Not downloaded yet" };
+            return {
+              ok: false,
+              detail: "Not found. If you just installed it, restart the app.",
+            };
           }
+          const location = binaryPath ? ` — ${binaryPath}` : "";
           return {
             ok: true,
             detail:
               latest && latest !== version
-                ? `Version ${version} installed, ${latest} available`
-                : `Version ${version}`,
+                ? `Version ${version} installed, ${latest} available${location}`
+                : `Version ${version}${location}`,
           };
         },
         install: {
