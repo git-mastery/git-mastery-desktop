@@ -12,7 +12,9 @@
     "target": ["portable", "msi"]
   },
   "linux": {
-    "target": ["AppImage", "deb"]
+    "target": ["AppImage", "deb"],
+    "maintainer": "jia xin <jjiiaaxxiinn@gmail.com>",
+    "category": "Development"
   },
   "mac": {
     "target": "dmg"

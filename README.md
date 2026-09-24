@@ -2,8 +2,6 @@
 
 Companion app for [git-mastery.org](https://git-mastery.org). Electron-based, cross-platform client for [Git-Mastery](https://github.com/git-mastery).
 
-Linux support is still in development.
-
 ## Download
 
 Grab the latest release from [GitHub Releases](https://github.com/git-mastery/git-mastery-desktop/releases).
@@ -18,7 +16,7 @@ xattr -rc /Applications/git-mastery.app
 
 Without this, macOS reports that the app can't be opened.
 
-**Linux:** not officially supported.
+**Linux (x64):** run the `.AppImage`, or install the `.deb`.
 
 ## Development
 
@@ -35,11 +33,12 @@ npm run dev
 
 Builds take a while. The Dock / installer / `.exe` icon is `resources/icon.png` — see [packaging.md](docs/development/packaging.md).
 
-| Platform | Command              | Output                                                                                |
-| -------- | -------------------- | ------------------------------------------------------------------------------------- |
-| Windows  | `npm run dist:win`   | `dist/git-mastery-{version}-win-x64.exe` and `dist/git-mastery-{version}-win-x64.msi` |
-| macOS    | `npm run dist:mac`   | `dist/git-mastery-{version}-mac-arm64.dmg`                                            |
-| Linux    | `npm run dist:linux` | AppImage / dist artifacts (unsupported)                                               |
+| Platform    | Command                | Output                                                                                         |
+| ----------- | ---------------------- | ---------------------------------------------------------------------------------------------- |
+| Windows     | `npm run dist:win`     | `dist/git-mastery-{version}-win-x64.exe` and `dist/git-mastery-{version}-win-x64.msi`          |
+| macOS arm64 | `npm run dist:mac`     | `dist/git-mastery-{version}-mac-arm64.dmg`                                                     |
+| macOS Intel | `npm run dist:mac:x64` | `dist/git-mastery-{version}-mac-x64.dmg`                                                       |
+| Linux x64   | `npm run dist:linux`   | `dist/git-mastery-{version}-linux-x64.AppImage` and `dist/git-mastery-{version}-linux-x64.deb` |
 
 macOS users of an unsigned build still need the `xattr` command above after installing.
 
@@ -57,6 +56,6 @@ Releases are manual. Details, versioning rules, and bootstrap steps are in [rele
 
 1. Merge PRs to `main` with conventional titles (`feat:`, `fix:`, …). Squash-merge so the title is the commit.
 2. On GitHub: **Actions → Release → Run workflow**, with branch `main`.
-3. The workflow bumps the version from commits since the last tag, builds macOS arm64 and Windows x64 installers, and publishes a GitHub Release.
+3. The workflow bumps the version from commits since the last tag, builds macOS arm64, macOS Intel, Windows x64, and Linux x64 installers, and publishes a GitHub Release.
 
 For the very first `v0.0.1` cut, tag it by hand and run **Build & Publish Release** against that tag — see the bootstrap section in the pipeline doc.

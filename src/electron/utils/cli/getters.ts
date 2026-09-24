@@ -7,7 +7,6 @@ export function getGitMasteryExecutable(): string {
     return "gitmastery";
   }
 
-  // TODO(linux)
   if (process.platform === "linux") {
     return path.join(getConfig().dataDirectory!, "gitmastery");
   }
