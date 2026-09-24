@@ -1,6 +1,6 @@
 import { shell } from "electron";
 import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 import { promisify } from "util";
 import {
   getGitMasteryExecutable,
@@ -14,6 +14,7 @@ import { downloadApp as downloadAppLinux } from "../utils/linux/downloadApp.js";
 import fs from "fs";
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export const setupPrereqIpc = () => {
   ipcMainHandle("download-gitmastery-app", async () => {
@@ -34,7 +35,7 @@ export const setupPrereqIpc = () => {
       const exeLocation = getGitMasteryExecutable();
       const exists = fs.existsSync(exeLocation);
       if (!exists) return { version: "" };
-      const { stdout } = await execAsync(`${exeLocation} version`);
+      const { stdout } = await execFileAsync(exeLocation, ["version"]);
       return parseOutput(stdout);
     }
     // mac
@@ -49,12 +50,11 @@ export const setupPrereqIpc = () => {
         return { version: "" };
       }
     }
-    // TODO(linux)
     if (process.platform === "linux") {
       const binaryLocation = getGitMasteryExecutable();
       const exists = fs.existsSync(binaryLocation);
       if (!exists) return { version: "" };
-      const { stdout } = await execAsync(`${binaryLocation} version`);
+      const { stdout } = await execFileAsync(binaryLocation, ["version"]);
       return parseOutput(stdout);
     }
 

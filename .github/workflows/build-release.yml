@@ -31,9 +31,15 @@ jobs:
           - os: macos-15
             artifact: macos-arm64
             dist-cmd: dist:mac
+          - os: macos-15-intel
+            artifact: macos-x64
+            dist-cmd: dist:mac:x64
           - os: windows-latest
             artifact: windows-x64
             dist-cmd: dist:win
+          - os: ubuntu-latest
+            artifact: linux-x64
+            dist-cmd: dist:linux
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
@@ -63,6 +69,8 @@ jobs:
             dist/*.dmg
             dist/*.exe
             dist/*.msi
+            dist/*.AppImage
+            dist/*.deb
           if-no-files-found: error
 
   publish:
@@ -126,12 +134,16 @@ jobs:
             echo '```bash'
             echo "xattr -rc /Applications/git-mastery.app"
             echo '```'
+            echo
+            echo "## Linux note"
+            echo
+            echo "Install the \`.deb\`, or run \`chmod +x\` on the \`.AppImage\` before launching it."
           } > notes.md
 
       - name: Create or update release
         run: |
           shopt -s nullglob
-          files=(artifacts/*.dmg artifacts/*.exe artifacts/*.msi)
+          files=(artifacts/*.dmg artifacts/*.exe artifacts/*.msi artifacts/*.AppImage artifacts/*.deb)
           if [ ${#files[@]} -eq 0 ]; then
             echo "No installers found in artifacts/"
             ls -la artifacts || true

@@ -4,19 +4,21 @@ import path from "path";
 import { logGM } from "../logger.js";
 
 /**
- * Downloads the latest gitmastery binary for Linux from the GitHub releases
+ * Downloads the latest x64 Linux gitmastery CLI from the GitHub releases
  * API into the given destination directory, then marks it as executable.
  *
- * Mirrors the Windows `downloadGitMasteryExe` pattern but targets the
- * `gitmastery` asset (no extension) built for Linux.
+ * The release asset is `gitmastery-<version>-linux-amd64`. It is saved as
+ * `gitmastery` so `getGitMasteryExecutable()` can find it.
  *
- * Follows up to one HTTP redirect (GitHub releases use a CDN redirect
- * before serving the binary).
+ * Follows HTTP redirects (GitHub releases use a CDN redirect before serving
+ * the binary).
  */
+const LINUX_AMD64_ASSET = /^gitmastery-\d+\.\d+\.\d+-linux-amd64$/;
+
 export const downloadApp = (destDir: string): Promise<void> => {
   const RELEASES_API =
     "https://api.github.com/repos/git-mastery/app/releases/latest";
-  const ASSET_NAME = "gitmastery"; // Linux binary — no extension
+  const DEST_NAME = "gitmastery";
 
   return new Promise((resolve, reject) => {
     const apiOpts = {
@@ -40,11 +42,13 @@ export const downloadApp = (destDir: string): Promise<void> => {
             const release = JSON.parse(raw) as {
               assets: { name: string; browser_download_url: string }[];
             };
-            const asset = release.assets.find((a) => a.name === ASSET_NAME);
+            const asset = release.assets.find((a) =>
+              LINUX_AMD64_ASSET.test(a.name),
+            );
             if (!asset) {
               return reject(
                 new Error(
-                  `${ASSET_NAME} not found in the latest GitHub release`,
+                  "gitmastery-<version>-linux-amd64 not found in the latest GitHub release",
                 ),
               );
             }
@@ -58,9 +62,9 @@ export const downloadApp = (destDir: string): Promise<void> => {
           logGM(
             "download",
             "linux",
-            `Downloading ${ASSET_NAME} from ${downloadUrl}`,
+            `Downloading ${downloadUrl} to ${DEST_NAME}`,
           );
-          const destPath = path.join(destDir, ASSET_NAME);
+          const destPath = path.join(destDir, DEST_NAME);
 
           // Step 2 – download the binary (following the CDN redirect)
           const doDownload = (url: string) => {
