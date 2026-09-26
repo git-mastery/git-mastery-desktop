@@ -37,7 +37,7 @@ const Field = ({
 
 /**
  * Chooses the AI provider behind AI Hints and saves its key. Each provider
- * keeps its own key and model, so switching back and forth loses nothing.
+ * keeps its own key, so switching back and forth loses nothing.
  * Shown from Settings.
  */
 export const AiSettingsPanel = ({ onSaved }: { onSaved?: () => void }) => {
@@ -141,11 +141,6 @@ export const AiSettingsPanel = ({ onSaved }: { onSaved?: () => void }) => {
 
   return (
     <div className="flex flex-col gap-5 text-sm text-fg">
-      <p>
-        AI Hints helps when you are stuck on an exercise or hands-on, using an
-        AI provider you choose. OpenRouter is free and works out of the box.
-      </p>
-
       <Field label="Provider" hint={info.description}>
         <select
           value={provider}
@@ -232,30 +227,21 @@ export const AiSettingsPanel = ({ onSaved }: { onSaved?: () => void }) => {
         </div>
       </Field>
 
-      <Field
-        label={info.defaultModel ? "Model (optional)" : "Model"}
-        hint={
-          info.defaultModel ? (
-            <>
-              Leave empty to use{" "}
-              <code className="font-mono text-[12px]">{info.defaultModel}</code>
-              .
-            </>
-          ) : (
-            "The model name your endpoint expects, for example llama3.1."
-          )
-        }
-      >
-        <input
-          type="text"
-          value={draft.model}
-          disabled={saving}
-          spellCheck={false}
-          placeholder={info.defaultModel ?? ""}
-          onChange={(event) => update({ model: event.target.value })}
-          className={`${INPUT_CLASS} font-mono`}
-        />
-      </Field>
+      {!info.defaultModel && (
+        <Field
+          label="Model"
+          hint="The model name your endpoint expects, for example llama3.1."
+        >
+          <input
+            type="text"
+            value={draft.model}
+            disabled={saving}
+            spellCheck={false}
+            onChange={(event) => update({ model: event.target.value })}
+            className={`${INPUT_CLASS} font-mono`}
+          />
+        </Field>
+      )}
 
       {error && <p className="text-[13px] text-danger">{error}</p>}
 
@@ -265,15 +251,6 @@ export const AiSettingsPanel = ({ onSaved }: { onSaved?: () => void }) => {
           plain text in the app config.
         </p>
       )}
-
-      <p className="text-[13px] text-muted">
-        When you ask for a hint, the app sends your provider the instructions
-        from the lesson page, the names of the files in that exercise&apos;s
-        folder, and its Git state: branches, commit messages, tags, and which
-        files are staged or changed. It never sends file contents, and never
-        looks outside the exercise folder. Open &ldquo;AI can see&rdquo; in the
-        hints panel to check exactly what was sent.
-      </p>
 
       <div className="flex gap-2">
         <Button onClick={save} loading={saving}>

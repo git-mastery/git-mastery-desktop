@@ -49,7 +49,8 @@ export function getActiveConnection() {
   const stored = readAi().providers?.[spec.id];
   const connection: ProviderConnection = {
     apiKey: decryptKey(stored),
-    model: stored?.model?.trim() || spec.defaultModel || "",
+    // Only providers without a built-in model let the learner choose one.
+    model: spec.defaultModel ?? stored?.model?.trim() ?? "",
     baseUrl: stored?.baseUrl?.trim() ?? "",
   };
   if (spec.keyRequired && !connection.apiKey) return null;
@@ -88,7 +89,7 @@ export function saveProviderSettings(
 ): { encrypted: boolean } {
   const ai = readAi();
   const next: StoredAiProvider = {
-    model: model || undefined,
+    model: (!getProviderSpec(provider).defaultModel && model) || undefined,
     baseUrl: baseUrl || undefined,
     ...encryptKey(apiKey),
   };

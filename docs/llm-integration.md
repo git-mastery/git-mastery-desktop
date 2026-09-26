@@ -387,8 +387,7 @@ Two properties make that boundary real rather than aspirational:
    read anything unless that root **is** a directory inside the exercise folder, with
    `GIT_CEILING_DIRECTORIES` as a second line of defence.
 2. **Disclosure is by construction.** Every block sent is rendered in the AI Hints pane's expandable
-   "AI can see" row, so a student can read exactly what left their machine, per answer. The same
-   summary is shown where the provider and key are configured.
+   "AI can see" row, so a student can read exactly what left their machine, per answer.
 
 Adding `git diff`, file contents, or terminal output would cross this boundary and needs to be
 treated as a new decision, not an extension of this one.

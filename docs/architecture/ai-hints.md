@@ -37,7 +37,7 @@ Finder. The click handler re-checks rather than trusting page state, since the p
 
 The chat is a pane **stacked above the terminal** in the right-hand work column, with a draggable
 divider between them. Closing it returns the full height to the terminal; the conversation survives
-close/reopen and is only cleared by **New chat** or opening hints for a different exercise. The split
+close/reopen and is only cleared by **Clear history** or opening hints for a different exercise. The split
 defaults to 60% of the column and becomes a fixed pixel height once dragged.
 
 The layout never exceeds three columns: lessons nav, lesson page, work column. The lesson page's
@@ -63,13 +63,26 @@ above the prompt it will be acted on in.
 ## 4. Providers
 
 `ai/llmProviders.ts` is a registry of `ProviderSpec`s. Each spec has display metadata, `createModel`,
-a key `validate` probe and optional `providerOptions`. Shipped: OpenRouter (default,
-`openrouter/free`), OpenAI, Anthropic, Google, and **Custom** for any OpenAI-compatible base URL
-(Groq, Ollama, a course proxy). Adding a provider is one spec; settings, IPC and the settings UI read
-the registry.
+a key `validate` probe and optional `providerOptions`. Shipped: OpenRouter (default), OpenAI,
+Anthropic, Google, and **Custom** for any OpenAI-compatible base URL (Groq, Ollama, a course proxy).
+Adding a provider is one spec; settings, IPC and the settings UI read the registry.
 
-- **Per-provider settings.** `config.ai.providers[id]` stores the model, base URL and key for each
-  provider separately, so switching providers doesn't discard a key already entered.
+- **OpenRouter uses a curated fallback list, not `openrouter/free` alone.** The free router picks
+  any zero-cost model. That includes ~2B agent-tuned models (e.g. `liquid/lfm-2.5-2.6b`), which
+  answered hints with raw `<|tool_call_start|>…` tokens because no tools were offered, and a
+  content-safety classifier that answered "User Safety: safe". The default instead sends
+  OpenRouter's `models` fallback array of three named instruction-tuned free models. OpenRouter moves
+  down the list when a model is down, rate-limited, or has left the free tier. `openrouter/free` is
+  not kept as a last resort: when all three are busy, a clear rate-limit error serves the student
+  better than an answer from an arbitrary model. The cost is a list that needs occasional upkeep. Stripping the tokens from output was rejected: it treats one
+  model's symptom, and the answer underneath is still from a model too small to tutor.
+- **The model is not a setting, except for Custom.** Each named provider always uses its spec's
+  default model, and any model saved earlier is ignored. Students can't judge which model tutors
+  well, and a free-text model field is how `openrouter/free` got back in. Custom has no sensible
+  default, so it keeps a required Model field.
+- **Per-provider settings.** `config.ai.providers[id]` stores the key (plus base URL and model for
+  Custom) for each provider separately, so switching providers doesn't discard a key already
+  entered.
 - **Keys are encrypted with `safeStorage`.** Where that is unavailable, keys fall back to plaintext
   and the settings panel says so.
 - **Keys are validated on save.** Each spec probes a cheap authenticated endpoint. 401/403 means the

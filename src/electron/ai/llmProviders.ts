@@ -30,6 +30,20 @@ export type ProviderSpec = AiProviderInfo & {
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
+/**
+ * Tried in order: OpenRouter moves to the next when one is down, rate-limited,
+ * or no longer free. `openrouter/free` is deliberately absent, even as a last
+ * resort: it picks any zero-cost model, including ~2B agent-tuned ones that
+ * answer in raw tool-call tokens and a safety classifier that answers "User
+ * Safety: safe". A clear rate-limit error beats that. Free-tier membership
+ * changes without notice; revisit this list when these stop answering.
+ */
+const OPENROUTER_FREE_MODELS = [
+  "google/gemma-4-31b-it:free",
+  "qwen/qwen3.8-27b:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+];
+
 /** Optional OpenRouter attribution headers. */
 const OPENROUTER_HEADERS = {
   "HTTP-Referer": "https://git-mastery.org",
@@ -94,9 +108,7 @@ const SPECS: ProviderSpec[] = [
     label: "OpenRouter",
     description:
       "Free models with a free account. Recommended if you don't already pay for an AI API.",
-    // Routes to whichever zero-cost model is available. Membership changes
-    // without notice, which is exactly why a fixed free model id is not used.
-    defaultModel: "openrouter/free",
+    defaultModel: OPENROUTER_FREE_MODELS[0],
     keyUrl: "https://openrouter.ai/keys",
     keyPlaceholder: "sk-or-v1-…",
     keyRequired: true,
@@ -114,6 +126,7 @@ const SPECS: ProviderSpec[] = [
       probe("OpenRouter", `${OPENROUTER_BASE_URL}/key`, {
         Authorization: `Bearer ${apiKey}`,
       }),
+    providerOptions: { openrouter: { models: OPENROUTER_FREE_MODELS } },
   },
   {
     id: "openai",
