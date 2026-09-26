@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import {
-  IconEdit,
   IconRefresh,
   IconSparkles,
+  IconTrash,
   IconX,
 } from "@tabler/icons-react";
 import {
@@ -59,7 +59,7 @@ function messageText(message: GitMasteryUIMessage) {
 }
 
 /**
- * Wraps the conversation so "New chat" and a change of exercise both start
+ * Wraps the conversation so "Clear history" and a change of exercise both start
  * from a clean mount: fresh messages, fresh transport, fresh context snapshot.
  */
 export const AiHintsPanel = ({
@@ -108,7 +108,7 @@ const AiHintsConversation = ({
     };
   }, [session.exerciseId]);
 
-  // A remount (New chat, another exercise) must not leave the old turn
+  // A remount (Clear history, another exercise) must not leave the old turn
   // streaming into a conversation nobody can see.
   useEffect(() => () => void stop(), [stop]);
 
@@ -158,9 +158,9 @@ const AiHintsConversation = ({
         >
           {session.title}
         </h2>
-        <Tooltip label="New chat: clears history and context" position="bottom">
-          <IconButton aria-label="New chat" size="sm" onClick={newChat}>
-            <IconEdit size={16} />
+        <Tooltip label="Clear history" position="bottom">
+          <IconButton aria-label="Clear history" size="sm" onClick={newChat}>
+            <IconTrash size={16} />
           </IconButton>
         </Tooltip>
         <Tooltip label="Close" position="bottom">
@@ -177,17 +177,9 @@ const AiHintsConversation = ({
         // overflows is clipped at the top, and this pane can be short.
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
           <div className="m-auto flex w-full max-w-lg flex-col items-center gap-3 text-center">
-            <div className="space-y-1">
-              <h3 className="font-heading text-[1.15rem]/[1.35] font-semibold text-fg">
-                Stuck on this {noun}?
-              </h3>
-              <p className="mx-auto max-w-sm text-[13px] leading-[1.55] text-muted">
-                I can see the instructions and your exercise folder.{" "}
-                {session.kind === "exercise"
-                  ? "I'll point you in the right direction without giving away the answer."
-                  : "I'll help you through each step without doing it for you."}
-              </p>
-            </div>
+            <h3 className="font-heading text-[1.15rem]/[1.35] font-semibold text-fg">
+              Stuck on this {noun}?
+            </h3>
             <div className="grid w-full grid-cols-1 gap-2 @sm:grid-cols-2">
               {SUGGESTIONS[session.kind].map((suggestion) => (
                 <button

@@ -94,7 +94,7 @@ function App() {
             className="relative flex min-w-[280px] flex-col border-l border-border w-[var(--gm-aside-width)]"
           >
             {/* Kept mounted while hidden so closing does not lose the
-                conversation; only a new exercise or New chat clears it. */}
+                conversation; only a new exercise or Clear history clears it. */}
             {hints.session && (
               <div
                 className={cx(

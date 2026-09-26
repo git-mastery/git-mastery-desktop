@@ -62,10 +62,6 @@ export const ContextDisclosure = ({
               </pre>
             </div>
           ))}
-          <p className="text-[11.5px] text-muted">
-            Refreshed every time you send a message. File contents are never
-            sent.
-          </p>
         </div>
       )}
     </div>
