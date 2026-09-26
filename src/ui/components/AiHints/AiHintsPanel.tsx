@@ -30,21 +30,11 @@ const KIND_LABEL: Record<AiHintsKind, string> = {
   "hands-on": "Hands-on",
 };
 
-/** Openers that model the kind of question that earns a useful hint. */
-const SUGGESTIONS: Record<AiHintsKind, string[]> = {
-  exercise: [
-    "What is this exercise asking me to do?",
-    "I'm stuck. What should I look at next?",
-    "Does my repository look right so far?",
-    "Explain the Git concept behind this exercise",
-  ],
-  "hands-on": [
-    "What will this hands-on teach me?",
-    "Which step am I on, based on my repo?",
-    "My last command didn't work. What went wrong?",
-    "Explain the current step in simpler terms",
-  ],
-};
+/** Same openers for exercises and hands-on. */
+const SUGGESTIONS = [
+  "I'm stuck. What should I do next?",
+  "Explain the underlying concepts to me",
+];
 
 const DISCLAIMER: Record<AiHintsKind, string> = {
   exercise: "Hints only, never the full solution. AI can make mistakes.",
@@ -181,7 +171,7 @@ const AiHintsConversation = ({
               Stuck on this {noun}?
             </h3>
             <div className="grid w-full grid-cols-1 gap-2 @sm:grid-cols-2">
-              {SUGGESTIONS[session.kind].map((suggestion) => (
+              {SUGGESTIONS.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"

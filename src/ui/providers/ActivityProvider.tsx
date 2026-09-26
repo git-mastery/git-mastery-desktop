@@ -17,8 +17,9 @@ import { useElectronStream } from "../hooks/useElectronStream";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
 import { useToast, type ToastOptions } from "../contexts/ToastContext";
 import { ActivityContext } from "../contexts/ActivityContext";
-import { isHandsOnIdentifier } from "../utils/format";
 import { FirstStartModal } from "../components/Setup/FirstStartModal";
+import { useExercises } from "../hooks/query/useExercises";
+import { formatActivityName, isHandsOnIdentifier } from "../utils/format";
 
 const isVerifyCommand = (cmd: string) => cmd.startsWith("verify");
 
@@ -32,6 +33,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   const { showToast, updateToast, hideToast } = useToast();
 
   const { downloadedExerciseData, patchExerciseStatus } = useLocalExercises();
+  const { query: exercisesQuery } = useExercises();
 
   /** Loading toasts currently on screen, so settle can update them in place. */
   const openActionToasts = useRef<Set<string>>(new Set());
@@ -245,6 +247,12 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       {gate && (
         <FirstStartModal
           step={gate.step}
+          activityName={formatActivityName(
+            gate.exerciseIdentifier,
+            Object.values(exercisesQuery.data ?? {}).find(
+              (exercise) => exercise.identifier === gate.exerciseIdentifier,
+            ),
+          )}
           onClose={() => setGate(null)}
           onResolved={onGateResolved}
         />

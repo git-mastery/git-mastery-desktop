@@ -74,9 +74,9 @@ so by the time a hint is requested it can point anywhere. See `exercise-director
 for the same problem in `verify`.
 
 `ExerciseLocation` carries the exercises root, the exercise root and the working folder (where Start
-`cd`s). For hands-on practicals the working folder is the exercise root, but the repository usually
-sits one level down (`hp-init-repo/things`). The git provider therefore searches rather than
-assuming (§5).
+`cd`s). For hands-on practicals Start `cd`s into the single subdirectory when there is one
+(`hp-init-repo/things`); otherwise it stays at the exercise root. The git provider still searches
+rather than assuming (§5), because some practicals create the repository later.
 
 ## 4. What is never sent
 

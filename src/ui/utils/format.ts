@@ -27,6 +27,13 @@ export const formatExerciseTitle = (exercise: Exercise) => {
   return formatExerciseIdentifier(exercise.identifier);
 };
 
+/** Display name for an exercise or hands-on, from its identifier and optional catalog entry. */
+export const formatActivityName = (identifier: string, exercise?: Exercise) => {
+  if (isHandsOnIdentifier(identifier)) return formatHandsOnTitle(identifier);
+  if (exercise) return formatExerciseTitle(exercise);
+  return formatExerciseIdentifier(identifier);
+};
+
 export const getExerciseLessonName = (exercise: Exercise) => {
   return exercise.lesson?.lesson_name ?? exercise.detour?.lesson?.lesson_name;
 };
