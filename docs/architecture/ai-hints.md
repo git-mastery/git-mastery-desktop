@@ -69,8 +69,7 @@ Adding a provider is one spec; settings, IPC and the settings UI read the regist
 
 - **The model is not a setting, except for Custom.** Each named provider always uses its spec's
   default model, and any model saved earlier is ignored. Students can't judge which model tutors
-  well, and a free-text model field let a saved `openrouter/free` bypass the routing below. Custom
-  has no sensible default, so it keeps a required Model field.
+  well. Custom has no sensible default, so it keeps a required Model field.
 - **Per-provider settings.** `config.ai.providers[id]` stores the key (plus base URL and model for
   Custom) for each provider separately, so switching providers doesn't discard a key already
   entered.
@@ -87,59 +86,46 @@ Adding a provider is one spec; settings, IPC and the settings UI read the regist
 The earlier OpenRouter-only key field (`openRouterApiKeyEnc`) was dropped without migration. The
 feature had not shipped.
 
-### OpenRouter model routing
+### OpenRouter model
 
-The default provider has to work with a free key, and free models are the least reliable part of
-the whole feature. Each request sends a primary `model` plus OpenRouter's `models` fallback array,
-and OpenRouter tries them in order, moving on when one is down, rate-limited, or has left the free
-tier:
+The default provider has to work with a free key. Every request uses `openrouter/free`, OpenRouter's
+router over all zero-cost models, and sends no fallback list.
 
-1. `google/gemma-4-31b-it:free` (primary)
-2. `qwen/qwen3.8-27b:free`
-3. `nvidia/nemotron-3-super-120b-a12b:free`
-4. `openrouter/free` (last resort)
+**Why the router alone.** Free-tier membership changes without notice (see `../llm-integration.md`,
+Option 9), so any named free model eventually disappears or is rate-limited, and a hard-coded list
+needs upkeep with every change. The router always resolves to something that is currently free, so
+the default keeps working with nothing to maintain.
 
-The three fallbacks are the most OpenRouter is documented to accept (its equivalent `fallbacks`
-parameter caps at three).
+**The cost is quality.** The router picks from every zero-cost model, and some can't tutor. In
+testing it produced:
 
-**Why named models come first.** On its own, `openrouter/free` picks from every zero-cost model, and
-in testing it produced unusable replies:
-
-- a ~2B agent-tuned model (`liquid/lfm-2.5-2.6b`) answered in its raw tool-call syntax
+- a ~2B agent-tuned model (`liquid/lfm-2.5-2.6b`) answering in its raw tool-call syntax
   (`<|tool_call_start|>[read(filePath=…)]<|tool_call_end|>`), because it wanted to read files and no
   tools were offered;
-- a content-safety classifier (`nvidia/nemotron-3.5-content-safety`) answered "User Safety: safe".
+- a content-safety classifier (`nvidia/nemotron-3.5-content-safety`) answering "User Safety: safe".
 
-The named models are mid-sized, instruction-tuned, and follow the hint policy reasonably well.
-
-**Why `openrouter/free` is still the last resort.** The tradeoff is availability against quality.
-Free models are rate-limited per model, and at busy times all three named models can be throttled
-together. Without the router, the student gets a rate-limit error and has to wait. With it, they
-usually still get an answer, but occasionally from a model that can't tutor. Availability wins: the
-feature is only useful if it answers, and a bad reply is visible and easy to retry.
-
-What limits the damage when the router picks badly:
+What limits the damage:
 
 - The system prompt says the model has no tools and must reply only in text. Weaker agent-tuned
   models then answer in prose more often, but not reliably.
-- **Regenerate** retries the whole chain. That lands on a named model once its rate limit has reset,
-  or on a different random model if it hasn't.
+- **Regenerate** sends the request again, which usually lands on a different model.
 - The classifier and code-only models can't be steered by the prompt. When they answer, the reply is
   obviously wrong rather than subtly misleading, which is the lesser failure for a tutor.
+- Students who want consistent answers can switch to a paid provider, or to Google's free tier, in
+  Settings.
 
 **Alternatives rejected:**
 
+- **Named free models first, with `openrouter/free` as the last fallback.** This was the previous
+  setup (a primary model plus three fallbacks, the most OpenRouter accepts). It gave better replies
+  while the named models stayed free, but they had to be checked and replaced by hand whenever they
+  left the free tier or were throttled.
 - **Stripping tool-call tokens from the output.** This treats one model family's symptom, and the
   answer underneath still comes from a model too small to tutor.
 - **Choosing a free model at runtime from `/models`.** The listing has price and context length but
   no quality signal. It can't tell a 2B model or a classifier from a 30B instruct model.
 - **A paid default model.** It would be reliable, but every student would need a funded account,
   which is what the free default exists to avoid.
-
-**Upkeep.** Free-tier membership changes without notice (see `../llm-integration.md`, Option 9).
-When replies start coming from the router regularly, check the named models against
-`https://openrouter.ai/api/v1/models` and replace any that have left the free tier. The response's
-`model` field shows which model actually answered.
 
 ## 5. Tutoring policy
 
