@@ -3,10 +3,17 @@ import path from "path";
 import fs from "fs";
 
 interface Config {
-  // This is where the exercises are downloaded to. The exercises themselves live under ${dataDirectory}/gitmastery-exercises/
-  dataDirectory?: string;
+  /**
+   * The Git-Mastery exercises root the learner created with `gitmastery setup`.
+   * This is the folder itself (the one containing `.gitmastery.json`), not its parent.
+   */
+  exercisesRoot?: string;
+  /** The learner has seen the first-Start introduction. */
+  startIntroSeen?: boolean;
   /** Desktop + site colour preference. System follows the OS. */
   theme?: SitePageTheme;
+  /** Parent folder chosen by older builds. Migrated to `exercisesRoot` on read. */
+  dataDirectory?: string;
 }
 
 const appBasePath = app.getPath("userData");
@@ -14,19 +21,49 @@ const configPath = path.join(app.getPath("userData"), "config.json");
 
 export const getUserStoragePath = () => appBasePath;
 
+const readConfigFile = (): Config => {
+  if (!fs.existsSync(configPath)) return {};
+  return JSON.parse(fs.readFileSync(configPath, "utf8")) as Config;
+};
+
+const writeConfigFile = (config: Config): void => {
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf8");
+};
+
 export function getConfig(): Config {
   try {
-    if (!fs.existsSync(configPath)) return {};
-    return JSON.parse(fs.readFileSync(configPath, "utf8"));
+    const config = readConfigFile();
+    if (config.exercisesRoot || !config.dataDirectory) return config;
+
+    const legacyRoot = path.join(config.dataDirectory, "gitmastery-exercises");
+    if (!fs.existsSync(legacyRoot)) return config;
+
+    const migrated: Config = { ...config, exercisesRoot: legacyRoot };
+    delete migrated.dataDirectory;
+    writeConfigFile(migrated);
+    return migrated;
   } catch {
     return {};
+  }
+}
+
+/** Forgets the linked exercises folder. Does not delete anything on disk. */
+export function clearExerciseRoot(): void {
+  try {
+    const config = readConfigFile();
+    delete config.exercisesRoot;
+    // Drop the legacy parent too, or the next read would link that folder again.
+    delete config.dataDirectory;
+    writeConfigFile(config);
+  } catch (err) {
+    console.error("Failed to write config:", err);
   }
 }
 
 export function saveConfig(partial: Partial<Config>): void {
   try {
     const merged = { ...getConfig(), ...partial };
-    fs.writeFileSync(configPath, JSON.stringify(merged, null, 2), "utf8");
+    writeConfigFile(merged);
   } catch (err) {
     console.error("Failed to write config:", err);
   }

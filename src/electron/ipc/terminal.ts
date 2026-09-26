@@ -5,6 +5,7 @@ import fs from "fs";
 import { execSync } from "child_process";
 import pty from "node-pty";
 import { ipcMainOn } from "../utils/util.js";
+import { getCliEnvironment } from "../utils/cli/getters.js";
 
 /**
  * On Windows, attempts to find Git Bash (bash.exe) by locating the git
@@ -15,7 +16,7 @@ import { ipcMainOn } from "../utils/util.js";
  *
  * Returns null if git is not on PATH or bash.exe cannot be found.
  */
-function findGitBash(): string | null {
+export function findGitBash(): string | null {
   if (os.platform() !== "win32") return null;
   try {
     // `where git` may return multiple lines; take the first valid one
@@ -191,7 +192,7 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
       cols,
       rows,
       cwd,
-      env: process.env,
+      env: getCliEnvironment(),
     });
 
     // Queued commands are replayed on the shell's first output rather than

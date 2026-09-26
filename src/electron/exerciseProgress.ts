@@ -32,7 +32,7 @@ export function getExerciseProgress(): ProgressData {
 }
 
 function computeExerciseProgress(): ProgressData {
-  if (!getConfig().dataDirectory) return {};
+  if (!getConfig().exercisesRoot) return {};
 
   let exerciseDirectory: string;
   try {

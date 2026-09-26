@@ -3,24 +3,17 @@ import { WebsiteWrapper } from "./components/Website/WebsiteWrapper";
 import { Header } from "./components/Header/Header";
 import { LessonsPanelToggle, ToursPanel } from "./components/Header/ToursMenu";
 import { useEffect, useState } from "react";
-import { Onboarding } from "./pages/Onboarding";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { DownloadExerciseListener } from "./components/Exercise/DownloadExerciseListener";
 import {
   getSiteSection,
   useWebContentsView,
 } from "./contexts/WebContentsViewContext";
-import { useLocalStorage } from "./hooks/useLocalStorage";
-
 const MIN_MAIN = 320;
 const MIN_ASIDE = 280;
 const ASIDE_WIDTH_VAR = "--gm-aside-width";
 
 function App() {
-  const [onboardingCompleted, setOnboardingCompleted] = useLocalStorage({
-    key: "onboarding-completed",
-    defaultValue: false,
-  });
   const { setEmbeddedVisible, currentUrl } = useWebContentsView();
   const [asideWidth, setAsideWidth] = useState(512);
   const [lessonsPanelOpened, setLessonsPanelOpened] = useState(false);
@@ -43,11 +36,6 @@ function App() {
       `${asideWidth}px`,
     );
   }, [asideWidth]);
-
-  if (!onboardingCompleted)
-    return (
-      <Onboarding onCompleteOnboarding={() => setOnboardingCompleted(true)} />
-    );
 
   return (
     <>

@@ -6,6 +6,8 @@ import { readStoredGithubUsername } from "../utils/siteViewPrefs";
 
 export const SITE_ORIGIN = "https://git-mastery.org";
 export const LESSONS_HOME_URL = `${SITE_ORIGIN}/lessons/`;
+/** T1L2, at the section that installs the CLI and runs `gitmastery setup`. */
+export const GIT_PREP_SETUP_URL = `${SITE_ORIGIN}/lessons/gitPrep/#installing-the-git-mastery-app`;
 export const EXERCISES_HOME_URL = `${SITE_ORIGIN}/exercises-directory/index.html`;
 export const PROGRESS_HOME_URL = `${SITE_ORIGIN}/progress-dashboard/`;
 

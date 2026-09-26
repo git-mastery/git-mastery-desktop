@@ -27,13 +27,17 @@ interface Window {
     }) => void;
 
     // for configuration
-    setDataDirectory: (directory: string) => void;
-    getDataDirectory: () => Promise<string | null>;
     selectFolder: () => Promise<string | null>;
-
-    downloadGitMasteryApp: () => Promise<boolean>;
-    getGitMasteryVersion: () => Promise<{ version: string; latest?: string }>;
-    checkExerciseFolder: () => Promise<ExerciseFolderStatus>;
+    getExerciseRoot: () => Promise<{ root: string | null }>;
+    setExerciseRoot: (
+      directory: string,
+    ) => Promise<{ ok: true; root: string } | { ok: false; error: string }>;
+    clearExerciseRoot: () => Promise<boolean>;
+    checkStartPrereqs: () => Promise<{
+      step: FirstRunStep | null;
+      tools: ToolsStatus;
+    }>;
+    markStartIntroSeen: () => Promise<boolean>;
 
     // for retrieving config settings of the backend (electron app)
     // just an array of folder names
@@ -82,9 +86,6 @@ type IpcHandlerChannelMapping = {
     resolved: "light" | "dark";
   };
 
-  // to be saved on backend to reference whenever a new exercise needs to be downloaded
-  "set-data-directory": { directory: string };
-
   "gitmastery-task-data": { originalCommand: string; data: GitMasteryTaskData };
   "start-exercise-started": StartExerciseStarted;
   "start-exercise-result": StartExerciseResult;
@@ -107,16 +108,17 @@ type IIpcInvoke<U, V> = {
 type IpcInvokeChannelMapping = {
   // config
   "select-folder": IIpcInvoke<null, string | null>;
-  "get-data-directory": IIpcInvoke<null, string | null>;
-
-  // setup
-  "download-gitmastery-app": IIpcInvoke<null, boolean>;
-  "get-gitmastery-version": IIpcInvoke<
-    null,
-    { version: string; latest?: string }
+  "get-exercise-root": IIpcInvoke<null, { root: string | null }>;
+  "set-exercise-root": IIpcInvoke<
+    { directory: string },
+    { ok: true; root: string } | { ok: false; error: string }
   >;
-
-  "check-exercise-folder": IIpcInvoke<null, ExerciseFolderStatus>;
+  "clear-exercise-root": IIpcInvoke<null, boolean>;
+  "check-start-prereqs": IIpcInvoke<
+    null,
+    { step: FirstRunStep | null; tools: ToolsStatus }
+  >;
+  "mark-start-intro-seen": IIpcInvoke<null, boolean>;
 
   "wcv-get-site-prefs": IIpcInvoke<null, SiteViewPrefs | null>;
   "wcv-set-site-prefs": IIpcInvoke<
@@ -133,11 +135,13 @@ type IpcInvokeChannelMapping = {
   >;
 };
 
-/** Where exercise files live, and whether GitMastery has created that folder. */
-type ExerciseFolderStatus = {
-  dataDirectory: string | null;
-  exercisesPath: string | null;
-  ready: boolean;
+/** A first-Start step that is still outstanding. */
+type FirstRunStep = "intro" | "tools" | "folder";
+
+type ToolsStatus = {
+  cli: boolean;
+  /** Null off Windows, where Git Bash is not required. */
+  gitBash: boolean | null;
 };
 
 /** CustardUI view state persisted on git-mastery.org as `git-mastery-custardUI-state`. */
@@ -172,6 +176,8 @@ type StartExerciseResult = {
   error?: string;
   downloaded?: boolean;
   needsRestart?: boolean;
+  /** Set when Start stopped because a first-run step is still outstanding. */
+  firstRunStep?: FirstRunStep;
 };
 
 /** Verify was clicked while the terminal was not in the exercise directory. */

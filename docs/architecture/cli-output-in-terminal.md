@@ -1,6 +1,6 @@
 # CLI output is echoed into xterm, not run inside the shell
 
-GitMastery commands started from the app (`setup`, `download`, `verify`) still run as a
+GitMastery commands started from the app (`download`, `verify`) still run as a
 separate `child_process.spawn`. Their stdout and stderr are painted into the xterm pane so
 `INFO` lines stay in scrollback instead of a toast.
 

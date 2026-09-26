@@ -26,15 +26,13 @@ contextBridge.exposeInMainWorld("electron", {
   }) => ipcSend("set-app-theme", payload),
 
   // Config
-  setDataDirectory: (directory: string) =>
-    ipcSend("set-data-directory", { directory }),
-  getDataDirectory: () => ipcInvoke("get-data-directory", null),
   selectFolder: () => ipcInvoke("select-folder", null),
-
-  // Setup
-  downloadGitMasteryApp: () => ipcInvoke("download-gitmastery-app", null),
-  getGitMasteryVersion: () => ipcInvoke("get-gitmastery-version", null),
-  checkExerciseFolder: () => ipcInvoke("check-exercise-folder", null),
+  getExerciseRoot: () => ipcInvoke("get-exercise-root", null),
+  setExerciseRoot: (directory: string) =>
+    ipcInvoke("set-exercise-root", { directory }),
+  clearExerciseRoot: () => ipcInvoke("clear-exercise-root", null),
+  checkStartPrereqs: () => ipcInvoke("check-start-prereqs", null),
+  markStartIntroSeen: () => ipcInvoke("mark-start-intro-seen", null),
 
   // GitMastery
   getDownloadedExercises: () => ipcInvoke("get-downloaded-exercises", null),
