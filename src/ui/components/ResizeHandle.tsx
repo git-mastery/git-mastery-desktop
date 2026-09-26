@@ -1,32 +1,49 @@
 import { flushSync } from "react-dom";
+import { cx } from "../utils/cx";
 
 type ResizeHandleProps = {
-  width: number;
+  /** `x` resizes a pane's width from a side edge, `y` its height from the bottom edge. */
+  axis?: "x" | "y";
+  size: number;
   min: number;
   /** Evaluated when a drag starts, so window resizes cannot leave it stale. */
   max: () => number;
   cssVars: string[];
+  /** Horizontal only: the handle sits on the pane's left edge. */
   invert?: boolean;
-  onChange: (width: number) => void;
+  onChange: (size: number) => void;
 };
 
 export const ResizeHandle = ({
-  width,
+  axis = "x",
+  size,
   min,
   max,
   cssVars,
   invert = false,
   onChange,
 }: ResizeHandleProps) => {
+  const vertical = axis === "y";
   return (
     <div
-      className={`absolute top-0 z-100 h-full w-1.5 cursor-col-resize ${invert ? "left-0" : "right-0"}`}
+      className={cx(
+        "absolute z-100",
+        vertical
+          ? "bottom-0 left-0 h-1.5 w-full translate-y-1/2 cursor-row-resize"
+          : cx(
+              "top-0 h-full w-1.5 cursor-col-resize",
+              invert ? "left-0" : "right-0",
+            ),
+      )}
       onMouseDown={(e) => {
         e.preventDefault();
-        const startX = e.clientX;
-        const startWidth = width;
-        const maxWidth = Math.max(min, max());
-        let current = startWidth;
+        const start = vertical ? e.clientY : e.clientX;
+        // Panes can be squeezed below their set size by flex when the window
+        // is small; starting from the rendered size keeps the drag anchored.
+        const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+        const startSize = rect ? (vertical ? rect.height : rect.width) : size;
+        const maxSize = Math.max(min, max());
+        let current = startSize;
         let raf = 0;
 
         const apply = (next: number) => {
@@ -37,8 +54,10 @@ export const ResizeHandle = ({
         };
 
         const onMove = (ev: MouseEvent) => {
-          const dx = invert ? startX - ev.clientX : ev.clientX - startX;
-          current = Math.min(maxWidth, Math.max(min, startWidth + dx));
+          const position = vertical ? ev.clientY : ev.clientX;
+          const delta =
+            !vertical && invert ? start - position : position - start;
+          current = Math.min(maxSize, Math.max(min, startSize + delta));
           if (raf) return;
           raf = requestAnimationFrame(() => {
             raf = 0;

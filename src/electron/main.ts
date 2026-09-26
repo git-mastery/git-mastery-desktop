@@ -7,6 +7,7 @@ import { setupGitmasteryIpc } from "./ipc/gitmastery.js";
 import { setupWebContentsViewIpc } from "./ipc/webContentsView.js";
 import { setupConfigIpc } from "./ipc/config.js";
 import { setupPrereqIpc } from "./ipc/setupPrereq.js";
+import { setupAiIpc } from "./ipc/ai.js";
 import { setupStartPrereqIpc } from "./startPrereqs.js";
 import {
   readStoredThemePreference,
@@ -43,6 +44,7 @@ app.on("ready", () => {
   setupConfigIpc(mainWindow);
   setupPrereqIpc();
   setupStartPrereqIpc();
+  setupAiIpc(mainWindow);
 
   console.log("isDev: ", isDev());
   if (isDev()) {

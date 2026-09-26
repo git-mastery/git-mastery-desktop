@@ -62,6 +62,27 @@ interface Window {
 
     // for opening URLs in the system's default browser
     openExternal: (url: string) => void;
+
+    // AI hints: bring-your-own-key provider settings
+    getAiSettings: () => Promise<AiSettingsView>;
+    saveAiSettings: (input: AiSettingsInput) => Promise<AiSaveResult>;
+
+    // AI hints: docked chat panel
+    onAiHintsOpen: (callback: (session: AiHintsSession) => void) => () => void;
+    previewAiContext: (exerciseId: string) => Promise<AiContextBlock[]>;
+
+    // Carries the AI SDK's UI message stream between main and the chat panel.
+    // Consumed by IpcChatTransport, not by components directly.
+    aiChatStart: (payload: {
+      streamId: string;
+      exerciseId: string;
+      messages: GitMasteryUIMessage[];
+    }) => Promise<AiChatStartResult>;
+    aiChatAbort: (streamId: string) => void;
+    onAiChatChunk: (
+      callback: (streamId: string, chunk: AiChatChunk) => void,
+    ) => () => void;
+    onAiChatEnd: (callback: (streamId: string) => void) => () => void;
   };
 }
 
@@ -93,6 +114,12 @@ type IpcHandlerChannelMapping = {
 
   // open a URL in the system default browser
   "open-external": { url: string };
+
+  "ai-hints-open": AiHintsSession;
+
+  "ai-chat-abort": { streamId: string };
+  "ai-chat-chunk": { streamId: string; chunk: AiChatChunk };
+  "ai-chat-end": { streamId: string };
 };
 
 type IIpcInvoke<U, V> = {
@@ -133,7 +160,85 @@ type IpcInvokeChannelMapping = {
     { exerciseIdentifier: string },
     StartExerciseResult
   >;
+
+  "ai-get-settings": IIpcInvoke<null, AiSettingsView>;
+  "ai-save-settings": IIpcInvoke<AiSettingsInput, AiSaveResult>;
+  "ai-preview-context": IIpcInvoke<{ exerciseId: string }, AiContextBlock[]>;
+
+  "ai-chat-start": IIpcInvoke<
+    { streamId: string; exerciseId: string; messages: GitMasteryUIMessage[] },
+    AiChatStartResult
+  >;
 };
+
+type AiProviderId = "openrouter" | "openai" | "anthropic" | "google" | "custom";
+
+/**
+ * What the settings panel needs to render a provider. The client that talks to
+ * it lives in main, which is the only process that ever holds a key in use.
+ */
+type AiProviderInfo = {
+  id: AiProviderId;
+  label: string;
+  description: string;
+  /** Null when there is no sensible default and the learner must name one. */
+  defaultModel: string | null;
+  keyUrl: string | null;
+  keyPlaceholder: string;
+  keyRequired: boolean;
+  baseUrlRequired: boolean;
+  baseUrlPlaceholder: string | null;
+};
+
+type AiProviderSettings = {
+  model: string;
+  baseUrl: string;
+  apiKey: string;
+};
+
+type AiSettingsView = {
+  providers: AiProviderInfo[];
+  activeProvider: AiProviderId;
+  /** Kept per provider, so flipping the picker does not lose another's key. */
+  saved: Partial<
+    Record<AiProviderId, AiProviderSettings & { keyEncrypted: boolean }>
+  >;
+  encryptionAvailable: boolean;
+};
+
+type AiSettingsInput = { provider: AiProviderId } & AiProviderSettings;
+
+type AiSaveResult =
+  { ok: true; encrypted: boolean } | { ok: false; error: string };
+
+type AiHintsKind = "exercise" | "hands-on";
+
+/** Which exercise or hands-on practical the docked panel is helping with. */
+type AiHintsSession = {
+  exerciseId: string;
+  kind: AiHintsKind;
+  title: string;
+};
+
+type AiContextBlock = {
+  id: string;
+  label: string;
+  text: string;
+};
+
+/**
+ * Conversation shape shared by main and the chat panel. The `context` data
+ * part carries what was scraped and sent for a turn, so the panel's context
+ * chip is attached to the message it actually applied to.
+ */
+type GitMasteryUIMessage = import("ai").UIMessage<
+  never,
+  { context: AiContextBlock[] }
+>;
+
+type AiChatChunk = import("ai").UIMessageChunk;
+
+type AiChatStartResult = { ok: true } | { ok: false; error: string };
 
 /** A first-Start step that is still outstanding. */
 type FirstRunStep = "intro" | "tools" | "folder";

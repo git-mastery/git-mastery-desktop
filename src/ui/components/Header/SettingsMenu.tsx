@@ -3,18 +3,21 @@ import {
   IconAdjustmentsHorizontal,
   IconFolder,
   IconSettings,
+  IconSparkles,
 } from "@tabler/icons-react";
 import { ExerciseFolderPanel } from "../Setup/ExerciseFolderPanel";
 import { SiteViewPanel } from "./SiteViewPanel";
+import { AiSettingsPanel } from "../Setup/AiSettingsPanel";
 import { IconButton } from "../ui/IconButton";
 import { Menu, MenuItem, MenuLabel } from "../ui/Menu";
 import { Modal } from "../ui/Modal";
 
-type SettingsPanel = "exercise-folder" | "site-view";
+type SettingsPanel = "exercise-folder" | "site-view" | "ai";
 
 const PANEL_TITLES: Record<SettingsPanel, string> = {
   "exercise-folder": "Exercise folder",
   "site-view": "Customise UI",
+  ai: "AI hints",
 };
 
 export const SettingsMenu = () => {
@@ -43,6 +46,12 @@ export const SettingsMenu = () => {
         >
           {PANEL_TITLES["site-view"]}
         </MenuItem>
+        <MenuItem
+          icon={<IconSparkles size={14} />}
+          onClick={() => setPanel("ai")}
+        >
+          {PANEL_TITLES.ai}
+        </MenuItem>
       </Menu>
 
       <Modal
@@ -57,6 +66,7 @@ export const SettingsMenu = () => {
         {panel === "site-view" && (
           <SiteViewPanel onClose={() => setPanel(null)} />
         )}
+        {panel === "ai" && <AiSettingsPanel onSaved={() => setPanel(null)} />}
       </Modal>
     </>
   );

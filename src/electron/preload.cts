@@ -58,6 +58,29 @@ contextBridge.exposeInMainWorld("electron", {
 
   // Shell
   openExternal: (url: string) => ipcSend("open-external", { url }),
+
+  // AI hints settings
+  getAiSettings: () => ipcInvoke("ai-get-settings", null),
+  saveAiSettings: (input: AiSettingsInput) =>
+    ipcInvoke("ai-save-settings", input),
+
+  // AI hints panel
+  onAiHintsOpen: (callback: (session: AiHintsSession) => void) =>
+    ipcOn("ai-hints-open", callback),
+  previewAiContext: (exerciseId: string) =>
+    ipcInvoke("ai-preview-context", { exerciseId }),
+
+  // AI SDK UI message stream
+  aiChatStart: (payload: {
+    streamId: string;
+    exerciseId: string;
+    messages: GitMasteryUIMessage[];
+  }) => ipcInvoke("ai-chat-start", payload),
+  aiChatAbort: (streamId: string) => ipcSend("ai-chat-abort", { streamId }),
+  onAiChatChunk: (callback: (streamId: string, chunk: AiChatChunk) => void) =>
+    ipcOn("ai-chat-chunk", ({ streamId, chunk }) => callback(streamId, chunk)),
+  onAiChatEnd: (callback: (streamId: string) => void) =>
+    ipcOn("ai-chat-end", ({ streamId }) => callback(streamId)),
 } satisfies Window["electron"]);
 
 // Note: you canNOT import external files into the preload script, due to Electron sandboxing

@@ -6,6 +6,7 @@ import {
   resetExerciseProgressCache,
 } from "../exerciseProgress.js";
 import { resolveExerciseRootPick } from "../startPrereqs.js";
+import { notifyAiHintsPageStateChanged } from "../ai/availability.js";
 
 export function setupConfigIpc(mainWindow: BrowserWindow) {
   ipcMainHandle("select-folder", async () => {
@@ -30,12 +31,14 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
 
     saveConfig({ exercisesRoot: resolved.root });
     resetExerciseProgressCache();
+    notifyAiHintsPageStateChanged();
     return resolved;
   });
 
   ipcMainHandle("clear-exercise-root", async () => {
     clearExerciseRoot();
     resetExerciseProgressCache();
+    notifyAiHintsPageStateChanged();
     return true;
   });
 

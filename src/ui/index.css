@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
+/* Streamdown's utility classes live in its shipped JS, which Tailwind does not
+   scan by default. Without these its code blocks render unstyled. */
+@source "../../node_modules/streamdown/dist/*.js";
+@source "../../node_modules/@streamdown/code/dist/*.js";
+
 @theme {
   --font-body: "Inter", system-ui, sans-serif;
   --font-heading: "Noto Serif", Georgia, serif;
+
+  --animate-gm-typing: gm-typing 1.1s ease-in-out infinite;
 
   --color-brand-50: #f2faf5;
   --color-brand-100: #e1f4e8;
@@ -50,6 +57,25 @@
   --color-terminal: var(--gm-terminal);
 
   --shadow-card: var(--gm-shadow-card);
+
+  /* Streamdown addresses color through these names. Bound here so they do not
+     overwrite the house `muted` / `border` tokens used by the rest of the UI. */
+  --color-background: var(--gm-surface);
+  --color-foreground: var(--gm-fg);
+  --color-primary: var(--color-brand-600);
+}
+
+@keyframes gm-typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
 }
 
 :root {
@@ -84,9 +110,12 @@
   --gm-shadow-card:
     0 1px 2px rgb(23 23 23 / 0.04), 0 1px 3px rgb(23 23 23 / 0.06);
 
-  /* Width of the terminal aside. Written by both App state and ResizeHandle
-     drags, so the native web view can track the pane without a React render. */
+  /* Width of the terminal aside, and the height of the AI hints pane stacked
+     above the terminal. Written by both App state and ResizeHandle drags, so
+     the native web view can track the panes without a React render. The hints
+     default is a share of the column until the learner drags the divider. */
   --gm-aside-width: 512px;
+  --gm-hints-height: 60%;
   color-scheme: light;
 }
 
