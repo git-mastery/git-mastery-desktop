@@ -67,8 +67,8 @@ export const ExerciseFolderPanel = ({
   return (
     <div className="flex flex-col gap-4 text-sm text-fg">
       <p>
-        Select the folder you ran{" "}
-        <code className="font-mono text-[13px]">gitmastery setup</code> in. This
+        Select the folder created by{" "}
+        <code className="font-mono text-[13px]">gitmastery setup</code>. This
         step does not set up Git-Mastery on your behalf. Follow the{" "}
         <button
           type="button"
