@@ -110,9 +110,12 @@
   --gm-shadow-card:
     0 1px 2px rgb(23 23 23 / 0.04), 0 1px 3px rgb(23 23 23 / 0.06);
 
-  /* Width of the terminal aside. Written by both App state and ResizeHandle
-     drags, so the native web view can track the pane without a React render. */
+  /* Width of the terminal aside, and the height of the AI hints pane stacked
+     above the terminal. Written by both App state and ResizeHandle drags, so
+     the native web view can track the panes without a React render. The hints
+     default is a share of the column until the learner drags the divider. */
   --gm-aside-width: 512px;
+  --gm-hints-height: 60%;
   color-scheme: light;
 }
 
@@ -161,12 +164,4 @@ body {
   background: var(--gm-canvas);
   color: var(--gm-fg);
   -webkit-font-smoothing: antialiased;
-}
-
-html.gm-chat-overlay,
-html.gm-chat-overlay body,
-html.gm-chat-overlay #root {
-  background: transparent;
-  overflow: hidden;
-  height: 100%;
 }

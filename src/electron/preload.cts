@@ -59,21 +59,16 @@ contextBridge.exposeInMainWorld("electron", {
   // Shell
   openExternal: (url: string) => ipcSend("open-external", { url }),
 
-  // OpenRouter key
-  setOpenRouterKey: (key: string) => ipcInvoke("set-openrouter-key", { key }),
-  getOpenRouterKey: () => ipcInvoke("get-openrouter-key", null),
-  hasOpenRouterKey: () => ipcInvoke("has-openrouter-key", null),
-  clearOpenRouterKey: () => ipcInvoke("clear-openrouter-key", null),
-  validateOpenRouterKey: (key?: string) =>
-    ipcInvoke("validate-openrouter-key", { key }),
+  // AI hints settings
+  getAiSettings: () => ipcInvoke("ai-get-settings", null),
+  saveAiSettings: (input: AiSettingsInput) =>
+    ipcInvoke("ai-save-settings", input),
 
-  // AI hints chat
-  chatDragBegin: () => ipcInvoke("chat-drag-begin", null),
-  chatDragEnd: (rect: ChatPanelRect) => ipcInvoke("chat-drag-end", rect),
-  chatClose: () => ipcSend("chat-close", null),
-  getChatSession: () => ipcInvoke("get-chat-session", null),
-  onChatSession: (callback: (session: ChatSession) => void) =>
-    ipcOn("chat-session", callback),
+  // AI hints panel
+  onAiHintsOpen: (callback: (session: AiHintsSession) => void) =>
+    ipcOn("ai-hints-open", callback),
+  previewAiContext: (exerciseId: string) =>
+    ipcInvoke("ai-preview-context", { exerciseId }),
 
   // AI SDK UI message stream
   aiChatStart: (payload: {

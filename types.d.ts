@@ -63,29 +63,15 @@ interface Window {
     // for opening URLs in the system's default browser
     openExternal: (url: string) => void;
 
-    // OpenRouter bring-your-own-key
-    setOpenRouterKey: (
-      key: string,
-    ) => Promise<{ ok: boolean; encrypted: boolean }>;
-    getOpenRouterKey: () => Promise<{
-      key: string | null;
-      storedEncrypted: boolean;
-      encryptionAvailable: boolean;
-    }>;
-    hasOpenRouterKey: () => Promise<boolean>;
-    clearOpenRouterKey: () => Promise<void>;
-    validateOpenRouterKey: (
-      key?: string,
-    ) => Promise<{ ok: boolean; error?: string }>;
+    // AI hints: bring-your-own-key provider settings
+    getAiSettings: () => Promise<AiSettingsView>;
+    saveAiSettings: (input: AiSettingsInput) => Promise<AiSaveResult>;
 
-    // AI hints chat panel (second WebContentsView)
-    chatDragBegin: () => Promise<ChatDragBeginResult>;
-    chatDragEnd: (rect: ChatPanelRect) => Promise<void>;
-    chatClose: () => void;
-    getChatSession: () => Promise<ChatSession | null>;
-    onChatSession: (callback: (session: ChatSession) => void) => () => void;
+    // AI hints: docked chat panel
+    onAiHintsOpen: (callback: (session: AiHintsSession) => void) => () => void;
+    previewAiContext: (exerciseId: string) => Promise<AiContextBlock[]>;
 
-    // Carries the AI SDK's UI message stream between main and the chat view.
+    // Carries the AI SDK's UI message stream between main and the chat panel.
     // Consumed by IpcChatTransport, not by components directly.
     aiChatStart: (payload: {
       streamId: string;
@@ -129,8 +115,7 @@ type IpcHandlerChannelMapping = {
   // open a URL in the system default browser
   "open-external": { url: string };
 
-  "chat-close": null;
-  "chat-session": ChatSession;
+  "ai-hints-open": AiHintsSession;
 
   "ai-chat-abort": { streamId: string };
   "ai-chat-chunk": { streamId: string; chunk: AiChatChunk };
@@ -176,28 +161,9 @@ type IpcInvokeChannelMapping = {
     StartExerciseResult
   >;
 
-  "set-openrouter-key": IIpcInvoke<
-    { key: string },
-    { ok: boolean; encrypted: boolean }
-  >;
-  "get-openrouter-key": IIpcInvoke<
-    null,
-    {
-      key: string | null;
-      storedEncrypted: boolean;
-      encryptionAvailable: boolean;
-    }
-  >;
-  "has-openrouter-key": IIpcInvoke<null, boolean>;
-  "clear-openrouter-key": IIpcInvoke<null, void>;
-  "validate-openrouter-key": IIpcInvoke<
-    { key?: string },
-    { ok: boolean; error?: string }
-  >;
-
-  "chat-drag-begin": IIpcInvoke<null, ChatDragBeginResult>;
-  "chat-drag-end": IIpcInvoke<ChatPanelRect, void>;
-  "get-chat-session": IIpcInvoke<null, ChatSession | null>;
+  "ai-get-settings": IIpcInvoke<null, AiSettingsView>;
+  "ai-save-settings": IIpcInvoke<AiSettingsInput, AiSaveResult>;
+  "ai-preview-context": IIpcInvoke<{ exerciseId: string }, AiContextBlock[]>;
 
   "ai-chat-start": IIpcInvoke<
     { streamId: string; exerciseId: string; messages: GitMasteryUIMessage[] },
@@ -205,22 +171,53 @@ type IpcInvokeChannelMapping = {
   >;
 };
 
-type ChatPanelRect = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+type AiProviderId = "openrouter" | "openai" | "anthropic" | "google" | "custom";
+
+/**
+ * What the settings panel needs to render a provider. The client that talks to
+ * it lives in main, which is the only process that ever holds a key in use.
+ */
+type AiProviderInfo = {
+  id: AiProviderId;
+  label: string;
+  description: string;
+  /** Null when there is no sensible default and the learner must name one. */
+  defaultModel: string | null;
+  keyUrl: string | null;
+  keyPlaceholder: string;
+  keyRequired: boolean;
+  baseUrlRequired: boolean;
+  baseUrlPlaceholder: string | null;
 };
 
-type ChatDragBeginResult = {
-  windowWidth: number;
-  windowHeight: number;
-  panel: ChatPanelRect;
+type AiProviderSettings = {
+  model: string;
+  baseUrl: string;
+  apiKey: string;
 };
 
-type ChatSession = {
+type AiSettingsView = {
+  providers: AiProviderInfo[];
+  activeProvider: AiProviderId;
+  /** Kept per provider, so flipping the picker does not lose another's key. */
+  saved: Partial<
+    Record<AiProviderId, AiProviderSettings & { keyEncrypted: boolean }>
+  >;
+  encryptionAvailable: boolean;
+};
+
+type AiSettingsInput = { provider: AiProviderId } & AiProviderSettings;
+
+type AiSaveResult =
+  { ok: true; encrypted: boolean } | { ok: false; error: string };
+
+type AiHintsKind = "exercise" | "hands-on";
+
+/** Which exercise or hands-on practical the docked panel is helping with. */
+type AiHintsSession = {
   exerciseId: string;
-  exerciseTitle: string;
+  kind: AiHintsKind;
+  title: string;
 };
 
 type AiContextBlock = {
@@ -230,7 +227,7 @@ type AiContextBlock = {
 };
 
 /**
- * Conversation shape shared by main and the chat renderer. The `context` data
+ * Conversation shape shared by main and the chat panel. The `context` data
  * part carries what was scraped and sent for a turn, so the panel's context
  * chip is attached to the message it actually applied to.
  */

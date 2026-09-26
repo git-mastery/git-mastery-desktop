@@ -7,21 +7,20 @@ function nextStreamId() {
 /**
  * Bridges `useChat` to the Electron main process.
  *
- * The OpenRouter key never leaves main, so there is no HTTP endpoint for
+ * API keys never leave main, so there is no HTTP endpoint for
  * `DefaultChatTransport` to post to. Main runs `streamText` and pushes the AI
  * SDK's own UI message chunks over IPC; this reassembles them into the
  * `ReadableStream` the transport contract expects. Swapping in a real endpoint
  * later means swapping this class, and nothing else.
+ *
+ * One transport serves one exercise: the panel is remounted, with a fresh
+ * conversation, whenever the exercise changes.
  */
 export class IpcChatTransport implements ChatTransport<GitMasteryUIMessage> {
-  /**
-   * Held as a ref rather than a value so switching exercises does not rebuild
-   * the transport and orphan an in-flight stream.
-   */
-  private readonly exerciseIdRef: { current: string | null };
+  private readonly exerciseId: string;
 
-  constructor(exerciseIdRef: { current: string | null }) {
-    this.exerciseIdRef = exerciseIdRef;
+  constructor(exerciseId: string) {
+    this.exerciseId = exerciseId;
   }
 
   sendMessages({
@@ -30,11 +29,7 @@ export class IpcChatTransport implements ChatTransport<GitMasteryUIMessage> {
   }: Parameters<
     ChatTransport<GitMasteryUIMessage>["sendMessages"]
   >[0]): Promise<ReadableStream<UIMessageChunk>> {
-    const exerciseId = this.exerciseIdRef.current;
-    if (!exerciseId) {
-      return Promise.reject(new Error("No exercise is selected."));
-    }
-
+    const exerciseId = this.exerciseId;
     const streamId = nextStreamId();
     let finish: () => void = () => {};
 
@@ -105,7 +100,7 @@ export class IpcChatTransport implements ChatTransport<GitMasteryUIMessage> {
   }
 
   reconnectToStream(): Promise<ReadableStream<UIMessageChunk> | null> {
-    // Streams live only as long as the panel; there is nothing to resume.
+    // Streams live only as long as the conversation; there is nothing to resume.
     return Promise.resolve(null);
   }
 }

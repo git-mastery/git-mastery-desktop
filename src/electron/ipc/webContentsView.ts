@@ -9,8 +9,12 @@ import { getWcvPreloadPath } from "../pathResolver.js";
 import { startExercise, _verify } from "./gitmastery.js";
 import { getMainWindow } from "../main.js";
 import { sendToRenderer } from "./ipcUtils.js";
-import { hasApiKey } from "../aiKey.js";
-import { showChat } from "./chatView.js";
+import {
+  getAiHintsPageState,
+  onAiHintsPageStateChange,
+  type AiHintsPageState,
+} from "../ai/availability.js";
+import type { LessonBrief } from "../ai/session.js";
 import {
   getAppliedResolvedTheme,
   registerThemeBackgroundTarget,
@@ -54,6 +58,16 @@ const SITE_THEME_KEY = "markbind-theme";
 
 /** Latest desktop-owned prefs. Null means do not override the site's localStorage. */
 let sitePrefs: SiteViewPrefs | null = null;
+
+let aiHintsHandler: ((exerciseId: string) => void) | null = null;
+
+/** Exercise identifiers are a path segment on disk and a selector in the page. */
+const EXERCISE_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/i;
+
+/** Receives AI Hints clicks from the lesson page. */
+export function onAiHintsRequested(handler: (exerciseId: string) => void) {
+  aiHintsHandler = handler;
+}
 
 function hasLoadedPage() {
   const url = wcv?.webContents.getURL();
@@ -246,10 +260,11 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
       console.log("[wcv] verify exercise clicked:", exerciseId);
       _verify(mainWindow, exerciseId);
     } else if (channel === "wcv-ai-hints") {
-      const { exerciseId } = args[0] as { exerciseId: string };
+      const { exerciseId } = args[0] as { exerciseId: unknown };
       console.log("[wcv] ai hints clicked:", exerciseId);
-      if (!hasApiKey()) return;
-      void showChat(exerciseId);
+      if (typeof exerciseId !== "string") return;
+      if (!EXERCISE_ID_PATTERN.test(exerciseId)) return;
+      aiHintsHandler?.(exerciseId);
     }
   });
 
@@ -276,7 +291,7 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
         var ICON_DOWNLOAD = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>';
         var ICON_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg>';
         var ICON_SPARKLES = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>';
-        var AI_ENABLED = ${hasApiKey() ? "true" : "false"};
+        var AI_STATE = ${JSON.stringify(getAiHintsPageState())};
 
         var BASE_STYLE = "display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:6px; font-size:14px; font-weight:500; font-family:Inter,system-ui,sans-serif; cursor:pointer; line-height:20px;";
 
@@ -305,17 +320,67 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           btn.addEventListener("mouseleave", function () { btn.style.background = colors.bg; });
         }
 
-        function applyAiButtonState(btn) {
-          var enabled = !!window.__gmAiEnabled;
-          btn.dataset.gmDisabled = enabled ? "false" : "true";
-          btn.style.opacity = enabled ? "1" : "0.5";
-          btn.style.cursor = enabled ? "pointer" : "not-allowed";
-          btn.title = enabled ? "Ask for a hint on this exercise" : "Set up AI features in Settings first";
+        // Hints read the exercise's folder, so they need it on disk as well as
+        // a configured provider. The download check comes first: it is the
+        // one the learner can fix from right here.
+        function aiDisabledReason(id) {
+          var state = window.__gmAiState || { configured: false, ready: [] };
+          if (state.ready.indexOf(id) === -1) {
+            return id.indexOf("hp-") === 0
+              ? "Click Start Hands-on first, so AI Hints can see your work"
+              : "Click Start Exercise first, so AI Hints can see your work";
+          }
+          if (!state.configured) return "Set up AI hints in Settings first";
+          return null;
         }
 
-        window.__gmAiEnabled = AI_ENABLED;
-        window.__gmSetAiEnabled = function (enabled) {
-          window.__gmAiEnabled = !!enabled;
+        function applyAiButtonState(btn) {
+          var reason = aiDisabledReason(btn.dataset.gmAiHints);
+          btn.dataset.gmDisabled = reason ? "true" : "false";
+          btn.dataset.gmDisabledReason = reason || "";
+          btn.style.opacity = reason ? "0.5" : "1";
+          btn.style.cursor = reason ? "not-allowed" : "pointer";
+          btn.setAttribute("aria-disabled", reason ? "true" : "false");
+          btn.setAttribute("aria-label", reason || "Open AI Hints");
+          if (!reason) hideAiHintTooltip();
+        }
+
+        function ensureAiHintTooltip() {
+          var tip = document.getElementById("gm-ai-hint-tooltip");
+          if (tip) return tip;
+          tip = document.createElement("div");
+          tip.id = "gm-ai-hint-tooltip";
+          tip.setAttribute("role", "tooltip");
+          document.body.appendChild(tip);
+          return tip;
+        }
+
+        function hideAiHintTooltip() {
+          var tip = document.getElementById("gm-ai-hint-tooltip");
+          if (tip) tip.style.display = "none";
+        }
+
+        function showAiHintTooltip(btn) {
+          if (btn.dataset.gmDisabled !== "true") {
+            hideAiHintTooltip();
+            return;
+          }
+          var tip = ensureAiHintTooltip();
+          var dark = isDark();
+          tip.textContent = btn.dataset.gmDisabledReason;
+          tip.style.cssText = "display:block; position:fixed; z-index:2147483647; max-width:240px; padding:6px 8px; border-radius:8px; font-size:12px; font-weight:500; font-family:Inter,system-ui,sans-serif; line-height:1.35; pointer-events:none; background:" + (dark ? "#dee2e6" : "#171717") + "; color:" + (dark ? "#212529" : "#fff") + ";";
+          var rect = btn.getBoundingClientRect();
+          var tipRect = tip.getBoundingClientRect();
+          var left = Math.min(Math.max(8, rect.left + (rect.width - tipRect.width) / 2), window.innerWidth - tipRect.width - 8);
+          var top = rect.bottom + 6;
+          if (top + tipRect.height > window.innerHeight - 8) top = rect.top - tipRect.height - 6;
+          tip.style.left = left + "px";
+          tip.style.top = top + "px";
+        }
+
+        window.__gmAiState = AI_STATE;
+        window.__gmSetAiState = function (state) {
+          window.__gmAiState = state;
           document.querySelectorAll("[data-gm-ai-hints]").forEach(applyAiButtonState);
         };
 
@@ -341,12 +406,14 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
 
         function createAiHintsButton(id) {
           var btn = document.createElement("button");
-          btn.setAttribute("data-gm-ai-hints", "true");
-          btn.innerHTML = ICON_SPARKLES + '<span>AI Hints for this exercise</span>';
+          btn.setAttribute("data-gm-ai-hints", id);
+          btn.innerHTML = ICON_SPARKLES + '<span>AI Hints</span>';
           styleSecondary(btn);
           applyAiButtonState(btn);
+          btn.addEventListener("mouseenter", function () { showAiHintTooltip(btn); });
+          btn.addEventListener("mouseleave", hideAiHintTooltip);
           btn.addEventListener("click", function () {
-            if (!window.__gmAiEnabled) return;
+            if (btn.dataset.gmDisabled === "true") return;
             window.wcvBridge.send("wcv-ai-hints", { exerciseId: id });
           });
           return btn;
@@ -409,8 +476,11 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
             var wrapper = document.createElement('div');
             if (!document.getElementById(wrapperId)) wrapper.id = wrapperId;
             wrapper.setAttribute('data-gm-hands-on-injected', '1');
-            wrapper.style.cssText = 'display:flex; align-items:center; gap:8px; margin-top:12px; padding-bottom:8px;';
+            wrapper.setAttribute('data-gm-hands-on-id', id);
+            wrapper.setAttribute('data-gm-actions', '');
+            wrapper.style.cssText = 'display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px; padding-bottom:8px;';
             wrapper.appendChild(createStartButton(id, 'Start Hands-on'));
+            wrapper.appendChild(createAiHintsButton(id));
             container.replaceWith(wrapper);
           });
         }
@@ -423,6 +493,7 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           document.querySelectorAll('div[id^="ex-verify-info-"]').forEach(function (el) {
             var id = el.id.replace("ex-verify-info-", "");
             var container = document.createElement("div");
+            container.setAttribute("data-gm-actions", "");
             container.style.cssText = "display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px; padding-bottom:20px;";
             container.appendChild(createStartButton(id));
             container.appendChild(createVerifyButton(id));
@@ -515,33 +586,74 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
   return () => wcv.webContents.removeListener("dom-ready", handler);
 }
 
-export function setAiHintsEnabled(enabled: boolean) {
+function pushAiHintsState(state: AiHintsPageState) {
   if (!wcv || wcv.webContents.isDestroyed()) return;
   void wcv.webContents
     .executeJavaScript(
-      `if (typeof window.__gmSetAiEnabled === "function") window.__gmSetAiEnabled(${enabled ? "true" : "false"});`,
+      `if (typeof window.__gmSetAiState === "function") window.__gmSetAiState(${JSON.stringify(state)});`,
     )
     .catch(() => {});
 }
 
-export async function getExerciseText(
+/**
+ * Reads an exercise's or hands-on practical's instructions off the lesson
+ * page, or null when it is not on the page currently shown.
+ *
+ * Exercises are an expandable card headed `#exercise-<id>`. A hands-on is the
+ * `.hands-on-practical` box holding our injected Start button, titled by the
+ * "HANDS-ON: …" badge just before it. The injected button rows are hidden for
+ * the read so their labels do not end up in the prompt; `innerText` skips
+ * hidden elements and the swap never reaches a paint.
+ */
+export async function scrapeLessonBrief(
   exerciseId: string,
-): Promise<string | null> {
+): Promise<LessonBrief | null> {
   if (!wcv || wcv.webContents.isDestroyed()) return null;
+  if (!EXERCISE_ID_PATTERN.test(exerciseId)) return null;
   try {
-    const text = await wcv.webContents.executeJavaScript(`
-      (function () {
-        var el = document.getElementById(${JSON.stringify("exercise-" + exerciseId)});
-        if (!el) return null;
-        var card = el.closest(".card");
+    const brief = (await wcv.webContents.executeJavaScript(`
+      (function (id) {
+        function readText(root) {
+          var actions = root.querySelectorAll("[data-gm-actions]");
+          var previous = [];
+          actions.forEach(function (el) {
+            previous.push(el.style.display);
+            el.style.display = "none";
+          });
+          var text = root.innerText;
+          actions.forEach(function (el, i) { el.style.display = previous[i]; });
+          return text || null;
+        }
+
+        if (id.indexOf("hp-") === 0) {
+          var anchor = document.querySelector('[data-gm-hands-on-id="' + CSS.escape(id) + '"]');
+          var box = anchor && anchor.closest(".hands-on-practical");
+          if (!box) return null;
+          var badge = box.previousElementSibling;
+          var badgeText = (badge && badge.textContent) || "";
+          var title = /HANDS-ON/i.test(badgeText)
+            ? badgeText.replace(/^\\s*HANDS-ON:?\\s*/i, "").trim()
+            : null;
+          return { title: title || null, text: readText(box) };
+        }
+
+        var heading = document.getElementById("exercise-" + id);
+        if (!heading) return null;
+        var card = heading.closest(".card");
         var body = card && card.querySelector(".card-body");
-        if (body && body.innerText) return body.innerText;
-        return el.innerText || null;
-      })()
-    `);
-    return typeof text === "string" && text.trim() ? text.trim() : null;
+        return { title: null, text: body ? readText(body) : heading.innerText || null };
+      })(${JSON.stringify(exerciseId)})
+    `)) as LessonBrief | null;
+    if (!brief) return null;
+    return {
+      title: typeof brief.title === "string" ? brief.title.slice(0, 200) : null,
+      text:
+        typeof brief.text === "string" && brief.text.trim()
+          ? brief.text.trim()
+          : null,
+    };
   } catch (err) {
-    console.warn("[wcv] failed to scrape exercise text:", err);
+    console.warn("[wcv] failed to scrape lesson brief:", err);
     return null;
   }
 }
@@ -550,6 +662,7 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
   registerThemeBackgroundTarget((color) => {
     wcv?.setBackgroundColor(color);
   });
+  onAiHintsPageStateChange(pushAiHintsState);
   ipcMainOn(
     "wcv-size",
     ({

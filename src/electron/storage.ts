@@ -2,6 +2,15 @@ import { app } from "electron";
 import path from "path";
 import fs from "fs";
 
+export type StoredAiProvider = {
+  model?: string;
+  baseUrl?: string;
+  /** Encrypted with Electron safeStorage, as base64. */
+  apiKeyEnc?: string;
+  /** Plaintext fallback when safeStorage encryption is unavailable. */
+  apiKeyPlain?: string;
+};
+
 interface Config {
   /**
    * The Git-Mastery exercises root the learner created with `gitmastery setup`.
@@ -14,10 +23,11 @@ interface Config {
   theme?: SitePageTheme;
   /** Parent folder chosen by older builds. Migrated to `exercisesRoot` on read. */
   dataDirectory?: string;
-  /** OpenRouter API key encrypted with Electron safeStorage, as base64. */
-  openRouterApiKeyEnc?: string;
-  /** Plaintext fallback when safeStorage encryption is unavailable. */
-  openRouterApiKeyPlain?: string;
+  /** AI hints: the chosen provider, and each provider's own key and model. */
+  ai?: {
+    provider?: AiProviderId;
+    providers?: Partial<Record<AiProviderId, StoredAiProvider>>;
+  };
 }
 
 const appBasePath = app.getPath("userData");

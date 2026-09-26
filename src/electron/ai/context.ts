@@ -1,10 +1,14 @@
-import { exerciseBriefProvider } from "./providers/exerciseBrief.js";
-import { gitStateProvider } from "./providers/gitState.js";
+import { locateExercise, type ExerciseLocation } from "./availability.js";
+import { exerciseFolderProvider } from "./context/exerciseFolder.js";
+import { gitStateProvider } from "./context/gitState.js";
+import { instructionsProvider } from "./context/instructions.js";
 
 export type ContextBlock = AiContextBlock;
 
 export type ContextCollectArgs = {
   exerciseId: string;
+  /** Null when the exercise is not on disk; workspace providers then skip. */
+  location: ExerciseLocation | null;
 };
 
 export type ContextProvider = {
@@ -21,14 +25,18 @@ const MAX_BLOCK_CHARS = 8000;
  * mid-navigation, a git subprocess — and collection gates the turn, so a
  * provider without a deadline is a hung chat panel.
  */
-const PROVIDER_TIMEOUT_MS = 1500;
+const PROVIDER_TIMEOUT_MS = 2500;
 
 /**
  * Adding a live signal (verify output, terminal scrollback) means appending one
  * provider here. collectContext, the system prompt, IPC, and the context chip
  * all stay unchanged.
  */
-const PROVIDERS: ContextProvider[] = [exerciseBriefProvider, gitStateProvider];
+const PROVIDERS: ContextProvider[] = [
+  instructionsProvider,
+  exerciseFolderProvider,
+  gitStateProvider,
+];
 
 function withTimeout<T>(
   promise: Promise<T>,
@@ -61,12 +69,13 @@ export async function collectContext(
   exerciseId: string,
   signal?: AbortSignal,
 ): Promise<ContextBlock[]> {
+  const location = locateExercise(exerciseId);
   const results = await Promise.all(
     PROVIDERS.map(async (provider) => {
       if (signal?.aborted) return null;
       try {
         const text = await withTimeout(
-          provider.collect({ exerciseId }),
+          provider.collect({ exerciseId, location }),
           PROVIDER_TIMEOUT_MS,
           () =>
             console.warn(
@@ -86,45 +95,4 @@ export async function collectContext(
     }),
   );
   return results.filter((block): block is ContextBlock => block !== null);
-}
-
-/**
- * Wraps block text in a fence long enough to survive its own content. Blocks
- * carry Markdown-significant text — porcelain status lines start with `##`, and
- * the scraped exercise brief has its own headings — which would otherwise be
- * read as structure of the surrounding prompt.
- */
-function fence(text: string): string {
-  const longestRun = Math.max(
-    0,
-    ...[...text.matchAll(/`+/g)].map((match) => match[0].length),
-  );
-  const ticks = "`".repeat(Math.max(3, longestRun + 1));
-  return `${ticks}\n${text}\n${ticks}`;
-}
-
-export function buildSystemPrompt(blocks: ContextBlock[]): string {
-  const preamble = `You are a Git tutor inside Git-Mastery, a course that teaches Git through hands-on exercises.
-
-Read the attached repository state before you answer. It is a live snapshot of the student's exercise repo, captured the moment they sent this message, and it already tells you what they have done: their branch, their commits, what is staged, what is modified, what is untracked. Infer their progress from it, and refer to it concretely — "you have README.md staged but not committed" — rather than in generalities. Never ask the student what they have already tried or already run; you can see it.
-
-If the state genuinely does not settle the question, say what you can see, name what is ambiguous, and ask one specific question.
-
-Keep answers short and stepwise. Give the next step, not the full sequence of commands that would complete the exercise.`;
-
-  if (blocks.length === 0) {
-    return `${preamble}
-
-No exercise or repository context could be collected for this turn, so you cannot see the student's repository. Tell them that rather than guessing at what they have done, and answer from their question alone.`;
-  }
-
-  const attached = blocks
-    .map((block) => `## ${block.label}\n${fence(block.text)}`)
-    .join("\n\n");
-
-  return `${preamble}
-
-The following context is attached for this exercise:
-
-${attached}`;
 }

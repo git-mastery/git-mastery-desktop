@@ -9,7 +9,7 @@ export const TypingDots = ({ label = "Thinking" }: { label?: string }) => (
       <span
         key={index}
         aria-hidden
-        className="h-1.5 w-1.5 animate-gm-typing rounded-full bg-neutral-400"
+        className="h-1.5 w-1.5 animate-gm-typing rounded-full bg-faint"
         style={{ animationDelay: `${index * 160}ms` }}
       />
     ))}

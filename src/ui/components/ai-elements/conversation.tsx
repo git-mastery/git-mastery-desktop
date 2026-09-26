@@ -36,7 +36,7 @@ export const ConversationContent = ({
   ...props
 }: ConversationContentProps) => (
   <StickToBottom.Content
-    className={cn("flex flex-col gap-5 px-3.5 py-4", className)}
+    className={cn("flex flex-col gap-6 px-4 py-5", className)}
     {...props}
   />
 );
@@ -70,7 +70,7 @@ export const ConversationScrollButton = () => {
       aria-label="Scroll to latest"
       size="sm"
       onClick={handleScrollToBottom}
-      className="absolute bottom-3 left-1/2 -translate-x-1/2 border border-neutral-200 bg-white shadow-card hover:bg-neutral-50"
+      className="absolute bottom-3 left-1/2 -translate-x-1/2 border border-border bg-surface shadow-card hover:bg-hover"
     >
       <IconArrowDown size={15} />
     </IconButton>

@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { IconArrowUp, IconPlayerStopFilled } from "@tabler/icons-react";
 import { cx } from "../../utils/cx";
 
-const MAX_HEIGHT = 132;
+const MAX_HEIGHT = 160;
 
 type ComposerProps = {
   disabled?: boolean;
   busy?: boolean;
+  autoFocus?: boolean;
   placeholder?: string;
   onSend: (text: string) => void;
   onStop: () => void;
@@ -21,6 +22,7 @@ type ComposerProps = {
 export const Composer = ({
   disabled = false,
   busy = false,
+  autoFocus = false,
   placeholder = "Ask for a hint…",
   onSend,
   onStop,
@@ -47,8 +49,8 @@ export const Composer = ({
   return (
     <form
       className={cx(
-        "flex items-end gap-1.5 rounded-2xl border border-neutral-200 bg-white py-1.5 pr-1.5 pl-2.5",
-        "focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-100",
+        "flex items-end gap-2 rounded-3xl border border-border bg-surface py-2 pr-2 pl-4",
+        "focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-focus-ring",
         disabled && "opacity-50",
       )}
       onSubmit={(event) => {
@@ -61,7 +63,9 @@ export const Composer = ({
         rows={1}
         value={value}
         disabled={disabled}
+        autoFocus={autoFocus}
         placeholder={placeholder}
+        aria-label="Message"
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
           // Shift+Enter keeps the newline; plain Enter sends.
@@ -74,14 +78,14 @@ export const Composer = ({
             submit();
           }
         }}
-        className="max-h-[132px] min-h-7 flex-1 resize-none self-center bg-transparent py-1 text-[13px] leading-[1.5] text-[#333] placeholder:text-neutral-400 focus:outline-none disabled:cursor-not-allowed"
+        className="max-h-[160px] min-h-8 flex-1 resize-none self-center bg-transparent py-1 text-sm leading-[1.5] text-fg placeholder:text-faint focus:outline-none disabled:cursor-not-allowed"
       />
       {busy ? (
         <button
           type="button"
           aria-label="Stop generating"
           onClick={onStop}
-          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 hover:cursor-pointer hover:bg-neutral-300 focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:outline-none"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fg text-surface hover:cursor-pointer hover:opacity-85 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
         >
           <IconPlayerStopFilled size={12} />
         </button>
@@ -91,12 +95,12 @@ export const Composer = ({
           aria-label="Send"
           disabled={!canSend}
           className={cx(
-            "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white hover:cursor-pointer hover:bg-brand-700",
-            "focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:outline-none",
-            !canSend && "pointer-events-none opacity-50",
+            "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white hover:cursor-pointer hover:bg-brand-700",
+            "focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none",
+            !canSend && "pointer-events-none opacity-40",
           )}
         >
-          <IconArrowUp size={15} />
+          <IconArrowUp size={16} />
         </button>
       )}
     </form>

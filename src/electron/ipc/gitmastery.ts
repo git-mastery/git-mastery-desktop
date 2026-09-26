@@ -22,6 +22,7 @@ import {
   reprintPrompt,
 } from "./terminal.js";
 import { sendToRenderer } from "./ipcUtils.js";
+import { notifyAiHintsPageStateChanged } from "../ai/availability.js";
 import {
   getBlockingPrereq,
   getStartPrereqStep,
@@ -577,9 +578,11 @@ export const startExercise = (
   sendToRenderer(mainWindow, START_EXERCISE_STARTED_CHANNEL, {
     exerciseIdentifier,
   });
-  const started = _startExercise(mainWindow, exerciseIdentifier).finally(() =>
-    startingExercises.delete(exerciseIdentifier),
-  );
+  const started = _startExercise(mainWindow, exerciseIdentifier).finally(() => {
+    startingExercises.delete(exerciseIdentifier);
+    // A download is what makes an exercise's AI Hints button usable.
+    notifyAiHintsPageStateChanged();
+  });
   startingExercises.set(exerciseIdentifier, started);
   return started;
 };

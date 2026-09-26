@@ -360,9 +360,15 @@ conversation has a concrete artifact to point at rather than a question.
 
 **Sent, when the student asks for a hint:**
 
-- the exercise brief, as rendered on the lesson page;
-- the current branch, the recent commit subjects, branch names, remote names, and the **names and
-  staged/unstaged status** of files inside the exercise folder.
+- the exercise or hands-on instructions, as rendered on the lesson page;
+- the exercise id, its manifest metadata (repository setup, topics), whether it has been verified,
+  and the **names** of files and folders inside the exercise folder;
+- for each repository inside the exercise folder: the current branch, recent commit subjects,
+  branch, tag, remote and stash names, any paused merge or rebase, and the **names and
+  staged/unstaged status** of changed files.
+
+Paths are relative to the folder containing `gitmastery-exercises`, so no home directory or
+username is sent.
 
 **Never sent:**
 
@@ -378,11 +384,11 @@ Two properties make that boundary real rather than aspirational:
    a naive `git status` succeeds against whatever repository happens to sit above the exercises
    folder. A student whose home or coursework directory is a Git repository would leak unrelated
    branch names and filenames. The app therefore resolves the repository root first and refuses to
-   read anything unless that root **is** the exercise's own directory, with
+   read anything unless that root **is** a directory inside the exercise folder, with
    `GIT_CEILING_DIRECTORIES` as a second line of defence.
-2. **Disclosure is by construction.** Every block sent is rendered in the chat panel's expandable
-   "Context attached" chip, so a student can read exactly what left their machine, per answer. The
-   same summary is shown at the point the API key is entered.
+2. **Disclosure is by construction.** Every block sent is rendered in the AI Hints pane's expandable
+   "AI can see" row, so a student can read exactly what left their machine, per answer. The same
+   summary is shown where the provider and key are configured.
 
 Adding `git diff`, file contents, or terminal output would cross this boundary and needs to be
 treated as a new decision, not an extension of this one.
