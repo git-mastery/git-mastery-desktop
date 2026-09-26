@@ -34,6 +34,23 @@ const START_EXERCISE_STARTED_CHANNEL = "start-exercise-started" as const;
 const START_EXERCISE_RESULT_CHANNEL = "start-exercise-result" as const;
 const VERIFY_BLOCKED_CHANNEL = "verify-blocked" as const;
 
+type ExercisePageBusy = (
+  kind: "start" | "verify",
+  id: string,
+  busy: boolean,
+) => void;
+
+let exercisePageBusy: ExercisePageBusy | null = null;
+
+/** The embedded lesson page paints Start/Verify busy state from this. */
+export function onExercisePageBusy(handler: ExercisePageBusy) {
+  exercisePageBusy = handler;
+}
+
+function setPageBusy(kind: "start" | "verify", id: string, busy: boolean) {
+  exercisePageBusy?.(kind, id, busy);
+}
+
 const isSameDirectory = (a: string, b: string): boolean => {
   const left = path.resolve(a);
   const right = path.resolve(b);
@@ -292,121 +309,83 @@ export const _download = (
 export const _verify = (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
-) => {
-  const blocking = getBlockingPrereq();
-  if (blocking) {
-    const message = prereqFailureMessage(blocking);
-    echoToXterm(`\r\n${message}\r\n`);
+): Promise<void> => {
+  setPageBusy("verify", exerciseIdentifier, true);
+  return runVerify(mainWindow, exerciseIdentifier).finally(() => {
+    setPageBusy("verify", exerciseIdentifier, false);
+  });
+};
+
+const runVerify = (
+  mainWindow: BrowserWindow,
+  exerciseIdentifier: string,
+): Promise<void> =>
+  new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+
+    const blocking = getBlockingPrereq();
+    if (blocking) {
+      const message = prereqFailureMessage(blocking);
+      echoToXterm(`\r\n${message}\r\n`);
+      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+        originalCommand: `verify`,
+        data: {
+          exerciseIdentifier,
+          completed: { status: "failure", message },
+        },
+      });
+      finish();
+      return;
+    }
+
     sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
       originalCommand: `verify`,
       data: {
         exerciseIdentifier,
-        completed: { status: "failure", message },
-      },
-    });
-    return;
-  }
-
-  sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-    originalCommand: `verify`,
-    data: {
-      exerciseIdentifier,
-      success: {
-        message: "Verifying…",
-        data: { stderr: "", stdout: "" },
-      },
-    },
-  });
-
-  const exerciseCwd = resolveReadyExerciseCwd(exerciseIdentifier);
-  if (exerciseCwd === null || !isSameDirectory(getCwd(), exerciseCwd)) {
-    sendToRenderer(mainWindow, VERIFY_BLOCKED_CHANNEL, { exerciseIdentifier });
-    return;
-  }
-
-  const childProcess = _spawnChildProcess({
-    args: ["verify"],
-    cwd: exerciseCwd,
-  });
-  const echo = startCliEcho("gitmastery verify");
-
-  let stdoutBuffer = "";
-  let stderrBuffer = "";
-
-  childProcess.stdout.on("data", (data) => {
-    stdoutBuffer += data.toString() + "[[terminal-line]]";
-    // Send progress updates to renderer
-    logGM("stdout", `verify`, data.toString());
-    echo.write(data.toString());
-
-    const taskPayload: GitMasteryTaskData = {
-      exerciseIdentifier: exerciseIdentifier,
-
-      success: {
-        message: data.toString(),
-        data: {
-          stdout: stdoutBuffer,
-          stderr: stderrBuffer,
+        success: {
+          message: "Verifying…",
+          data: { stderr: "", stdout: "" },
         },
       },
-    };
-    sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-      originalCommand: `verify`,
-      data: taskPayload,
     });
 
-    // check for SUCCESS and ERROR
-  });
+    const exerciseCwd = resolveReadyExerciseCwd(exerciseIdentifier);
+    if (exerciseCwd === null || !isSameDirectory(getCwd(), exerciseCwd)) {
+      sendToRenderer(mainWindow, VERIFY_BLOCKED_CHANNEL, {
+        exerciseIdentifier,
+      });
+      finish();
+      return;
+    }
 
-  childProcess.stderr.on("data", (data) => {
-    stderrBuffer += data.toString() + "[[terminal-line]]";
-    // Send error updates to renderer
-    logGM("stderr", `verify`, data.toString());
-    echo.write(data.toString());
-
-    const taskPayload: GitMasteryTaskData = {
-      exerciseIdentifier: exerciseIdentifier,
-
-      error: {
-        code: 500, // TODO: set this code properly
-        message: data.toString(),
-      },
-    };
-    sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-      originalCommand: `verify`,
-      data: taskPayload,
+    const childProcess = _spawnChildProcess({
+      args: ["verify"],
+      cwd: exerciseCwd,
     });
-  });
+    const echo = startCliEcho("gitmastery verify");
 
-  childProcess.on("error", (err) => {
-    echo.write(spawnFailureMessage(err));
-    echo.finish();
-    _reportSpawnFailure(mainWindow, "verify", exerciseIdentifier, err);
-  });
+    let stdoutBuffer = "";
+    let stderrBuffer = "";
 
-  childProcess.on("close", (code) => {
-    echo.finish();
-    logGM("close", `verify`, String(code));
-    if (code === 0) {
-      // Success
-
-      const correct = _checkCorrectSolution(stdoutBuffer);
-      const incorrect = _checkIncorrectSolution(stdoutBuffer);
-      const comments = _getComments(stdoutBuffer);
+    childProcess.stdout.on("data", (data) => {
+      stdoutBuffer += data.toString() + "[[terminal-line]]";
+      // Send progress updates to renderer
+      logGM("stdout", `verify`, data.toString());
+      echo.write(data.toString());
 
       const taskPayload: GitMasteryTaskData = {
         exerciseIdentifier: exerciseIdentifier,
 
-        completed: {
-          status: "success",
-          message: "Verify finished",
-          stdout: stdoutBuffer,
-          stderr: stderrBuffer,
-
+        success: {
+          message: data.toString(),
           data: {
-            correct,
-            incorrect,
-            comments,
+            stdout: stdoutBuffer,
+            stderr: stderrBuffer,
           },
         },
       };
@@ -415,32 +394,95 @@ export const _verify = (
         data: taskPayload,
       });
 
-      if (!exerciseIdentifier.startsWith(HANDS_ON_PREFIX)) {
-        patchExerciseProgress(
-          exerciseIdentifier,
-          correct ? "completed" : "in-progress",
-        );
-      }
-    } else {
-      // Failure
+      // check for SUCCESS and ERROR
+    });
+
+    childProcess.stderr.on("data", (data) => {
+      stderrBuffer += data.toString() + "[[terminal-line]]";
+      // Send error updates to renderer
+      logGM("stderr", `verify`, data.toString());
+      echo.write(data.toString());
 
       const taskPayload: GitMasteryTaskData = {
         exerciseIdentifier: exerciseIdentifier,
 
-        completed: {
-          status: "failure",
-          message: stderrBuffer || "Verify failed. Try again.",
-          stdout: stdoutBuffer,
-          stderr: stderrBuffer,
+        error: {
+          code: 500, // TODO: set this code properly
+          message: data.toString(),
         },
       };
       sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
         originalCommand: `verify`,
         data: taskPayload,
       });
-    }
+    });
+
+    childProcess.on("error", (err) => {
+      echo.write(spawnFailureMessage(err));
+      echo.finish();
+      _reportSpawnFailure(mainWindow, "verify", exerciseIdentifier, err);
+      finish();
+    });
+
+    childProcess.on("close", (code) => {
+      if (settled) return;
+      echo.finish();
+      logGM("close", `verify`, String(code));
+      if (code === 0) {
+        // Success
+
+        const correct = _checkCorrectSolution(stdoutBuffer);
+        const incorrect = _checkIncorrectSolution(stdoutBuffer);
+        const comments = _getComments(stdoutBuffer);
+
+        const taskPayload: GitMasteryTaskData = {
+          exerciseIdentifier: exerciseIdentifier,
+
+          completed: {
+            status: "success",
+            message: "Verify finished",
+            stdout: stdoutBuffer,
+            stderr: stderrBuffer,
+
+            data: {
+              correct,
+              incorrect,
+              comments,
+            },
+          },
+        };
+        sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+          originalCommand: `verify`,
+          data: taskPayload,
+        });
+
+        if (!exerciseIdentifier.startsWith(HANDS_ON_PREFIX)) {
+          patchExerciseProgress(
+            exerciseIdentifier,
+            correct ? "completed" : "in-progress",
+          );
+        }
+      } else {
+        // Failure
+
+        const taskPayload: GitMasteryTaskData = {
+          exerciseIdentifier: exerciseIdentifier,
+
+          completed: {
+            status: "failure",
+            message: stderrBuffer || "Verify failed. Try again.",
+            stdout: stdoutBuffer,
+            stderr: stderrBuffer,
+          },
+        };
+        sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+          originalCommand: `verify`,
+          data: taskPayload,
+        });
+      }
+      finish();
+    });
   });
-};
 
 /** Incremented on every Start so a finishing download cannot steal a newer `cd`. */
 let startGeneration = 0;
@@ -448,6 +490,7 @@ let startGeneration = 0;
 const _startExercise = async (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
+  options?: { skipIntro?: boolean },
 ): Promise<StartExerciseResult> => {
   // The outcome is broadcast as well as returned, so that the button injected
   // into the embedded lesson page, which has no return value to inspect, drives
@@ -466,7 +509,7 @@ const _startExercise = async (
 
   // Checked before taking a start generation, so a missing tool does not
   // cancel a download that is already changing directory.
-  const firstRunStep = getStartPrereqStep();
+  const firstRunStep = getStartPrereqStep({ skipIntro: options?.skipIntro });
   if (firstRunStep) {
     return report({ ok: false, exerciseIdentifier, firstRunStep });
   }
@@ -571,6 +614,7 @@ const startingExercises = new Map<string, Promise<StartExerciseResult>>();
 export const startExercise = (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
+  options?: { skipIntro?: boolean },
 ): Promise<StartExerciseResult> => {
   const inFlight = startingExercises.get(exerciseIdentifier);
   if (inFlight) return inFlight;
@@ -578,10 +622,16 @@ export const startExercise = (
   sendToRenderer(mainWindow, START_EXERCISE_STARTED_CHANNEL, {
     exerciseIdentifier,
   });
-  const started = _startExercise(mainWindow, exerciseIdentifier).finally(() => {
+  setPageBusy("start", exerciseIdentifier, true);
+  const started = _startExercise(
+    mainWindow,
+    exerciseIdentifier,
+    options,
+  ).finally(() => {
     startingExercises.delete(exerciseIdentifier);
     // A download is what makes an exercise's AI Hints button usable.
     notifyAiHintsPageStateChanged();
+    setPageBusy("start", exerciseIdentifier, false);
   });
   startingExercises.set(exerciseIdentifier, started);
   return started;
@@ -607,7 +657,7 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
           void startExercise(mainWindow, commandArgs.join(" "));
           break;
         case "verify":
-          _verify(mainWindow, commandArgs.join(" "));
+          void _verify(mainWindow, commandArgs.join(" "));
           break;
         default:
           throw new Error("Invalid command");
@@ -620,8 +670,13 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
   // Command 2: `start` an exercise manually (this function helps the user CD into an exercise)
   ipcMainHandle(
     "gitmastery-start-exercise",
-    async ({ exerciseIdentifier }: { exerciseIdentifier: string }) =>
-      startExercise(mainWindow, exerciseIdentifier),
+    async ({
+      exerciseIdentifier,
+      skipIntro,
+    }: {
+      exerciseIdentifier: string;
+      skipIntro?: boolean;
+    }) => startExercise(mainWindow, exerciseIdentifier, { skipIntro }),
   );
 }
 

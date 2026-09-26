@@ -26,7 +26,7 @@ function App() {
   // Null until the learner drags the divider; until then the CSS default
   // keeps the split proportional to the window height.
   const [hintsHeight, setHintsHeight] = useState<number | null>(null);
-  const [lessonsPanelOpened, setLessonsPanelOpened] = useState(false);
+  const [lessonsPanelOpened, setLessonsPanelOpened] = useState(true);
   const asideRef = useRef<HTMLElement>(null);
 
   const hints = useAiHintsSession();

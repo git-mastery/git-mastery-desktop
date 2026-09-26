@@ -3,6 +3,7 @@ import {
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
+  IconHome,
 } from "@tabler/icons-react";
 import type { Exercise } from "../../../types/Exercise";
 import type { Lesson, Tour, TourData } from "../../../types/Tour";
@@ -12,6 +13,7 @@ import {
   buildLessonUrl,
   buildTourHomeUrl,
   isLessonUrlActive,
+  isTourHomeUrlActive,
   isTourUrlActive,
   useWebContentsView,
 } from "../../contexts/WebContentsViewContext";
@@ -149,10 +151,7 @@ const TourItem = ({
       <button
         type="button"
         aria-expanded={opened}
-        onClick={() => {
-          if (!isActive) onNavigate(buildTourHomeUrl(tour));
-          setOpened((value) => !value);
-        }}
+        onClick={() => setOpened((value) => !value)}
         className={`${listItemClasses} ${isActive ? activeItemClasses : ""}`}
       >
         <span className="flex items-center gap-1.5">
@@ -165,6 +164,16 @@ const TourItem = ({
       </button>
       {opened && (
         <div className="pl-3">
+          <button
+            type="button"
+            className={`${listItemClasses} ${isTourHomeUrlActive(tour, currentUrl) ? activeItemClasses : ""}`}
+            onClick={() => onNavigate(buildTourHomeUrl(tour))}
+          >
+            <span className="flex items-center gap-1.5">
+              <IconHome size={14} className="shrink-0 text-muted" />
+              Tour Home
+            </span>
+          </button>
           {Object.values(tour.lessons).map((lesson) => (
             <LessonItem
               key={lesson.lesson_name}

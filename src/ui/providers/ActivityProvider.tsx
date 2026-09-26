@@ -82,9 +82,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   /**
    * The main process reports every start, whether it came from the app or from
-   * the button injected into the embedded lesson page. Success is visible as a
-   * `cd` in the terminal, so the loading toast is dismissed rather than
-   * restated. Failures that are not CLI output still need a one-line toast.
+   * the button injected into the embedded lesson page. Success is a `cd` in the
+   * terminal plus a toast; failures that are not CLI output still need a
+   * one-line toast.
    */
   const onStartExerciseResult = (result: StartExerciseResult) => {
     const id = startToastId(result.exerciseIdentifier);
@@ -99,8 +99,10 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     }
     setGate(null);
     if (result.ok) {
-      openActionToasts.current.delete(id);
-      hideToast(id);
+      settleToast(id, {
+        title: "Started exercise",
+        tone: "success",
+      });
       return;
     }
 
@@ -225,7 +227,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     if (step === null) {
       const exerciseIdentifier = gate.exerciseIdentifier;
       setGate(null);
-      void window.electron.startExercise(exerciseIdentifier);
+      void window.electron.startExercise(exerciseIdentifier, {
+        skipIntro: true,
+      });
       return;
     }
     setGate({ exerciseIdentifier: gate.exerciseIdentifier, step });

@@ -31,8 +31,9 @@ contextBridge.exposeInMainWorld("electron", {
   setExerciseRoot: (directory: string) =>
     ipcInvoke("set-exercise-root", { directory }),
   clearExerciseRoot: () => ipcInvoke("clear-exercise-root", null),
-  checkStartPrereqs: () => ipcInvoke("check-start-prereqs", null),
-  markStartIntroSeen: () => ipcInvoke("mark-start-intro-seen", null),
+  checkStartPrereqs: (options?: { skipIntro?: boolean }) =>
+    ipcInvoke("check-start-prereqs", options ?? {}),
+  hideStartIntro: () => ipcInvoke("hide-start-intro", null),
 
   // GitMastery
   getDownloadedExercises: () => ipcInvoke("get-downloaded-exercises", null),
@@ -47,8 +48,14 @@ contextBridge.exposeInMainWorld("electron", {
     ipcOn("gitmastery-task-data", (payload) =>
       callback(payload.originalCommand, payload.data),
     ),
-  startExercise: (exerciseIdentifier: string) =>
-    ipcInvoke("gitmastery-start-exercise", { exerciseIdentifier }),
+  startExercise: (
+    exerciseIdentifier: string,
+    options?: { skipIntro?: boolean },
+  ) =>
+    ipcInvoke("gitmastery-start-exercise", {
+      exerciseIdentifier,
+      skipIntro: options?.skipIntro,
+    }),
   onStartExerciseStarted: (callback: (payload: StartExerciseStarted) => void) =>
     ipcOn("start-exercise-started", callback),
   onStartExerciseResult: (callback: (result: StartExerciseResult) => void) =>

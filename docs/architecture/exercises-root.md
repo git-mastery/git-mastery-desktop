@@ -12,13 +12,13 @@ needed. Running setup from an onboarding screen asked for that work before the
 lesson did, and it required the CLI to be installed first.
 
 The first time a learner clicks Start, the app walks through three steps. The
-introduction is shown once. The other two are checked on every Start, from the
-main process, so the Start button in the app and the one in the lesson page
-behave the same.
+introduction repeats on every Start until they check "Don't show this again".
+The other two are checked on every Start, from the main process, so the Start
+button in the app and the one in the lesson page behave the same.
 
 1. **Introduction.** A short description of an exercise: a folder of starting
    files, work in the terminal, then Verify. Hands-on practicals are mentioned
-   because they have no Verify step.
+   because they have no Verify step. A checkbox opts out of seeing it again.
 2. **Tools.** `gitmastery` must be on PATH. On Windows, Git Bash must be
    installed too, because the in-app terminal uses it. Neither check runs the
    CLI. On Windows the step says to restart the app, because PATH is read at

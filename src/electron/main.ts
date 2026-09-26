@@ -32,10 +32,15 @@ app.on("ready", () => {
   mainWindow = new BrowserWindow({
     minWidth: 1024,
     minHeight: 680,
+    show: false,
     backgroundColor: THEME_BACKGROUND[resolvedTheme],
     webPreferences: {
       preload: getPreloadPath(),
     },
+  });
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.maximize();
+    mainWindow?.show();
   });
   setupTheme(mainWindow);
   setupTerminalIpc(mainWindow);
