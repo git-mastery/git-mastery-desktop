@@ -21,9 +21,10 @@ button in the app and the one in the lesson page behave the same.
    because they have no Verify step. A checkbox opts out of seeing it again.
 2. **Tools.** `gitmastery` must be on PATH. On Windows, Git Bash must be
    installed too, because the in-app terminal uses it. Neither check runs the
-   CLI. On Windows the step says to restart the app, because PATH is read at
-   launch and a retry cannot see a change. On macOS and Linux the step can be
-   checked again immediately.
+   CLI. The step is a short dialog: title says the CLI was not found, and
+   "here" opens T1L2 (`/lessons/gitPrep/#installing-the-git-mastery-app`) then
+   closes so the lesson is visible. The next Start re-checks. On Windows, PATH
+   is read at launch, so a newly installed CLI is invisible until restart.
 3. **Folder.** The learner picks the exercises folder. It is accepted when it
    contains `.gitmastery.json`. If they pick the parent and exactly one
    subfolder is a root, that subfolder is used. The copy says this step does
