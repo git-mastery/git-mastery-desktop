@@ -29,7 +29,7 @@ export function hasValidExerciseRoot(): boolean {
   return Boolean(root && isExerciseRoot(root));
 }
 
-/** The first Start step that is still outstanding, ignoring the one-time intro. */
+/** The first Start step that is still outstanding, ignoring the introduction. */
 export function getBlockingPrereq(): "tools" | "folder" | null {
   const tools = getToolsStatus();
   if (!tools.cli || tools.gitBash === false) return "tools";
@@ -39,10 +39,13 @@ export function getBlockingPrereq(): "tools" | "folder" | null {
 
 /**
  * Intro, then tools, then the exercises folder. Null means Start can run.
- * The intro is skipped by Verify; use `getBlockingPrereq` there.
+ * The intro is skipped by Verify; use `getBlockingPrereq` there. A Start that
+ * already showed the intro this attempt passes `skipIntro`.
  */
-export function getStartPrereqStep(): FirstRunStep | null {
-  if (!getConfig().startIntroSeen) return "intro";
+export function getStartPrereqStep(options?: {
+  skipIntro?: boolean;
+}): FirstRunStep | null {
+  if (!options?.skipIntro && !getConfig().hideStartIntro) return "intro";
   return getBlockingPrereq();
 }
 
@@ -103,13 +106,13 @@ export function resolveExerciseRootPick(
 }
 
 export function setupStartPrereqIpc() {
-  ipcMainHandle("check-start-prereqs", async () => ({
-    step: getStartPrereqStep(),
+  ipcMainHandle("check-start-prereqs", async (payload) => ({
+    step: getStartPrereqStep({ skipIntro: payload?.skipIntro }),
     tools: getToolsStatus(),
   }));
 
-  ipcMainHandle("mark-start-intro-seen", async () => {
-    saveConfig({ startIntroSeen: true });
+  ipcMainHandle("hide-start-intro", async () => {
+    saveConfig({ hideStartIntro: true });
     return true;
   });
 }

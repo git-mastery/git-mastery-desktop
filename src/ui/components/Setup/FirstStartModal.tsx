@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/Button";
+import { Checkbox } from "../ui/Checkbox";
 import { Modal } from "../ui/Modal";
 import { Spinner } from "../ui/Spinner";
 import {
@@ -15,8 +16,9 @@ const TITLES: Record<FirstRunStep, string> = {
 };
 
 /**
- * Walks a learner through the first Start: a short introduction, then the CLI
- * (and Git Bash on Windows), then the exercises folder. Closing it does
+ * Walks a learner through Start: a short introduction, then the CLI
+ * (and Git Bash on Windows), then the exercises folder. The introduction
+ * repeats until they check "Don't show this again". Closing it does
  * nothing else; the next Start resumes at whichever step is still missing.
  */
 export const FirstStartModal = ({
@@ -30,7 +32,7 @@ export const FirstStartModal = ({
   onResolved: (step: FirstRunStep | null) => void;
 }) => {
   const advance = async () => {
-    const result = await window.electron.checkStartPrereqs();
+    const result = await window.electron.checkStartPrereqs({ skipIntro: true });
     onResolved(result.step);
     return result;
   };
@@ -39,8 +41,8 @@ export const FirstStartModal = ({
     <Modal opened onClose={onClose} title={TITLES[step]} size="sm">
       {step === "intro" && (
         <IntroStep
-          onContinue={async () => {
-            await window.electron.markStartIntroSeen();
+          onContinue={async (hideAgain) => {
+            if (hideAgain) await window.electron.hideStartIntro();
             await advance();
           }}
         />
@@ -58,8 +60,13 @@ export const FirstStartModal = ({
   );
 };
 
-const IntroStep = ({ onContinue }: { onContinue: () => Promise<void> }) => {
+const IntroStep = ({
+  onContinue,
+}: {
+  onContinue: (hideAgain: boolean) => Promise<void>;
+}) => {
   const [busy, setBusy] = useState(false);
+  const hideAgainRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="flex flex-col gap-4 text-sm text-fg">
@@ -68,12 +75,15 @@ const IntroStep = ({ onContinue }: { onContinue: () => Promise<void> }) => {
         on the right, then click Verify to check your answer.
       </p>
       <p>Hands-on practicals work the same way, without a check at the end.</p>
+      <Checkbox ref={hideAgainRef} label="Don't show this again" />
       <div className="flex justify-end">
         <Button
           loading={busy}
           onClick={() => {
             setBusy(true);
-            void onContinue().finally(() => setBusy(false));
+            void onContinue(Boolean(hideAgainRef.current?.checked)).finally(
+              () => setBusy(false),
+            );
           }}
         >
           Continue
@@ -96,7 +106,7 @@ const ToolsStep = ({
 
   useEffect(() => {
     window.electron
-      .checkStartPrereqs()
+      .checkStartPrereqs({ skipIntro: true })
       .then((result) => setTools(result.tools))
       .catch(() => setTools(null));
   }, []);

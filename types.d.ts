@@ -15,6 +15,8 @@ interface Window {
     navigate: (url: string) => void;
     hide: () => void;
     show: () => void;
+    /** Dims the lesson page in place, for the walkthrough. */
+    setEmbeddedDimmed: (dimmed: boolean) => void;
     onWcvLoading: (callback: (loading: boolean) => void) => () => void;
     onWcvUrlChanged: (callback: (url: string) => void) => () => void;
     getSitePrefs: () => Promise<SiteViewPrefs | null>;
@@ -33,11 +35,11 @@ interface Window {
       directory: string,
     ) => Promise<{ ok: true; root: string } | { ok: false; error: string }>;
     clearExerciseRoot: () => Promise<boolean>;
-    checkStartPrereqs: () => Promise<{
+    checkStartPrereqs: (options?: { skipIntro?: boolean }) => Promise<{
       step: FirstRunStep | null;
       tools: ToolsStatus;
     }>;
-    markStartIntroSeen: () => Promise<boolean>;
+    hideStartIntro: () => Promise<boolean>;
 
     // for retrieving config settings of the backend (electron app)
     // just an array of folder names
@@ -50,7 +52,10 @@ interface Window {
 
     // TODO: decide whether this command should return when (1) task starts or (2) task completes
     startGitMasteryTask: (command: string) => Promise<boolean>;
-    startExercise: (exerciseIdentifier: string) => Promise<StartExerciseResult>;
+    startExercise: (
+      exerciseIdentifier: string,
+      options?: { skipIntro?: boolean },
+    ) => Promise<StartExerciseResult>;
 
     onStartExerciseStarted: (
       callback: (payload: StartExerciseStarted) => void,
@@ -100,6 +105,7 @@ type IpcHandlerChannelMapping = {
   "wcv-show": null;
   "wcv-size": { x: number; y: number; width: number; height: number };
   "wcv-hide": null;
+  "wcv-set-dimmed": { dimmed: boolean };
   "wcv-loading": { loading: boolean };
   "wcv-url-changed": { url: string };
   "set-app-theme": {
@@ -142,10 +148,10 @@ type IpcInvokeChannelMapping = {
   >;
   "clear-exercise-root": IIpcInvoke<null, boolean>;
   "check-start-prereqs": IIpcInvoke<
-    null,
+    { skipIntro?: boolean },
     { step: FirstRunStep | null; tools: ToolsStatus }
   >;
-  "mark-start-intro-seen": IIpcInvoke<null, boolean>;
+  "hide-start-intro": IIpcInvoke<null, boolean>;
 
   "wcv-get-site-prefs": IIpcInvoke<null, SiteViewPrefs | null>;
   "wcv-set-site-prefs": IIpcInvoke<
@@ -157,7 +163,7 @@ type IpcInvokeChannelMapping = {
   "get-downloaded-exercises": IIpcInvoke<null, ProgressData>;
   "gitmastery-start-task": IIpcInvoke<{ command: string }, boolean>;
   "gitmastery-start-exercise": IIpcInvoke<
-    { exerciseIdentifier: string },
+    { exerciseIdentifier: string; skipIntro?: boolean },
     StartExerciseResult
   >;
 

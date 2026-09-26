@@ -6,7 +6,7 @@ import {
 } from "electron";
 import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
 import { getWcvPreloadPath } from "../pathResolver.js";
-import { startExercise, _verify } from "./gitmastery.js";
+import { startExercise, _verify, onExercisePageBusy } from "./gitmastery.js";
 import { getMainWindow } from "../main.js";
 import { sendToRenderer } from "./ipcUtils.js";
 import {
@@ -60,6 +60,52 @@ const SITE_THEME_KEY = "markbind-theme";
 let sitePrefs: SiteViewPrefs | null = null;
 
 let aiHintsHandler: ((exerciseId: string) => void) | null = null;
+
+/** Mirrors `--gm-dim` in src/ui/index.css, so the lesson dims like the DOM panes. */
+const PAGE_DIM_COLOR = {
+  light: "rgb(23 23 23 / 0.45)",
+  dark: "rgb(0 0 0 / 0.6)",
+} as const;
+
+/** Set while the walkthrough points at the terminal. Survives navigation. */
+let pageDimmed = false;
+
+function applyPageDim() {
+  if (!wcv || wcv.webContents.isDestroyed() || !hasLoadedPage()) return;
+  const color = PAGE_DIM_COLOR[getAppliedResolvedTheme()];
+  void wcv.webContents
+    .executeJavaScript(
+      `(function (dimmed, color) {
+        var el = document.getElementById("gm-walkthrough-dim");
+        if (!dimmed) {
+          if (el) el.remove();
+          return;
+        }
+        if (!el) {
+          el = document.createElement("div");
+          el.id = "gm-walkthrough-dim";
+          (document.body || document.documentElement).appendChild(el);
+        }
+        el.style.cssText = "position:fixed; inset:0; z-index:2147483647; background:" + color + ";";
+      })(${JSON.stringify(pageDimmed)}, ${JSON.stringify(color)})`,
+    )
+    .catch(() => {});
+}
+
+const busyStarts = new Set<string>();
+const busyVerifies = new Set<string>();
+
+function setPageBusy(kind: "start" | "verify", id: string, busy: boolean) {
+  const set = kind === "start" ? busyStarts : busyVerifies;
+  if (busy) set.add(id);
+  else set.delete(id);
+  if (!wcv || wcv.webContents.isDestroyed()) return;
+  void wcv.webContents
+    .executeJavaScript(
+      `if (typeof window.__gmSetBusy === "function") window.__gmSetBusy(${JSON.stringify(kind)}, ${JSON.stringify(id)}, ${JSON.stringify(busy)});`,
+    )
+    .catch(() => {});
+}
 
 /** Exercise identifiers are a path segment on disk and a selector in the page. */
 const EXERCISE_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/i;
@@ -220,6 +266,7 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
         await applySitePrefsToPage();
         await wcv!.webContents.insertCSS(EMBED_CSS).catch(() => {});
       })();
+      applyPageDim();
     });
     wcv.webContents.on("did-fail-load", () => {
       setLoading(mainWindow, false);
@@ -258,7 +305,7 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
     } else if (channel === "wcv-verify-exercise") {
       const { exerciseId } = args[0] as { exerciseId: string };
       console.log("[wcv] verify exercise clicked:", exerciseId);
-      _verify(mainWindow, exerciseId);
+      void _verify(mainWindow, exerciseId);
     } else if (channel === "wcv-ai-hints") {
       const { exerciseId } = args[0] as { exerciseId: unknown };
       console.log("[wcv] ai hints clicked:", exerciseId);
@@ -291,20 +338,77 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
         var ICON_DOWNLOAD = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>';
         var ICON_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg>';
         var ICON_SPARKLES = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>';
+        var ICON_SPINNER = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0; animation:gm-spin 0.8s linear infinite;"><circle cx="12" cy="12" r="9" opacity="0.2"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>';
         var AI_STATE = ${JSON.stringify(getAiHintsPageState())};
+        var BUSY_STATE = ${JSON.stringify({
+          start: [...busyStarts],
+          verify: [...busyVerifies],
+        })};
 
         var BASE_STYLE = "display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:6px; font-size:14px; font-weight:500; font-family:Inter,system-ui,sans-serif; cursor:pointer; line-height:20px;";
 
+        if (!document.getElementById("gm-busy-style")) {
+          var spinStyle = document.createElement("style");
+          spinStyle.id = "gm-busy-style";
+          spinStyle.textContent = "@keyframes gm-spin { to { transform: rotate(360deg); } }";
+          document.head.appendChild(spinStyle);
+        }
+
+        window.__gmBusyState = { start: {}, verify: {} };
+        BUSY_STATE.start.forEach(function (id) { window.__gmBusyState.start[id] = true; });
+        BUSY_STATE.verify.forEach(function (id) { window.__gmBusyState.verify[id] = true; });
+
+        function setButtonBusy(btn, busy) {
+          if ((btn.dataset.gmBusy === "true") === busy) return;
+          btn.dataset.gmBusy = busy ? "true" : "false";
+          btn.disabled = busy;
+          btn.setAttribute("aria-busy", busy ? "true" : "false");
+          btn.style.opacity = busy ? "0.7" : "1";
+          btn.style.cursor = busy ? "progress" : "pointer";
+          if (busy) {
+            btn.dataset.gmIdleHtml = btn.innerHTML;
+            var label = btn.querySelector("span");
+            btn.innerHTML = ICON_SPINNER + (label ? label.outerHTML : "");
+          } else if (btn.dataset.gmIdleHtml) {
+            btn.innerHTML = btn.dataset.gmIdleHtml;
+            delete btn.dataset.gmIdleHtml;
+          }
+        }
+
+        window.__gmSetBusy = function (kind, id, busy) {
+          if (!window.__gmBusyState[kind]) window.__gmBusyState[kind] = {};
+          window.__gmBusyState[kind][id] = busy;
+          var attr = kind === "verify" ? "data-gm-verify" : "data-gm-start";
+          document.querySelectorAll("[" + attr + '="' + CSS.escape(id) + '"]').forEach(function (btn) {
+            setButtonBusy(btn, busy);
+          });
+        };
+
+        function applyBusyState() {
+          Object.keys(window.__gmBusyState.start || {}).forEach(function (id) {
+            if (window.__gmBusyState.start[id]) window.__gmSetBusy("start", id, true);
+          });
+          Object.keys(window.__gmBusyState.verify || {}).forEach(function (id) {
+            if (window.__gmBusyState.verify[id]) window.__gmSetBusy("verify", id, true);
+          });
+        }
+
         function styleSolid(btn) {
           btn.style.cssText = BASE_STYLE + "background:" + SOLID_BG + "; color:#fff; border:none; box-shadow:0 1px 2px rgba(0,0,0,0.05);";
-          btn.addEventListener("mouseenter", function () { btn.style.background = SOLID_HOVER; });
+          btn.addEventListener("mouseenter", function () {
+            if (btn.dataset.gmBusy === "true") return;
+            btn.style.background = SOLID_HOVER;
+          });
           btn.addEventListener("mouseleave", function () { btn.style.background = SOLID_BG; });
         }
 
         function styleOutline(btn) {
           var colors = outlineColors();
           btn.style.cssText = BASE_STYLE + "background:transparent; color:" + colors.text + "; border:1px solid " + OUTLINE_BORDER + ";";
-          btn.addEventListener("mouseenter", function () { btn.style.background = colors.hoverBg; });
+          btn.addEventListener("mouseenter", function () {
+            if (btn.dataset.gmBusy === "true") return;
+            btn.style.background = colors.hoverBg;
+          });
           btn.addEventListener("mouseleave", function () { btn.style.background = "transparent"; });
         }
 
@@ -386,9 +490,12 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
 
         function createStartButton(id, label) {
           var btn = document.createElement("button");
+          btn.setAttribute("data-gm-start", id);
           btn.innerHTML = ICON_DOWNLOAD + '<span>' + (label || 'Start Exercise') + '</span>';
           styleSolid(btn);
           btn.addEventListener("click", function () {
+            if (btn.dataset.gmBusy === "true") return;
+            window.__gmSetBusy("start", id, true);
             window.wcvBridge.send("wcv-start-exercise", { exerciseId: id });
           });
           return btn;
@@ -396,9 +503,12 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
 
         function createVerifyButton(id) {
           var btn = document.createElement("button");
+          btn.setAttribute("data-gm-verify", id);
           btn.innerHTML = ICON_CHECK + '<span>Verify Solution</span>';
           styleOutline(btn);
           btn.addEventListener("click", function () {
+            if (btn.dataset.gmBusy === "true") return;
+            window.__gmSetBusy("verify", id, true);
             window.wcvBridge.send("wcv-verify-exercise", { exerciseId: id });
           });
           return btn;
@@ -502,6 +612,7 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           });
 
           injectHandsOnButtons();
+          applyBusyState();
         }
 
         var observedCollapses = window.__gmObservedCollapses || (window.__gmObservedCollapses = new WeakSet());
@@ -661,8 +772,10 @@ export async function scrapeLessonBrief(
 export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
   registerThemeBackgroundTarget((color) => {
     wcv?.setBackgroundColor(color);
+    if (pageDimmed) applyPageDim();
   });
   onAiHintsPageStateChange(pushAiHintsState);
+  onExercisePageBusy(setPageBusy);
   ipcMainOn(
     "wcv-size",
     ({
@@ -733,6 +846,11 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
     }
     setLoading(mainWindow, true);
     view.webContents.loadURL(url);
+  });
+
+  ipcMainOn("wcv-set-dimmed", ({ dimmed }: { dimmed: boolean }) => {
+    pageDimmed = dimmed;
+    applyPageDim();
   });
 
   // Temporarily hide the wcv, whenever we need to display a full screen modal.
