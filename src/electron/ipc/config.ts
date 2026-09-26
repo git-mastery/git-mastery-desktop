@@ -1,12 +1,11 @@
 import { dialog, BrowserWindow } from "electron";
-import { getConfig, saveConfig } from "../storage.js";
-import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
+import { clearExerciseRoot, getConfig, saveConfig } from "../storage.js";
+import { ipcMainHandle } from "../utils/util.js";
 import {
   getExerciseProgress,
   resetExerciseProgressCache,
 } from "../exerciseProgress.js";
-import fs from "fs";
-import path from "path";
+import { resolveExerciseRootPick } from "../startPrereqs.js";
 
 export function setupConfigIpc(mainWindow: BrowserWindow) {
   ipcMainHandle("select-folder", async () => {
@@ -21,28 +20,23 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
     return result.filePaths[0];
   });
 
-  ipcMainOn("set-data-directory", ({ directory }) => {
-    console.log("[info] set-data-directory event: ", directory);
-    saveConfig({ dataDirectory: directory });
+  ipcMainHandle("get-exercise-root", async () => {
+    return { root: getConfig().exercisesRoot ?? null };
+  });
+
+  ipcMainHandle("set-exercise-root", async ({ directory }) => {
+    const resolved = resolveExerciseRootPick(directory);
+    if (!resolved.ok) return resolved;
+
+    saveConfig({ exercisesRoot: resolved.root });
     resetExerciseProgressCache();
+    return resolved;
   });
 
-  ipcMainHandle("get-data-directory", async () => {
-    return getConfig().dataDirectory || null;
-  });
-
-  ipcMainHandle("check-exercise-folder", async () => {
-    const dataDirectory = getConfig().dataDirectory || null;
-    if (!dataDirectory) {
-      return { dataDirectory: null, exercisesPath: null, ready: false };
-    }
-
-    const exercisesPath = path.join(dataDirectory, "gitmastery-exercises");
-    return {
-      dataDirectory,
-      exercisesPath,
-      ready: fs.existsSync(exercisesPath),
-    };
+  ipcMainHandle("clear-exercise-root", async () => {
+    clearExerciseRoot();
+    resetExerciseProgressCache();
+    return true;
   });
 
   ipcMainHandle("get-downloaded-exercises", async () => {

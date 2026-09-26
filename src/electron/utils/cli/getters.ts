@@ -5,6 +5,9 @@ import { getConfig } from "../../storage.js";
 export const CLI_BINARY =
   process.platform === "win32" ? "gitmastery.exe" : "gitmastery";
 
+/** Written by `gitmastery setup` into the exercises root. */
+export const EXERCISE_ROOT_MARKER = ".gitmastery.json";
+
 const MACOS_HOMEBREW_PATHS = [
   "/opt/homebrew/bin",
   "/usr/local/bin",
@@ -19,9 +22,9 @@ const pathKey = (env: NodeJS.ProcessEnv) =>
   Object.keys(env).find((k) => k.toUpperCase() === "PATH") ?? "PATH";
 
 /**
- * PATH for spawned CLI / PTY processes. Prepends `dataDirectory` so an
- * app-downloaded binary is found the same way as a self-install, then (on
- * macOS) Homebrew prefixes that GUI launches otherwise miss.
+ * PATH for spawned CLI / PTY processes. On macOS, prepends Homebrew prefixes
+ * that GUI launches otherwise miss. Nothing else is added: the CLI is installed
+ * by the learner, and a learner-chosen folder must not sit ahead of system tools.
  */
 export function getCliEnvironment(): NodeJS.ProcessEnv {
   const env = { ...process.env };
@@ -34,10 +37,7 @@ export function getCliEnvironment(): NodeJS.ProcessEnv {
       : "";
   const current = inherited && inherited.length > 0 ? inherited : fallback;
 
-  const prefix: string[] = [];
-  const dataDirectory = getConfig().dataDirectory;
-  if (dataDirectory) prefix.push(dataDirectory);
-  if (process.platform === "darwin") prefix.push(...MACOS_HOMEBREW_PATHS);
+  const prefix = process.platform === "darwin" ? MACOS_HOMEBREW_PATHS : [];
 
   const unique = Array.from(
     new Set(
@@ -49,6 +49,9 @@ export function getCliEnvironment(): NodeJS.ProcessEnv {
   return env;
 }
 
+const isFile = (candidate: string): boolean =>
+  fs.statSync(candidate, { throwIfNoEntry: false })?.isFile() ?? false;
+
 /** Absolute path to the CLI, or null when nothing on PATH provides it. */
 export function resolveGitMasteryBinary(): string | null {
   const env = getCliEnvironment();
@@ -58,15 +61,22 @@ export function resolveGitMasteryBinary(): string | null {
 
   for (const dir of dirs) {
     const candidate = path.join(dir, CLI_BINARY);
-    if (fs.existsSync(candidate)) return candidate;
+    if (isFile(candidate)) return candidate;
   }
   return null;
 }
 
+/** True when `directory` is a Git-Mastery exercises root. */
+export function isExerciseRoot(directory: string): boolean {
+  return isFile(path.join(directory, EXERCISE_ROOT_MARKER));
+}
+
 export function getExerciseDirectory(): string {
-  const dataDirectory = getConfig().dataDirectory;
-  if (!dataDirectory) {
-    throw new Error("Exercise directory not found. Finish setup to create it.");
+  const exercisesRoot = getConfig().exercisesRoot;
+  if (!exercisesRoot) {
+    throw new Error(
+      "Exercise folder not set. Choose it when you start an exercise.",
+    );
   }
-  return path.join(dataDirectory, "gitmastery-exercises");
+  return exercisesRoot;
 }

@@ -11,13 +11,14 @@
 // here is therefore keyed off the exercise identifier in the stream payload
 // rather than off the current activity.
 
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Exercise } from "../../types/Exercise";
 import { useElectronStream } from "../hooks/useElectronStream";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
 import { useToast, type ToastOptions } from "../contexts/ToastContext";
 import { ActivityContext } from "../contexts/ActivityContext";
 import { isHandsOnIdentifier } from "../utils/format";
+import { FirstStartModal } from "../components/Setup/FirstStartModal";
 
 const isVerifyCommand = (cmd: string) => cmd.startsWith("verify");
 
@@ -34,6 +35,11 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   /** Loading toasts currently on screen, so settle can update them in place. */
   const openActionToasts = useRef<Set<string>>(new Set());
+
+  const [gate, setGate] = useState<{
+    exerciseIdentifier: string;
+    step: FirstRunStep;
+  } | null>(null);
 
   const startExercise = (exercise: Exercise) => {
     void window.electron.startExercise(exercise.identifier);
@@ -82,6 +88,16 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
    */
   const onStartExerciseResult = (result: StartExerciseResult) => {
     const id = startToastId(result.exerciseIdentifier);
+    if (result.firstRunStep && result.exerciseIdentifier) {
+      openActionToasts.current.delete(id);
+      hideToast(id);
+      setGate({
+        exerciseIdentifier: result.exerciseIdentifier,
+        step: result.firstRunStep,
+      });
+      return;
+    }
+    setGate(null);
     if (result.ok) {
       openActionToasts.current.delete(id);
       hideToast(id);
@@ -189,8 +205,10 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     _originalCommand: string,
     data: GitMasteryTaskData,
   ) => {
+    const message = data.completed?.message;
     settleToast(verifyToastId(data.exerciseIdentifier), {
       title: "Verification failed",
+      message: message && message.length <= 200 ? message : undefined,
       tone: "danger",
     });
   };
@@ -202,6 +220,17 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     onFailedExit: _onExerciseVerifiedFailure,
   });
 
+  const onGateResolved = (step: FirstRunStep | null) => {
+    if (!gate) return;
+    if (step === null) {
+      const exerciseIdentifier = gate.exerciseIdentifier;
+      setGate(null);
+      void window.electron.startExercise(exerciseIdentifier);
+      return;
+    }
+    setGate({ exerciseIdentifier: gate.exerciseIdentifier, step });
+  };
+
   return (
     <ActivityContext.Provider
       value={{
@@ -209,6 +238,13 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      {gate && (
+        <FirstStartModal
+          step={gate.step}
+          onClose={() => setGate(null)}
+          onResolved={onGateResolved}
+        />
+      )}
     </ActivityContext.Provider>
   );
 }

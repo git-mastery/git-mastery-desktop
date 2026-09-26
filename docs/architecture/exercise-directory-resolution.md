@@ -253,8 +253,7 @@ is already in the terminal. Failures, including a failed download, settle the sa
 re-downloads. Blocked on the flag shipping — it does not exist in v7.8.2. When picked up it
 needs:
 
-- a minimum CLI version gate (`get-gitmastery-version` in `src/electron/ipc/setupPrereq.ts`
-  already reads the version)
+- a minimum CLI version gate (the app no longer reads the CLI version; that would need a new probe)
 - a destructive-action confirmation, since it deletes the learner's work
 - a fallback for older CLIs: hide the button rather than shell out to a flag that errors
 
@@ -287,7 +286,7 @@ folder, so a stray `cd` into a subdirectory is sent back through Start.
 
 ## 10. Process spawn failures
 
-`_setup`, `_download` and `_verify` each listen for `'error'` on the child process. A spawn that
+`_download` and `_verify` each listen for `'error'` on the child process. A spawn that
 never starts — GitMastery missing from `PATH`, exercise folder gone — emits `'error'` and then
 usually `'close'` with `code === null`. Without an `error` listener Node raises this as an
 uncaught exception in the main process. `_download` must still settle its promise on both

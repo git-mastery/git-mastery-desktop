@@ -16,7 +16,7 @@ import { getCliEnvironment } from "../utils/cli/getters.js";
  *
  * Returns null if git is not on PATH or bash.exe cannot be found.
  */
-function findGitBash(): string | null {
+export function findGitBash(): string | null {
   if (os.platform() !== "win32") return null;
   try {
     // `where git` may return multiple lines; take the first valid one

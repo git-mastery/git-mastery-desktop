@@ -1,9 +1,7 @@
 import { BrowserWindow } from "electron";
-import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 import { ipcMainHandle } from "../utils/util.js";
-import { getConfig } from "../storage.js";
 import { logGM } from "../utils/logger.js";
 import {
   CLI_BINARY,
@@ -24,6 +22,11 @@ import {
   reprintPrompt,
 } from "./terminal.js";
 import { sendToRenderer } from "./ipcUtils.js";
+import {
+  getBlockingPrereq,
+  getStartPrereqStep,
+  prereqFailureMessage,
+} from "../startPrereqs.js";
 
 const GM_TASK_DATA_CHANNEL = "gitmastery-task-data" as const;
 const START_EXERCISE_STARTED_CHANNEL = "start-exercise-started" as const;
@@ -127,152 +130,6 @@ const _reportSpawnFailure = (
     originalCommand,
     data: taskPayload,
   });
-};
-
-const _setup = async (mainWindow: BrowserWindow) => {
-  const dataDirectory = getConfig().dataDirectory;
-
-  // 1. Check if the data directory exists.
-  // Reported as a failed task rather than thrown, so the renderer settles the
-  // same way it does for any other setup failure.
-  if (!dataDirectory || !fs.existsSync(dataDirectory)) {
-    console.log("error: data directory not found");
-    sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-      originalCommand: "setup",
-      data: {
-        completed: {
-          status: "failure",
-          message:
-            "No save location configured. Choose where exercise files should live first.",
-        },
-      },
-    });
-    return;
-  }
-
-  // 2. Check if the exercises folder is created
-  const exerciseDirectory = path.join(dataDirectory, "gitmastery-exercises");
-  if (!fs.existsSync(exerciseDirectory)) {
-    // run setup process
-    // Spawn the process
-    // Do NOT use shell: true — it causes cmd.exe to split on spaces in the path,
-    // e.g. "C:\Coding\gitmastery stuff\gitmastery.exe" gets truncated to "C:\Coding\gitmastery"
-    // Use dataDirectory as cwd because the exercises subdirectory
-    // doesn't exist yet — setup is what creates it. Using the default
-    // cwd (getExerciseDirectory()) would cause spawn to fail with ENOENT.
-    const childProcess = _spawnChildProcess({
-      args: ["setup"],
-      cwd: dataDirectory,
-    });
-    const echo = startCliEcho("gitmastery setup");
-
-    let stdoutBuffer = "";
-    let stderrBuffer = "";
-
-    childProcess.stdout.on("data", (data) => {
-      stdoutBuffer += data.toString() + "[[terminal-line]]";
-      // Send progress updates to renderer
-      logGM("stdout", "setup", data.toString());
-      echo.write(data.toString());
-
-      const taskPayload: GitMasteryTaskData = {
-        success: {
-          message: data.toString(),
-          data: {
-            stdout: stdoutBuffer,
-            stderr: stderrBuffer,
-          },
-        },
-      };
-
-      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-        originalCommand: "setup",
-        data: taskPayload,
-      });
-
-      if (data.toString().includes("PROMPT")) {
-        childProcess.stdin.write("\n");
-        childProcess.stdin.end(); // no more input
-      }
-    });
-
-    childProcess.stderr.on("data", (data) => {
-      stderrBuffer += data.toString() + "[[terminal-line]]";
-      // Send error updates to renderer
-      logGM("stderr", "setup", data.toString());
-      echo.write(data.toString());
-
-      const taskPayload: GitMasteryTaskData = {
-        error: {
-          message: data.toString(),
-          code: 500,
-        },
-      };
-
-      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-        originalCommand: "setup",
-        data: taskPayload,
-      });
-    });
-
-    childProcess.on("error", (err) => {
-      echo.write(spawnFailureMessage(err));
-      echo.finish();
-      _reportSpawnFailure(mainWindow, "setup", undefined, err);
-    });
-
-    childProcess.on("close", (code) => {
-      echo.finish();
-      logGM("close", "setup", String(code));
-      if (code === 0) {
-        // Success
-
-        const taskPayload: GitMasteryTaskData = {
-          completed: {
-            status: "success",
-            message: "Setup finished",
-          },
-        };
-        sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-          originalCommand: "setup",
-          data: taskPayload,
-        });
-      } else {
-        // Failure
-
-        const taskPayload: GitMasteryTaskData = {
-          completed: {
-            status: "failure",
-            message: stderrBuffer || "Setup failed. Try again.",
-            stdout: stdoutBuffer,
-            stderr: stderrBuffer,
-          },
-        };
-
-        sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-          originalCommand: "setup",
-          data: taskPayload,
-        });
-      }
-    });
-
-    return;
-  }
-
-  // else, nothing to setup
-  const taskPayload: GitMasteryTaskData = {
-    completed: {
-      status: "success",
-      message: "Setup complete",
-    },
-  };
-  sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-    originalCommand: "setup",
-    data: taskPayload,
-  });
-
-  console.log("nothing to setup for gitmastery setup", taskPayload);
-  return;
 };
 
 /**
@@ -435,6 +292,20 @@ export const _verify = (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
 ) => {
+  const blocking = getBlockingPrereq();
+  if (blocking) {
+    const message = prereqFailureMessage(blocking);
+    echoToXterm(`\r\n${message}\r\n`);
+    sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+      originalCommand: `verify`,
+      data: {
+        exerciseIdentifier,
+        completed: { status: "failure", message },
+      },
+    });
+    return;
+  }
+
   sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
     originalCommand: `verify`,
     data: {
@@ -577,23 +448,31 @@ const _startExercise = async (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
 ): Promise<StartExerciseResult> => {
-  const generation = ++startGeneration;
-  const cdIfCurrent = (directory: string) => {
-    if (generation === startGeneration) changeDirectory(directory);
-  };
-
   // The outcome is broadcast as well as returned, so that the button injected
   // into the embedded lesson page, which has no return value to inspect, drives
-  // the same onboarding and error handling as the app's own button.
+  // the same error handling as the app's own button.
   const report = (
     result: StartExerciseResult,
     { broadcast = true }: { broadcast?: boolean } = {},
   ): StartExerciseResult => {
-    if (!result.ok) console.warn(`[start-exercise] ${result.error}`);
+    if (!result.ok && result.error)
+      console.warn(`[start-exercise] ${result.error}`);
     if (broadcast) {
       sendToRenderer(mainWindow, START_EXERCISE_RESULT_CHANNEL, result);
     }
     return result;
+  };
+
+  // Checked before taking a start generation, so a missing tool does not
+  // cancel a download that is already changing directory.
+  const firstRunStep = getStartPrereqStep();
+  if (firstRunStep) {
+    return report({ ok: false, exerciseIdentifier, firstRunStep });
+  }
+
+  const generation = ++startGeneration;
+  const cdIfCurrent = (directory: string) => {
+    if (generation === startGeneration) changeDirectory(directory);
   };
 
   if (!isPathSegment(exerciseIdentifier)) {
@@ -708,9 +587,6 @@ export const startExercise = (
 // Handles backend gitmastery ipc events
 // responsible for downloads, verification, etc
 export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
-  // command 1: `gitmastery setup`
-  // prerequisites: must have chosen an exe location and exercise directory
-  // action: spawn terminal, cd to exercise directory, run `[exe location] setup`
   ipcMainHandle(
     "gitmastery-start-task",
     async ({ command }: { command: string }) => {
@@ -722,9 +598,6 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
       const commandArgs = commandParts.slice(1);
 
       switch (commandName) {
-        case "setup":
-          await _setup(mainWindow);
-          break;
         case "download":
           // Routed through startExercise so this path keeps the guard against
           // downloading over an exercise that already exists.
