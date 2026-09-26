@@ -11,6 +11,11 @@ import {
   useWebContentsView,
 } from "./contexts/WebContentsViewContext";
 import { useAiHintsSession } from "./hooks/useAiHintsSession";
+import { useWalkthrough } from "./hooks/useWalkthrough";
+import {
+  WalkthroughCard,
+  WalkthroughDim,
+} from "./components/Walkthrough/Walkthrough";
 import { cx } from "./utils/cx";
 
 const MIN_MAIN = 320;
@@ -31,6 +36,10 @@ function App() {
 
   const hints = useAiHintsSession();
   const showHints = hints.session !== null && hints.open;
+
+  const walkthrough = useWalkthrough();
+  const focusLessons = walkthrough.step === "lessons";
+  const focusTerminal = walkthrough.step === "terminal";
 
   const onLessons = getSiteSection(currentUrl) === "lessons";
   const showLessonsPanel = onLessons && lessonsPanelOpened;
@@ -64,13 +73,15 @@ function App() {
       <DownloadExerciseListener />
       <div className="flex h-dvh flex-col overflow-hidden">
         <header className="relative z-[200] h-16 shrink-0 overflow-visible border-b border-border bg-surface px-4">
-          <Header />
+          <Header onHelp={walkthrough.start} />
+          <WalkthroughDim show={walkthrough.step !== null} />
         </header>
 
         <div className="flex min-h-0 min-w-0 flex-1">
           {showLessonsPanel && (
-            <nav className="w-[300px] min-w-0 shrink-0 border-r border-border bg-surface">
+            <nav className="relative w-[300px] min-w-0 shrink-0 border-r border-border bg-surface">
               <ToursPanel onClose={() => setLessonsPanelOpened(false)} />
+              <WalkthroughDim show={focusTerminal} />
             </nav>
           )}
 
@@ -84,6 +95,7 @@ function App() {
               </div>
             )}
             <WebsiteWrapper />
+            <WalkthroughDim show={focusTerminal} />
           </main>
 
           {/* The work column: AI hints stacked over the terminal, so a hint
@@ -103,6 +115,7 @@ function App() {
                 )}
               >
                 <AiHintsPanel session={hints.session} onClose={hints.close} />
+                <WalkthroughDim show={focusTerminal} />
                 <ResizeHandle
                   axis="y"
                   size={hintsHeight ?? MIN_HINTS_HEIGHT}
@@ -116,8 +129,14 @@ function App() {
                 />
               </div>
             )}
-            <div className="min-h-[160px] flex-1">
+            <div className="relative min-h-[160px] flex-1">
               <TerminalComponent />
+              {focusTerminal && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 z-[10] ring-2 ring-brand-600 ring-inset"
+                />
+              )}
             </div>
             <ResizeHandle
               size={asideWidth}
@@ -127,6 +146,15 @@ function App() {
               invert
               onChange={setAsideWidth}
             />
+            <WalkthroughDim show={focusLessons} />
+            {walkthrough.step !== null && walkthrough.index !== null && (
+              <WalkthroughCard
+                step={walkthrough.step}
+                index={walkthrough.index}
+                onNext={walkthrough.next}
+                onBack={walkthrough.back}
+              />
+            )}
           </aside>
         </div>
       </div>

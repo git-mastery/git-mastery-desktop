@@ -61,6 +61,37 @@ let sitePrefs: SiteViewPrefs | null = null;
 
 let aiHintsHandler: ((exerciseId: string) => void) | null = null;
 
+/** Mirrors `--gm-dim` in src/ui/index.css, so the lesson dims like the DOM panes. */
+const PAGE_DIM_COLOR = {
+  light: "rgb(23 23 23 / 0.45)",
+  dark: "rgb(0 0 0 / 0.6)",
+} as const;
+
+/** Set while the walkthrough points at the terminal. Survives navigation. */
+let pageDimmed = false;
+
+function applyPageDim() {
+  if (!wcv || wcv.webContents.isDestroyed() || !hasLoadedPage()) return;
+  const color = PAGE_DIM_COLOR[getAppliedResolvedTheme()];
+  void wcv.webContents
+    .executeJavaScript(
+      `(function (dimmed, color) {
+        var el = document.getElementById("gm-walkthrough-dim");
+        if (!dimmed) {
+          if (el) el.remove();
+          return;
+        }
+        if (!el) {
+          el = document.createElement("div");
+          el.id = "gm-walkthrough-dim";
+          (document.body || document.documentElement).appendChild(el);
+        }
+        el.style.cssText = "position:fixed; inset:0; z-index:2147483647; background:" + color + ";";
+      })(${JSON.stringify(pageDimmed)}, ${JSON.stringify(color)})`,
+    )
+    .catch(() => {});
+}
+
 const busyStarts = new Set<string>();
 const busyVerifies = new Set<string>();
 
@@ -235,6 +266,7 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
         await applySitePrefsToPage();
         await wcv!.webContents.insertCSS(EMBED_CSS).catch(() => {});
       })();
+      applyPageDim();
     });
     wcv.webContents.on("did-fail-load", () => {
       setLoading(mainWindow, false);
@@ -740,6 +772,7 @@ export async function scrapeLessonBrief(
 export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
   registerThemeBackgroundTarget((color) => {
     wcv?.setBackgroundColor(color);
+    if (pageDimmed) applyPageDim();
   });
   onAiHintsPageStateChange(pushAiHintsState);
   onExercisePageBusy(setPageBusy);
@@ -813,6 +846,11 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
     }
     setLoading(mainWindow, true);
     view.webContents.loadURL(url);
+  });
+
+  ipcMainOn("wcv-set-dimmed", ({ dimmed }: { dimmed: boolean }) => {
+    pageDimmed = dimmed;
+    applyPageDim();
   });
 
   // Temporarily hide the wcv, whenever we need to display a full screen modal.

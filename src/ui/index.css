@@ -36,6 +36,7 @@
   --color-faint: var(--gm-faint);
   --color-border: var(--gm-border);
   --color-overlay: var(--gm-overlay);
+  --color-dim: var(--gm-dim);
   --color-accent: var(--gm-accent);
   --color-accent-soft: var(--gm-accent-soft);
   --color-accent-soft-hover: var(--gm-accent-soft-hover);
@@ -88,6 +89,8 @@
   --gm-faint: #a3a3a3;
   --gm-border: #e5e5e5;
   --gm-overlay: rgb(23 23 23 / 0.25);
+  /* Walkthrough dimming. Mirrored in src/electron/ipc/webContentsView.ts for the lesson page. */
+  --gm-dim: rgb(23 23 23 / 0.45);
   --gm-accent: #236e3d;
   --gm-accent-soft: #f2faf5;
   --gm-accent-soft-hover: #e1f4e8;
@@ -129,6 +132,7 @@ html[data-theme="dark"] {
   --gm-faint: #adb5bd;
   --gm-border: #495057;
   --gm-overlay: rgb(0 0 0 / 0.5);
+  --gm-dim: rgb(0 0 0 / 0.6);
   --gm-accent: #75b798;
   --gm-accent-soft: #1f3932;
   --gm-accent-soft-hover: #264a40;

@@ -15,6 +15,8 @@ interface Window {
     navigate: (url: string) => void;
     hide: () => void;
     show: () => void;
+    /** Dims the lesson page in place, for the walkthrough. */
+    setEmbeddedDimmed: (dimmed: boolean) => void;
     onWcvLoading: (callback: (loading: boolean) => void) => () => void;
     onWcvUrlChanged: (callback: (url: string) => void) => () => void;
     getSitePrefs: () => Promise<SiteViewPrefs | null>;
@@ -103,6 +105,7 @@ type IpcHandlerChannelMapping = {
   "wcv-show": null;
   "wcv-size": { x: number; y: number; width: number; height: number };
   "wcv-hide": null;
+  "wcv-set-dimmed": { dimmed: boolean };
   "wcv-loading": { loading: boolean };
   "wcv-url-changed": { url: string };
   "set-app-theme": {
