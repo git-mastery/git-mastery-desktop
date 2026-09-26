@@ -31,17 +31,18 @@ export type ProviderSpec = AiProviderInfo & {
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 /**
- * Tried in order: OpenRouter moves to the next when one is down, rate-limited,
- * or no longer free. `openrouter/free` is deliberately absent, even as a last
- * resort: it picks any zero-cost model, including ~2B agent-tuned ones that
- * answer in raw tool-call tokens and a safety classifier that answers "User
- * Safety: safe". A clear rate-limit error beats that. Free-tier membership
- * changes without notice; revisit this list when these stop answering.
+ * Named free models first; OpenRouter moves down the list when one is down,
+ * rate-limited, or no longer free. `openrouter/free` is the last resort and
+ * picks any zero-cost model, some of which cannot tutor — see
+ * docs/architecture/ai-hints.md. Free-tier membership changes without notice;
+ * revisit the named models when they stop answering.
  */
-const OPENROUTER_FREE_MODELS = [
-  "google/gemma-4-31b-it:free",
+const OPENROUTER_PRIMARY_MODEL = "google/gemma-4-31b-it:free";
+/** At most three: OpenRouter caps the equivalent `fallbacks` list at three. */
+const OPENROUTER_FALLBACK_MODELS = [
   "qwen/qwen3.8-27b:free",
   "nvidia/nemotron-3-super-120b-a12b:free",
+  "openrouter/free",
 ];
 
 /** Optional OpenRouter attribution headers. */
@@ -108,7 +109,7 @@ const SPECS: ProviderSpec[] = [
     label: "OpenRouter",
     description:
       "Free models with a free account. Recommended if you don't already pay for an AI API.",
-    defaultModel: OPENROUTER_FREE_MODELS[0],
+    defaultModel: OPENROUTER_PRIMARY_MODEL,
     keyUrl: "https://openrouter.ai/keys",
     keyPlaceholder: "sk-or-v1-…",
     keyRequired: true,
@@ -126,7 +127,7 @@ const SPECS: ProviderSpec[] = [
       probe("OpenRouter", `${OPENROUTER_BASE_URL}/key`, {
         Authorization: `Bearer ${apiKey}`,
       }),
-    providerOptions: { openrouter: { models: OPENROUTER_FREE_MODELS } },
+    providerOptions: { openrouter: { models: OPENROUTER_FALLBACK_MODELS } },
   },
   {
     id: "openai",
