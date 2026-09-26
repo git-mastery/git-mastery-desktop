@@ -27,7 +27,8 @@ export const EXERCISE_MANIFEST_NAME = ".gitmastery-exercise.json";
 
 /**
  * Hands-on practices are set up by a download script rather than a manifest, so
- * there is nothing to read and the learner works at the exercise root.
+ * there is nothing to read. The learner works in the single subdirectory when
+ * there is one (the sandbox repo), otherwise at the exercise root.
  */
 export const HANDS_ON_PREFIX = "hp-";
 
@@ -107,10 +108,21 @@ export function resolveExerciseCwd(exerciseRoot: string): ExerciseCwdResult {
   if (!isDirectory(exerciseRoot)) return { state: "corrupt", exerciseRoot };
 
   if (path.basename(exerciseRoot).startsWith(HANDS_ON_PREFIX)) {
-    // Hands-on practices have no manifest, so an empty leftover from a failed
-    // download is indistinguishable from a successful one except by contents.
-    if (fs.readdirSync(exerciseRoot).length === 0) {
+    // Hands-on downloads have no manifest. The sandbox repo is almost always
+    // the single subdirectory (`things`, a clone, …), the same role as an
+    // exercise's `repo_name`. Lessons tell the learner to `cd hp-…/things`.
+    const entries = fs.readdirSync(exerciseRoot, { withFileTypes: true });
+    if (entries.length === 0) {
       return { state: "incomplete", exerciseRoot };
+    }
+    const subdirs = entries.filter(
+      (entry) => entry.isDirectory() && !entry.name.startsWith("."),
+    );
+    if (subdirs.length === 1 && isPathSegment(subdirs[0].name)) {
+      return {
+        state: "ready",
+        cwd: path.join(exerciseRoot, subdirs[0].name),
+      };
     }
     return { state: "ready", cwd: exerciseRoot };
   }

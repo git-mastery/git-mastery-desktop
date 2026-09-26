@@ -154,7 +154,8 @@ must be directories, not merely exist:
 | `exerciseRoot` does not exist                             | `{ state: "not-downloaded" }`           |
 | `exerciseRoot` exists but is not a directory              | `{ state: "corrupt", exerciseRoot }`    |
 | Identifier starts with `hp-` and the directory is empty   | `{ state: "incomplete", exerciseRoot }` |
-| Identifier starts with `hp-` and the directory has files  | `{ state: "ready", cwd: exerciseRoot }` |
+| Identifier starts with `hp-` and one non-dot subdirectory | `{ state: "ready", cwd: that subdir }`  |
+| Identifier starts with `hp-` otherwise                    | `{ state: "ready", cwd: exerciseRoot }` |
 | Manifest missing, unparseable, or missing `exercise_repo` | `{ state: "corrupt", exerciseRoot }`    |
 | `repo_type === "ignore"`                                  | `{ state: "ready", cwd: exerciseRoot }` |
 | `repo_name` is not a single path segment                  | `{ state: "corrupt", exerciseRoot }`    |
@@ -164,9 +165,14 @@ must be directories, not merely exist:
 
 Hands-on practices (`gitmastery download hp-<name>`) are set up by a Python `download` function
 rather than from a manifest (`_download_hands_on` in `app/commands/download.py`), so no
-`.gitmastery-exercise.json` is ever written for them and the learner works at the exercise root.
-Without the prefix check they would all resolve as `corrupt`. An empty leftover from a failed
-hands-on download is `incomplete` so Start will not silently `cd` into it and skip retry.
+`.gitmastery-exercise.json` is ever written for them. Without the prefix check they would all
+resolve as `corrupt`. An empty leftover from a failed hands-on download is `incomplete` so
+Start will not silently `cd` into it and skip retry.
+
+The sandbox repo is almost always the single subdirectory (`hp-init-repo/things`,
+`hp-view-commits/things`, a clone). That is the same role as an exercise's `repo_name`, and
+the lessons tell the learner to `cd hp-…/things`. Start therefore `cd`s into that subdirectory
+when there is exactly one. Zero or several non-dot subdirectories stay at the exercise root.
 
 `repo_name` is read off disk and joined onto the exercise root, so it is rejected unless it is a
 single path segment — the resolved cwd is `cd`-ed into by Start and, once the terminal is
