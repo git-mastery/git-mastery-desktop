@@ -1,3 +1,16 @@
+## [1.3.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.2.0...v1.3.0) (2026-09-27)
+
+### Features
+
+* add AI Hints for exercises and hands-on practicals ([#14](https://github.com/git-mastery/git-mastery-desktop/issues/14)) ([5818d8b](https://github.com/git-mastery/git-mastery-desktop/commit/5818d8bc8ebee629bae6eb2f17b9d6c4c80977a1))
+* add first-launch walkthrough and smooth exercise start ([#27](https://github.com/git-mastery/git-mastery-desktop/issues/27)) ([0513b13](https://github.com/git-mastery/git-mastery-desktop/commit/0513b13aa8a86a4be8aec02d95bbec3f94b2b1b0))
+* ship Intel Mac and Linux x64 installers ([#25](https://github.com/git-mastery/git-mastery-desktop/issues/25)) ([1a20c5c](https://github.com/git-mastery/git-mastery-desktop/commit/1a20c5c9b4c1eebffdcaf223f8636575d663d95d))
+
+### Bug Fixes
+
+* tighten Start dialogs, hands-on cwd, and hint prompts ([#28](https://github.com/git-mastery/git-mastery-desktop/issues/28)) ([90a96a9](https://github.com/git-mastery/git-mastery-desktop/commit/90a96a9adb2310e38cce21f89e5f857687688f9d))
+* use the learner's own CLI and exercises folder ([#26](https://github.com/git-mastery/git-mastery-desktop/issues/26)) ([7133152](https://github.com/git-mastery/git-mastery-desktop/commit/7133152f3d900c70edd1209d45cc590878a6da24))
+
 ## [1.2.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.1.0...v1.2.0) (2026-09-18)
 
 ### Features

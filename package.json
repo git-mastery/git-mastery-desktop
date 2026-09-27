@@ -1,7 +1,7 @@
 {
   "name": "git-mastery",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Companion app for Git-Mastery",
   "type": "module",
   "main": "dist-electron/main.js",
