@@ -3,6 +3,7 @@ import {
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
+  IconFlag,
   IconHome,
 } from "@tabler/icons-react";
 import type { Exercise } from "../../../types/Exercise";
@@ -12,8 +13,10 @@ import {
   buildHandsOnUrl,
   buildLessonUrl,
   buildTourHomeUrl,
+  buildTourOutroUrl,
   isLessonUrlActive,
   isTourHomeUrlActive,
+  isTourOutroUrlActive,
   isTourUrlActive,
   useWebContentsView,
 } from "../../contexts/WebContentsViewContext";
@@ -171,7 +174,7 @@ const TourItem = ({
           >
             <span className="flex items-center gap-1.5">
               <IconHome size={14} className="shrink-0 text-muted" />
-              Tour Home
+              Tour Intro
             </span>
           </button>
           {Object.values(tour.lessons).map((lesson) => (
@@ -185,6 +188,16 @@ const TourItem = ({
               onNavigate={onNavigate}
             />
           ))}
+          <button
+            type="button"
+            className={`${listItemClasses} ${isTourOutroUrlActive(tour, currentUrl) ? activeItemClasses : ""}`}
+            onClick={() => onNavigate(buildTourOutroUrl(tour))}
+          >
+            <span className="flex items-center gap-1.5">
+              <IconFlag size={14} className="shrink-0 text-muted" />
+              Tour Outro
+            </span>
+          </button>
         </div>
       )}
     </div>

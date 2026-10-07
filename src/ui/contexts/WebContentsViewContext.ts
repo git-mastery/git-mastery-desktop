@@ -69,6 +69,23 @@ export function buildTourHomeUrlFromName(tourName: string) {
   return `${SITE_ORIGIN}/lessons/trail/${tourName}`;
 }
 
+export function buildTourOutroUrl(tour: Tour) {
+  return buildTourOutroUrlFromName(tour.folder);
+}
+
+export function buildTourOutroUrlFromName(tourName: string) {
+  return `${SITE_ORIGIN}/lessons/trail/${tourName}/end.html`;
+}
+
+function tourTrailPathname(currentUrl: string | null): string | null {
+  if (!currentUrl) return null;
+  try {
+    return new URL(currentUrl).pathname;
+  } catch {
+    return null;
+  }
+}
+
 export function isLessonUrlActive(lesson: Lesson, currentUrl: string | null) {
   if (!currentUrl) return false;
   // Trailing "/" on buildLessonUrl is a safe prefix boundary (including hashes).
@@ -76,13 +93,29 @@ export function isLessonUrlActive(lesson: Lesson, currentUrl: string | null) {
 }
 
 export function isTourHomeUrlActive(tour: Tour, currentUrl: string | null) {
-  if (!currentUrl) return false;
-  const base = buildTourHomeUrl(tour);
-  return currentUrl === base || currentUrl.startsWith(`${base}/`);
+  const pathname = tourTrailPathname(currentUrl);
+  if (!pathname) return false;
+  const introPath = `/lessons/trail/${tour.folder}`;
+  return (
+    pathname === introPath ||
+    pathname === `${introPath}/` ||
+    pathname === `${introPath}/index.html`
+  );
+}
+
+export function isTourOutroUrlActive(tour: Tour, currentUrl: string | null) {
+  const pathname = tourTrailPathname(currentUrl);
+  if (!pathname) return false;
+  return pathname === `/lessons/trail/${tour.folder}/end.html`;
 }
 
 export function isTourUrlActive(tour: Tour, currentUrl: string | null) {
-  if (isTourHomeUrlActive(tour, currentUrl)) return true;
+  if (
+    isTourHomeUrlActive(tour, currentUrl) ||
+    isTourOutroUrlActive(tour, currentUrl)
+  ) {
+    return true;
+  }
   return Object.values(tour.lessons).some((lesson) =>
     isLessonUrlActive(lesson, currentUrl),
   );
