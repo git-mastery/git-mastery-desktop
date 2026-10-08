@@ -13,7 +13,8 @@ contextBridge.exposeInMainWorld("electron", {
     ipcSend("wcv-size", { x, y, width, height }),
   hide: () => ipcSend("wcv-hide", null),
   show: () => ipcSend("wcv-show", null),
-  setEmbeddedDimmed: (dimmed: boolean) => ipcSend("wcv-set-dimmed", { dimmed }),
+  setEmbeddedWalkthroughOverlay: (mode: "off" | "block" | "dim") =>
+    ipcSend("wcv-set-walkthrough-overlay", { mode }),
   onWcvLoading: (callback: (loading: boolean) => void) =>
     ipcOn("wcv-loading", ({ loading }) => callback(loading)),
   onWcvUrlChanged: (callback: (url: string) => void) =>

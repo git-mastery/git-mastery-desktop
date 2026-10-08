@@ -57,6 +57,30 @@ export function getSiteSection(url: string | null): SiteSection | null {
   }
 }
 
+/** True for a git-mastery.org lessons / exercises / progress URL we can restore. */
+export function isRestorableSiteUrl(url: string): boolean {
+  try {
+    return new URL(url).origin === SITE_ORIGIN && getSiteSection(url) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/** Lesson folder from a lesson page URL, or null for trail / home / other sections. */
+export function parseLessonNameFromUrl(url: string): string | null {
+  try {
+    const path = new URL(url).pathname
+      .replace(/\/index\.html$/, "")
+      .replace(/\/$/, "");
+    const parts = path.split("/").filter(Boolean);
+    if (parts.length !== 2 || parts[0] !== "lessons") return null;
+    if (parts[1] === "trail") return null;
+    return parts[1];
+  } catch {
+    return null;
+  }
+}
+
 export function buildLessonUrl(lesson: Lesson) {
   return `${SITE_ORIGIN}/lessons/${lesson.lesson_name}/`;
 }

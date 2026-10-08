@@ -1,10 +1,17 @@
 # App walkthrough
 
-A two-step tour runs on first launch and whenever the learner clicks Help (the
-question mark in the header). Each step dulls everything except one area and
-explains it; the learner clicks Next to move on. There is no skip: the tour is
-two clicks long. After the last step the app behaves as normal.
+A welcome screen plus a two-step tour runs on first launch and whenever the
+learner clicks Help (the question mark in the header). The welcome owns the
+whole window; each tour step dulls everything except one area and explains it.
+The learner clicks Next to move on. There is no skip. While the tour is active,
+only the welcome **Get Started** control or the step card **Back** / **Next**
+buttons accept input; dim and transparent shields on the React chrome use
+`pointer-events` to block everything else, resize handles are disabled, and the
+lesson page gets a full-page guard injected in the page (transparent on step 1,
+dimmed on step 2). After the last step the app behaves as normal.
 
+0. **Welcome.** Full-window focus: bone canvas, centered card, serif title. The
+   native lesson view is suppressed so nothing paints through the card.
 1. **Lessons.** The terminal column and header are dimmed.
 2. **Terminal.** The lesson page, tours panel and header are dimmed, and the
    terminal gets a brand outline.
@@ -16,12 +23,13 @@ renderer-only flags.
 ## The lesson page is dimmed from inside the page
 
 The lesson site is a native `WebContentsView` that paints above all DOM, so a
-React overlay cannot dull it. For step 2 the renderer sends `wcv-set-dimmed`,
-and main injects a fixed, full-page layer into the lesson page itself. The
-colour mirrors the `--gm-dim` token for the current theme, so it matches the
-dimmed DOM panes. Main keeps the flag and re-applies it on `dom-ready`, so the
-dim survives a navigation or a page that finishes loading mid-tour. The layer
-also swallows clicks, so the learner cannot wander off during the step.
+React overlay cannot dull it. For step 1 the renderer sends `wcv-set-walkthrough-overlay` with mode `block`
+(transparent), and for step 2 with mode `dim`. Main injects a fixed, full-page
+layer into the lesson page itself. The dim colour mirrors the `--gm-dim` token
+for the current theme, so it matches the dimmed DOM panes. Main keeps the mode
+and re-applies it on `dom-ready`, so the guard survives a navigation or a page
+that finishes loading mid-tour. The layer swallows clicks and scroll, so the
+learner cannot wander off during the step.
 
 ## Cards always sit in the terminal column
 

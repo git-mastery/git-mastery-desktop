@@ -67,17 +67,17 @@ const PAGE_DIM_COLOR = {
   dark: "rgb(0 0 0 / 0.6)",
 } as const;
 
-/** Set while the walkthrough points at the terminal. Survives navigation. */
-let pageDimmed = false;
+/** Walkthrough guard on the lesson page. Survives navigation. */
+let pageWalkthroughOverlay: "off" | "block" | "dim" = "off";
 
-function applyPageDim() {
+function applyPageWalkthroughOverlay() {
   if (!wcv || wcv.webContents.isDestroyed() || !hasLoadedPage()) return;
   const color = PAGE_DIM_COLOR[getAppliedResolvedTheme()];
   void wcv.webContents
     .executeJavaScript(
-      `(function (dimmed, color) {
+      `(function (mode, color) {
         var el = document.getElementById("gm-walkthrough-dim");
-        if (!dimmed) {
+        if (mode === "off") {
           if (el) el.remove();
           return;
         }
@@ -86,8 +86,13 @@ function applyPageDim() {
           el.id = "gm-walkthrough-dim";
           (document.body || document.documentElement).appendChild(el);
         }
-        el.style.cssText = "position:fixed; inset:0; z-index:2147483647; background:" + color + ";";
-      })(${JSON.stringify(pageDimmed)}, ${JSON.stringify(color)})`,
+        var background =
+          mode === "dim" ? color : "transparent";
+        el.style.cssText =
+          "position:fixed; inset:0; z-index:2147483647; background:" +
+          background +
+          ";";
+      })(${JSON.stringify(pageWalkthroughOverlay)}, ${JSON.stringify(color)})`,
     )
     .catch(() => {});
 }
@@ -266,7 +271,7 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
         await applySitePrefsToPage();
         await wcv!.webContents.insertCSS(EMBED_CSS).catch(() => {});
       })();
-      applyPageDim();
+      applyPageWalkthroughOverlay();
     });
     wcv.webContents.on("did-fail-load", () => {
       setLoading(mainWindow, false);
@@ -772,7 +777,7 @@ export async function scrapeLessonBrief(
 export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
   registerThemeBackgroundTarget((color) => {
     wcv?.setBackgroundColor(color);
-    if (pageDimmed) applyPageDim();
+    if (pageWalkthroughOverlay !== "off") applyPageWalkthroughOverlay();
   });
   onAiHintsPageStateChange(pushAiHintsState);
   onExercisePageBusy(setPageBusy);
@@ -848,10 +853,13 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
     view.webContents.loadURL(url);
   });
 
-  ipcMainOn("wcv-set-dimmed", ({ dimmed }: { dimmed: boolean }) => {
-    pageDimmed = dimmed;
-    applyPageDim();
-  });
+  ipcMainOn(
+    "wcv-set-walkthrough-overlay",
+    ({ mode }: { mode: "off" | "block" | "dim" }) => {
+      pageWalkthroughOverlay = mode;
+      applyPageWalkthroughOverlay();
+    },
+  );
 
   // Temporarily hide the wcv, whenever we need to display a full screen modal.
   ipcMainOn("wcv-hide", () => {

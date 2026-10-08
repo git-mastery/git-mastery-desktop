@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { WebContentsViewContext } from "../contexts/WebContentsViewContext";
+import { writeLastEmbeddedUrl } from "../utils/lastEmbeddedUrl";
 
 export function WebContentsViewProvider({ children }: { children: ReactNode }) {
   const currentUrlRef = useRef<string | null>(null);
@@ -44,6 +45,7 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
   const rememberUrl = useCallback((url: string) => {
     currentUrlRef.current = url;
     setCurrentUrl(url);
+    writeLastEmbeddedUrl(url);
   }, []);
 
   const navigate = useCallback(
