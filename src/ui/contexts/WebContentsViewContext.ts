@@ -57,6 +57,30 @@ export function getSiteSection(url: string | null): SiteSection | null {
   }
 }
 
+/** True for a git-mastery.org lessons / exercises / progress URL we can restore. */
+export function isRestorableSiteUrl(url: string): boolean {
+  try {
+    return new URL(url).origin === SITE_ORIGIN && getSiteSection(url) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/** Lesson folder from a lesson page URL, or null for trail / home / other sections. */
+export function parseLessonNameFromUrl(url: string): string | null {
+  try {
+    const path = new URL(url).pathname
+      .replace(/\/index\.html$/, "")
+      .replace(/\/$/, "");
+    const parts = path.split("/").filter(Boolean);
+    if (parts.length !== 2 || parts[0] !== "lessons") return null;
+    if (parts[1] === "trail") return null;
+    return parts[1];
+  } catch {
+    return null;
+  }
+}
+
 export function buildLessonUrl(lesson: Lesson) {
   return `${SITE_ORIGIN}/lessons/${lesson.lesson_name}/`;
 }
@@ -69,6 +93,23 @@ export function buildTourHomeUrlFromName(tourName: string) {
   return `${SITE_ORIGIN}/lessons/trail/${tourName}`;
 }
 
+export function buildTourOutroUrl(tour: Tour) {
+  return buildTourOutroUrlFromName(tour.folder);
+}
+
+export function buildTourOutroUrlFromName(tourName: string) {
+  return `${SITE_ORIGIN}/lessons/trail/${tourName}/end.html`;
+}
+
+function tourTrailPathname(currentUrl: string | null): string | null {
+  if (!currentUrl) return null;
+  try {
+    return new URL(currentUrl).pathname;
+  } catch {
+    return null;
+  }
+}
+
 export function isLessonUrlActive(lesson: Lesson, currentUrl: string | null) {
   if (!currentUrl) return false;
   // Trailing "/" on buildLessonUrl is a safe prefix boundary (including hashes).
@@ -76,13 +117,29 @@ export function isLessonUrlActive(lesson: Lesson, currentUrl: string | null) {
 }
 
 export function isTourHomeUrlActive(tour: Tour, currentUrl: string | null) {
-  if (!currentUrl) return false;
-  const base = buildTourHomeUrl(tour);
-  return currentUrl === base || currentUrl.startsWith(`${base}/`);
+  const pathname = tourTrailPathname(currentUrl);
+  if (!pathname) return false;
+  const introPath = `/lessons/trail/${tour.folder}`;
+  return (
+    pathname === introPath ||
+    pathname === `${introPath}/` ||
+    pathname === `${introPath}/index.html`
+  );
+}
+
+export function isTourOutroUrlActive(tour: Tour, currentUrl: string | null) {
+  const pathname = tourTrailPathname(currentUrl);
+  if (!pathname) return false;
+  return pathname === `/lessons/trail/${tour.folder}/end.html`;
 }
 
 export function isTourUrlActive(tour: Tour, currentUrl: string | null) {
-  if (isTourHomeUrlActive(tour, currentUrl)) return true;
+  if (
+    isTourHomeUrlActive(tour, currentUrl) ||
+    isTourOutroUrlActive(tour, currentUrl)
+  ) {
+    return true;
+  }
   return Object.values(tour.lessons).some((lesson) =>
     isLessonUrlActive(lesson, currentUrl),
   );

@@ -11,6 +11,7 @@ type ResizeHandleProps = {
   cssVars: string[];
   /** Horizontal only: the handle sits on the pane's left edge. */
   invert?: boolean;
+  disabled?: boolean;
   onChange: (size: number) => void;
 };
 
@@ -21,6 +22,7 @@ export const ResizeHandle = ({
   max,
   cssVars,
   invert = false,
+  disabled = false,
   onChange,
 }: ResizeHandleProps) => {
   const vertical = axis === "y";
@@ -28,6 +30,7 @@ export const ResizeHandle = ({
     <div
       className={cx(
         "absolute z-100",
+        disabled && "pointer-events-none",
         vertical
           ? "bottom-0 left-0 h-1.5 w-full translate-y-1/2 cursor-row-resize"
           : cx(
@@ -36,6 +39,7 @@ export const ResizeHandle = ({
             ),
       )}
       onMouseDown={(e) => {
+        if (disabled) return;
         e.preventDefault();
         const start = vertical ? e.clientY : e.clientX;
         // Panes can be squeezed below their set size by flex when the window

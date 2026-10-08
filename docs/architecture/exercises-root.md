@@ -2,7 +2,9 @@
 
 The app stores `exercisesRoot`: the folder `gitmastery setup` created, which is the
 folder containing `.gitmastery.json`. It is not the parent, and the app never
-creates it.
+creates it. When that path is set and still exists, each new in-app terminal
+session starts with its working directory there (including after restart). If the
+folder is missing, the shell starts in the user home directory instead.
 
 ## Why the app does not run setup
 

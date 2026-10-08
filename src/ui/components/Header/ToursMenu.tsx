@@ -3,6 +3,9 @@ import {
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
+  IconCircle,
+  IconCircleCheck,
+  IconFlag,
   IconHome,
 } from "@tabler/icons-react";
 import type { Exercise } from "../../../types/Exercise";
@@ -12,8 +15,10 @@ import {
   buildHandsOnUrl,
   buildLessonUrl,
   buildTourHomeUrl,
+  buildTourOutroUrl,
   isLessonUrlActive,
   isTourHomeUrlActive,
+  isTourOutroUrlActive,
   isTourUrlActive,
   useWebContentsView,
 } from "../../contexts/WebContentsViewContext";
@@ -27,6 +32,7 @@ import {
   getExerciseLessonName,
 } from "../../utils/format";
 import { useLocalExercises } from "../../hooks/query/useLocalExercises";
+import { useLessonsDone } from "../../contexts/LessonsDoneContext";
 
 export const LessonsPanelToggle = ({
   opened,
@@ -122,6 +128,35 @@ const listItemClasses =
 
 const activeItemClasses = "bg-accent-soft text-accent font-medium";
 
+const doneToggleButtonClasses =
+  "mt-0.5 shrink-0 rounded-lg px-1 py-2 text-muted hover:cursor-pointer hover:bg-hover focus-visible:bg-hover focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none";
+
+const DoneCircleToggle = ({
+  done,
+  subject,
+  onToggle,
+}: {
+  done: boolean;
+  subject: string;
+  onToggle: () => void;
+}) => (
+  <button
+    type="button"
+    aria-pressed={done}
+    aria-label={
+      done ? `Mark ${subject} as not done` : `Mark ${subject} as done`
+    }
+    onClick={onToggle}
+    className={doneToggleButtonClasses}
+  >
+    {done ? (
+      <IconCircleCheck size={16} className="text-accent" aria-hidden />
+    ) : (
+      <IconCircle size={16} className="text-faint" aria-hidden />
+    )}
+  </button>
+);
+
 const TourItem = ({
   tour,
   currentUrl,
@@ -138,6 +173,12 @@ const TourItem = ({
   onNavigate: (url: string) => void;
 }) => {
   const isActive = isTourUrlActive(tour, currentUrl);
+  const { areAllLessonsDone, setLessonsDone } = useLessonsDone();
+  const tourLessonNames = useMemo(
+    () => Object.values(tour.lessons).map((lesson) => lesson.lesson_name),
+    [tour.lessons],
+  );
+  const tourDone = areAllLessonsDone(tourLessonNames);
   const [opened, setOpened] = useState(isActive);
   const [wasActive, setWasActive] = useState(isActive);
 
@@ -148,20 +189,27 @@ const TourItem = ({
 
   return (
     <div className="flex flex-col">
-      <button
-        type="button"
-        aria-expanded={opened}
-        onClick={() => setOpened((value) => !value)}
-        className={`${listItemClasses} ${isActive ? activeItemClasses : ""}`}
-      >
-        <span className="flex items-center gap-1.5">
-          <IconChevronDown
-            size={12}
-            className={`shrink-0 text-muted transition-transform duration-150 ease-in-out ${opened ? "rotate-180" : ""}`}
-          />
-          {tour.title}
-        </span>
-      </button>
+      <div className="flex min-w-0 items-stretch">
+        <DoneCircleToggle
+          done={tourDone}
+          subject={tour.title}
+          onToggle={() => setLessonsDone(tourLessonNames, !tourDone)}
+        />
+        <button
+          type="button"
+          aria-expanded={opened}
+          onClick={() => setOpened((value) => !value)}
+          className={`${listItemClasses} min-w-0 flex-1 ${isActive ? activeItemClasses : ""}`}
+        >
+          <span className="flex items-center gap-1.5">
+            <IconChevronDown
+              size={12}
+              className={`shrink-0 text-muted transition-transform duration-150 ease-in-out ${opened ? "rotate-180" : ""}`}
+            />
+            {tour.title}
+          </span>
+        </button>
+      </div>
       {opened && (
         <div className="pl-3">
           <button
@@ -171,7 +219,7 @@ const TourItem = ({
           >
             <span className="flex items-center gap-1.5">
               <IconHome size={14} className="shrink-0 text-muted" />
-              Tour Home
+              Tour Intro
             </span>
           </button>
           {Object.values(tour.lessons).map((lesson) => (
@@ -185,6 +233,16 @@ const TourItem = ({
               onNavigate={onNavigate}
             />
           ))}
+          <button
+            type="button"
+            className={`${listItemClasses} ${isTourOutroUrlActive(tour, currentUrl) ? activeItemClasses : ""}`}
+            onClick={() => onNavigate(buildTourOutroUrl(tour))}
+          >
+            <span className="flex items-center gap-1.5">
+              <IconFlag size={14} className="shrink-0 text-muted" />
+              Tour Outro
+            </span>
+          </button>
         </div>
       )}
     </div>
@@ -208,6 +266,8 @@ const LessonItem = ({
 }) => {
   const hasItems = exercises.length > 0 || handsOn.length > 0;
   const isActive = isLessonUrlActive(lesson, currentUrl);
+  const { isLessonDone, setLessonDone } = useLessonsDone();
+  const done = isLessonDone(lesson.lesson_name);
   const [opened, setOpened] = useState(isActive);
   const [wasActive, setWasActive] = useState(isActive);
 
@@ -218,23 +278,30 @@ const LessonItem = ({
 
   return (
     <div className="flex flex-col">
-      <button
-        type="button"
-        aria-expanded={opened}
-        onClick={() => {
-          if (!isActive) onNavigate(buildLessonUrl(lesson));
-          setOpened((value) => !value);
-        }}
-        className={`${listItemClasses} ${isActive ? activeItemClasses : ""}`}
-      >
-        <span className="flex items-center gap-1.5">
-          <IconChevronDown
-            size={12}
-            className={`shrink-0 text-muted transition-transform duration-150 ease-in-out ${opened ? "rotate-180" : ""}`}
-          />
-          {lesson.title}
-        </span>
-      </button>
+      <div className="flex min-w-0 items-stretch">
+        <DoneCircleToggle
+          done={done}
+          subject={lesson.title}
+          onToggle={() => setLessonDone(lesson.lesson_name, !done)}
+        />
+        <button
+          type="button"
+          aria-expanded={opened}
+          onClick={() => {
+            if (!isActive) onNavigate(buildLessonUrl(lesson));
+            setOpened((value) => !value);
+          }}
+          className={`${listItemClasses} min-w-0 flex-1 ${isActive ? activeItemClasses : ""}`}
+        >
+          <span className="flex items-center gap-1.5">
+            <IconChevronDown
+              size={12}
+              className={`shrink-0 text-muted transition-transform duration-150 ease-in-out ${opened ? "rotate-180" : ""}`}
+            />
+            {lesson.title}
+          </span>
+        </button>
+      </div>
       {opened && (
         <div className="pl-3">
           {hasItems ? (

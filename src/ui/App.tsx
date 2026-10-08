@@ -15,7 +15,10 @@ import { useWalkthrough } from "./hooks/useWalkthrough";
 import {
   WalkthroughCard,
   WalkthroughDim,
+  WalkthroughShield,
+  WalkthroughWelcome,
 } from "./components/Walkthrough/Walkthrough";
+import { LessonsDoneProvider } from "./providers/LessonsDoneProvider";
 import { cx } from "./utils/cx";
 
 const MIN_MAIN = 320;
@@ -38,8 +41,11 @@ function App() {
   const showHints = hints.session !== null && hints.open;
 
   const walkthrough = useWalkthrough();
+  const onWelcome = walkthrough.step === "welcome";
   const focusLessons = walkthrough.step === "lessons";
   const focusTerminal = walkthrough.step === "terminal";
+  const inPaneTour = focusLessons || focusTerminal;
+  const walkthroughActive = walkthrough.step !== null;
 
   const onLessons = getSiteSection(currentUrl) === "lessons";
   const showLessonsPanel = onLessons && lessonsPanelOpened;
@@ -69,19 +75,19 @@ function App() {
   }, [hintsHeight]);
 
   return (
-    <>
+    <LessonsDoneProvider>
       <DownloadExerciseListener />
       <div className="flex h-dvh flex-col overflow-hidden">
         <header className="relative z-[200] h-16 shrink-0 overflow-visible border-b border-border bg-surface px-4">
           <Header onHelp={walkthrough.start} />
-          <WalkthroughDim show={walkthrough.step !== null} />
+          <WalkthroughDim show={inPaneTour} />
         </header>
 
         <div className="flex min-h-0 min-w-0 flex-1">
           {showLessonsPanel && (
             <nav className="relative w-[300px] min-w-0 shrink-0 border-r border-border bg-surface">
               <ToursPanel onClose={() => setLessonsPanelOpened(false)} />
-              <WalkthroughDim show={focusTerminal} />
+              <WalkthroughDim show={inPaneTour} />
             </nav>
           )}
 
@@ -95,6 +101,7 @@ function App() {
               </div>
             )}
             <WebsiteWrapper />
+            <WalkthroughShield show={focusLessons} />
             <WalkthroughDim show={focusTerminal} />
           </main>
 
@@ -125,6 +132,7 @@ function App() {
                     MIN_TERMINAL_HEIGHT
                   }
                   cssVars={[HINTS_HEIGHT_VAR]}
+                  disabled={walkthroughActive}
                   onChange={setHintsHeight}
                 />
               </div>
@@ -132,10 +140,16 @@ function App() {
             <div className="relative min-h-[160px] flex-1">
               <TerminalComponent />
               {focusTerminal && (
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 z-[10] ring-2 ring-brand-600 ring-inset"
-                />
+                <>
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 z-[10] ring-2 ring-brand-600 ring-inset"
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 z-[25] cursor-default pointer-events-auto"
+                  />
+                </>
               )}
             </div>
             <ResizeHandle
@@ -144,21 +158,25 @@ function App() {
               max={() => window.innerWidth - MIN_MAIN}
               cssVars={[ASIDE_WIDTH_VAR]}
               invert
+              disabled={walkthroughActive}
               onChange={setAsideWidth}
             />
             <WalkthroughDim show={focusLessons} />
-            {walkthrough.step !== null && walkthrough.index !== null && (
-              <WalkthroughCard
-                step={walkthrough.step}
-                index={walkthrough.index}
-                onNext={walkthrough.next}
-                onBack={walkthrough.back}
-              />
-            )}
+            {(walkthrough.step === "lessons" ||
+              walkthrough.step === "terminal") &&
+              walkthrough.index !== null && (
+                <WalkthroughCard
+                  step={walkthrough.step}
+                  index={walkthrough.index}
+                  onNext={walkthrough.next}
+                  onBack={walkthrough.back}
+                />
+              )}
           </aside>
         </div>
       </div>
-    </>
+      {onWelcome && <WalkthroughWelcome onNext={walkthrough.next} />}
+    </LessonsDoneProvider>
   );
 }
 

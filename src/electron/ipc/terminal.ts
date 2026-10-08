@@ -6,6 +6,7 @@ import { execSync } from "child_process";
 import pty from "node-pty";
 import { ipcMainOn } from "../utils/util.js";
 import { getCliEnvironment } from "../utils/cli/getters.js";
+import { getConfig } from "../storage.js";
 
 /**
  * On Windows, attempts to find Git Bash (bash.exe) by locating the git
@@ -77,8 +78,26 @@ let terminalWindow: BrowserWindow | null = null;
  */
 let pendingCommands: string[] = [];
 
+const defaultHomeCwd = () =>
+  process.env.HOME || process.env.USERPROFILE || os.homedir();
+
 /** Tracks the current working directory of the pty process. */
-let cwd: string = process.env.HOME || process.env.USERPROFILE || os.homedir();
+let cwd: string = defaultHomeCwd();
+
+function configuredExercisesRootCwd(): string | null {
+  const root = getConfig().exercisesRoot;
+  if (!root) return null;
+  try {
+    return fs.statSync(root).isDirectory() ? root : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Home, or the saved exercises root when it still exists on disk. */
+function initialTerminalCwd(): string {
+  return configuredExercisesRootCwd() ?? defaultHomeCwd();
+}
 
 /** Returns the current working directory of the pty process. */
 export function getCwd(): string {
@@ -105,7 +124,7 @@ function updateCwdFromCdCommand(input: string): void {
   const target = match[1].trim();
 
   if (!target || target === "~") {
-    cwd = process.env.HOME || process.env.USERPROFILE || os.homedir();
+    cwd = defaultHomeCwd();
   } else {
     // path.resolve handles absolute, relative, and `..` segments
     cwd = path.resolve(cwd, target);
@@ -179,10 +198,10 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
       ptyProcess.kill();
     }
 
-    // Reset cwd to home on each new pty spawn, unless a queued command (e.g. an
-    // exercise started while the terminal was mounting) already set one.
+    // Reset cwd on each new pty spawn, unless a queued command (e.g. an exercise
+    // started while the terminal was mounting) already set one.
     if (pendingCommands.length === 0) {
-      cwd = process.env.HOME || process.env.USERPROFILE || os.homedir();
+      cwd = initialTerminalCwd();
     }
 
     const shell = resolveShell();

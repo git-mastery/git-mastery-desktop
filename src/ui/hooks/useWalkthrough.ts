@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 
-export type WalkthroughStep = "lessons" | "terminal";
+export type WalkthroughStep = "welcome" | "lessons" | "terminal";
 
-export const WALKTHROUGH_STEPS: WalkthroughStep[] = ["lessons", "terminal"];
+export const WALKTHROUGH_STEPS: WalkthroughStep[] = [
+  "welcome",
+  "lessons",
+  "terminal",
+];
 
 /**
  * The app walkthrough: runs once on first launch, and again whenever Help is
@@ -35,10 +39,16 @@ export function useWalkthrough() {
     setIndex(Math.max(0, index - 1));
   }, [index]);
 
-  // The lesson page is a native view, so it is dimmed from inside the page
-  // rather than by a DOM overlay.
+  // The lesson page is a native view, so scroll and clicks are stopped from
+  // inside the page rather than by a DOM overlay.
   useEffect(() => {
-    window.electron.setEmbeddedDimmed(step === "terminal");
+    if (step === "lessons") {
+      window.electron.setEmbeddedWalkthroughOverlay("block");
+    } else if (step === "terminal") {
+      window.electron.setEmbeddedWalkthroughOverlay("dim");
+    } else {
+      window.electron.setEmbeddedWalkthroughOverlay("off");
+    }
   }, [step]);
 
   return { step, index, start, next, back };

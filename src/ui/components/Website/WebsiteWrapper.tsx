@@ -4,6 +4,7 @@ import {
   useWebContentsView,
 } from "../../contexts/WebContentsViewContext";
 import { LoadingState } from "../ui/States";
+import { readLastEmbeddedUrl } from "../../utils/lastEmbeddedUrl";
 import { readDesktopSiteViewPrefs } from "../../utils/siteViewPrefs";
 
 export const WebsiteWrapper = () => {
@@ -17,7 +18,7 @@ export const WebsiteWrapper = () => {
     if (hasNavigatedRef.current) return;
     hasNavigatedRef.current = true;
     const prefs = readDesktopSiteViewPrefs();
-    const go = () => navigate(LESSONS_HOME_URL);
+    const go = () => navigate(readLastEmbeddedUrl() ?? LESSONS_HOME_URL);
     if (!prefs) {
       go();
       return;
