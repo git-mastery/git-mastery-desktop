@@ -73,14 +73,20 @@ interface Window {
     saveAiSettings: (input: AiSettingsInput) => Promise<AiSaveResult>;
 
     // AI hints: docked chat panel
-    onAiHintsOpen: (callback: (session: AiHintsSession) => void) => () => void;
-    previewAiContext: (exerciseId: string) => Promise<AiContextBlock[]>;
+    onAiHintsOpen: (
+      callback: (payload: AiChatOpenPayload) => void,
+    ) => () => void;
+    previewAiContext: (source: AiSource) => Promise<AiContextBlock[]>;
+    loadAiHistory: () => Promise<StoredAiHistory>;
+    saveAiHistory: (
+      sessions: Record<string, StoredAiSession>,
+    ) => Promise<boolean>;
 
     // Carries the AI SDK's UI message stream between main and the chat panel.
     // Consumed by IpcChatTransport, not by components directly.
     aiChatStart: (payload: {
       streamId: string;
-      exerciseId: string;
+      source: AiSource;
       messages: GitMasteryUIMessage[];
     }) => Promise<AiChatStartResult>;
     aiChatAbort: (streamId: string) => void;
@@ -121,7 +127,7 @@ type IpcHandlerChannelMapping = {
   // open a URL in the system default browser
   "open-external": { url: string };
 
-  "ai-hints-open": AiHintsSession;
+  "ai-hints-open": AiChatOpenPayload;
 
   "ai-chat-abort": { streamId: string };
   "ai-chat-chunk": { streamId: string; chunk: AiChatChunk };
@@ -169,11 +175,17 @@ type IpcInvokeChannelMapping = {
 
   "ai-get-settings": IIpcInvoke<null, AiSettingsView>;
   "ai-save-settings": IIpcInvoke<AiSettingsInput, AiSaveResult>;
-  "ai-preview-context": IIpcInvoke<{ exerciseId: string }, AiContextBlock[]>;
+  "ai-preview-context": IIpcInvoke<{ source: AiSource }, AiContextBlock[]>;
 
   "ai-chat-start": IIpcInvoke<
-    { streamId: string; exerciseId: string; messages: GitMasteryUIMessage[] },
+    { streamId: string; source: AiSource; messages: GitMasteryUIMessage[] },
     AiChatStartResult
+  >;
+
+  "ai-history-load": IIpcInvoke<null, StoredAiHistory>;
+  "ai-history-save": IIpcInvoke<
+    { sessions: Record<string, StoredAiSession> },
+    boolean
   >;
 };
 
@@ -217,13 +229,58 @@ type AiSettingsInput = { provider: AiProviderId } & AiProviderSettings;
 type AiSaveResult =
   { ok: true; encrypted: boolean } | { ok: false; error: string };
 
-type AiHintsKind = "exercise" | "hands-on";
+type AiHintsKind = "lesson" | "exercise" | "hands-on";
 
-/** Which exercise or hands-on practical the docked panel is helping with. */
-type AiHintsSession = {
-  exerciseId: string;
-  kind: AiHintsKind;
-  title: string;
+type AiSource =
+  | {
+      sourceKey: `lesson:${string}`;
+      kind: "lesson";
+      id: string;
+      title: string;
+    }
+  | {
+      sourceKey: `exercise:${string}`;
+      kind: "exercise";
+      id: string;
+      title: string;
+    }
+  | {
+      sourceKey: `hands-on:${string}`;
+      kind: "hands-on";
+      id: string;
+      title: string;
+    };
+
+type AiSession = {
+  source: AiSource;
+  conversationId: string;
+  updatedAt: string;
+  messages: GitMasteryUIMessage[];
+};
+
+/** Disk projection of a session: transcript text only, no context blocks. */
+type StoredAiMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+};
+
+type StoredAiSession = {
+  source: AiSource;
+  conversationId: string;
+  updatedAt: string;
+  messages: StoredAiMessage[];
+};
+
+type StoredAiHistory = {
+  version: 1;
+  sessions: Record<string, StoredAiSession>;
+};
+
+/** Main announces this when an AI Hints button or a ChatGPT lesson link is used. */
+type AiChatOpenPayload = {
+  source: AiSource;
+  pendingPrompt?: { id: string; text: string };
 };
 
 type AiContextBlock = {

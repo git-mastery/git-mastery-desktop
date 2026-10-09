@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { ContextProvider } from "../context.js";
-import { kindOf } from "../session.js";
+import { workspaceKindOf } from "../source.js";
 import { readExerciseManifest } from "../../exerciseManifest.js";
 import { getExerciseProgress } from "../../exerciseProgress.js";
 
@@ -72,7 +72,7 @@ export const exerciseFolderProvider: ContextProvider = {
       path.relative(path.dirname(location.exercisesRoot), target) || ".";
 
     const lines: string[] = [];
-    if (kindOf(exerciseId) === "hands-on") {
+    if (workspaceKindOf(exerciseId) === "hands-on") {
       lines.push(`Hands-on practical: ${exerciseId}`);
     } else {
       lines.push(`Exercise: ${exerciseId}`);
