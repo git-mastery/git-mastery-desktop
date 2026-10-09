@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toStoredHistory, toUiMessages } from "../ai/history";
+import { useToast } from "../contexts/ToastContext";
+
+const SAVE_FAIL_TOAST = "ai-history-save-failed";
 
 type ChatSession = AiSession & {
   pendingPrompt?: { id: string; text: string };
-  consumedPromptIds: string[];
 };
 
 type ChatState = {
@@ -21,21 +24,114 @@ function emptySession(source: AiSource): ChatSession {
     conversationId: newConversationId(),
     updatedAt: new Date().toISOString(),
     messages: [],
-    consumedPromptIds: [],
   };
 }
 
+function fromStored(sessions: Record<string, StoredAiSession>) {
+  const next: Record<string, ChatSession> = {};
+  for (const [key, session] of Object.entries(sessions)) {
+    next[key] = {
+      source: session.source,
+      conversationId: session.conversationId,
+      updatedAt: session.updatedAt,
+      messages: toUiMessages(session.messages),
+    };
+  }
+  return next;
+}
+
+function mergeSessions(
+  loaded: Record<string, ChatSession>,
+  current: Record<string, ChatSession>,
+) {
+  const next = { ...loaded };
+  for (const [key, session] of Object.entries(current)) {
+    const disk = loaded[key];
+    if (!disk || session.messages.length > 0) {
+      next[key] = session;
+      continue;
+    }
+    next[key] = {
+      ...disk,
+      source: {
+        ...disk.source,
+        title: session.source.title || disk.source.title,
+      },
+      pendingPrompt: session.pendingPrompt ?? disk.pendingPrompt,
+    };
+  }
+  return next;
+}
+
 /**
- * In-memory store of AI conversations, keyed by source. The pane shows at most
- * one of them. Closing hides the pane without dropping history; switching
- * sources selects another entry. Persistence to disk is a later phase.
+ * In-memory store of AI conversations, keyed by source, hydrated from
+ * ai-history.json. The pane shows at most one of them.
  */
 export function useAiHintsSession() {
+  const { showToast } = useToast();
   const [state, setState] = useState<ChatState>({
     paneOpen: false,
     activeSourceKey: null,
     sessionsBySource: {},
   });
+  const [hydrated, setHydrated] = useState(false);
+  const stateRef = useRef(state);
+  const hydratedRef = useRef(hydrated);
+
+  const saveHistory = useCallback(
+    (sessions: Record<string, ChatSession>) => {
+      const stored = toStoredHistory(sessions);
+      const fail = () =>
+        showToast({
+          id: SAVE_FAIL_TOAST,
+          tone: "warning",
+          title: "Couldn't save chat history on this computer.",
+        });
+      void window.electron.saveAiHistory(stored).then((ok) => {
+        if (!ok) fail();
+      }, fail);
+      return stored;
+    },
+    [showToast],
+  );
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    hydratedRef.current = hydrated;
+  }, [hydrated]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.electron
+      .loadAiHistory()
+      .then((history) => {
+        if (cancelled) return;
+        setState((current) => ({
+          ...current,
+          sessionsBySource: mergeSessions(
+            fromStored(history.sessions),
+            current.sessionsBySource,
+          ),
+        }));
+        setHydrated(true);
+      })
+      .catch(() => {
+        if (!cancelled) setHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const stored = toStoredHistory(stateRef.current.sessionsBySource);
+    if (Object.keys(stored).length === 0) return;
+    saveHistory(stateRef.current.sessionsBySource);
+  }, [hydrated, saveHistory]);
 
   useEffect(
     () =>
@@ -43,10 +139,6 @@ export function useAiHintsSession() {
         setState((current) => {
           const { source, pendingPrompt } = payload;
           const existing = current.sessionsBySource[source.sourceKey];
-          const alreadyQueued =
-            pendingPrompt &&
-            (existing?.pendingPrompt?.id === pendingPrompt.id ||
-              existing?.consumedPromptIds.includes(pendingPrompt.id));
           const session: ChatSession = existing
             ? {
                 ...existing,
@@ -55,9 +147,7 @@ export function useAiHintsSession() {
                   title: source.title || existing.source.title,
                 },
                 updatedAt: new Date().toISOString(),
-                pendingPrompt: alreadyQueued
-                  ? existing.pendingPrompt
-                  : (pendingPrompt ?? existing.pendingPrompt),
+                pendingPrompt: pendingPrompt ?? existing.pendingPrompt,
               }
             : {
                 ...emptySession(source),
@@ -81,27 +171,30 @@ export function useAiHintsSession() {
   }, []);
 
   const clearHistory = useCallback(() => {
-    setState((current) => {
-      const key = current.activeSourceKey;
-      if (!key) return current;
-      const session = current.sessionsBySource[key];
-      if (!session) return current;
+    const current = stateRef.current;
+    const key = current.activeSourceKey;
+    if (!key) return;
+    const session = current.sessionsBySource[key];
+    if (!session) return;
+    const remaining = { ...current.sessionsBySource };
+    delete remaining[key];
+    setState((latest) => {
+      const active = latest.sessionsBySource[key];
+      if (!active) return latest;
+      const next = { ...latest.sessionsBySource };
+      delete next[key];
       return {
-        ...current,
+        ...latest,
         sessionsBySource: {
-          ...current.sessionsBySource,
-          [key]: {
-            ...session,
-            conversationId: newConversationId(),
-            updatedAt: new Date().toISOString(),
-            messages: [],
-            pendingPrompt: undefined,
-            consumedPromptIds: [],
-          },
+          ...next,
+          [key]: emptySession(active.source),
         },
       };
     });
-  }, []);
+    if (hydratedRef.current) {
+      saveHistory(remaining);
+    }
+  }, [saveHistory]);
 
   const syncMessages = useCallback(
     (
@@ -129,26 +222,62 @@ export function useAiHintsSession() {
     [],
   );
 
-  const consumePendingPrompt = useCallback(
-    (sourceKey: string, promptId: string) => {
+  const persistHistory = useCallback(
+    (
+      sourceKey: string,
+      conversationId: string,
+      messages: GitMasteryUIMessage[],
+    ) => {
+      if (!hydratedRef.current) return;
+      const sessions = { ...stateRef.current.sessionsBySource };
+      const session = sessions[sourceKey];
+      if (session && session.conversationId === conversationId) {
+        sessions[sourceKey] = {
+          ...session,
+          messages,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      const stored = saveHistory(sessions);
+      const trimmed = stored[sourceKey];
+      if (!session || session.conversationId !== conversationId || !trimmed) {
+        return;
+      }
       setState((current) => {
-        const session = current.sessionsBySource[sourceKey];
-        if (!session || session.pendingPrompt?.id !== promptId) return current;
+        const live = current.sessionsBySource[sourceKey];
+        if (!live || live.conversationId !== conversationId) return current;
         return {
           ...current,
           sessionsBySource: {
             ...current.sessionsBySource,
             [sourceKey]: {
-              ...session,
-              pendingPrompt: undefined,
-              consumedPromptIds: [...session.consumedPromptIds, promptId],
+              ...live,
+              messages: toUiMessages(trimmed.messages),
+              updatedAt: trimmed.updatedAt,
             },
           },
         };
       });
     },
-    [],
+    [saveHistory],
   );
+
+  const clearDraft = useCallback((sourceKey: string) => {
+    setState((current) => {
+      const session = current.sessionsBySource[sourceKey];
+      if (!session?.pendingPrompt) return current;
+      return {
+        ...current,
+        sessionsBySource: {
+          ...current.sessionsBySource,
+          [sourceKey]: {
+            ...session,
+            pendingPrompt: undefined,
+          },
+        },
+      };
+    });
+  }, []);
 
   const session = useMemo(() => {
     if (!state.activeSourceKey) return null;
@@ -161,6 +290,7 @@ export function useAiHintsSession() {
     close,
     clearHistory,
     syncMessages,
-    consumePendingPrompt,
+    persistHistory,
+    clearDraft,
   };
 }

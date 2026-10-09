@@ -127,7 +127,8 @@ function App() {
                   onClose={hints.close}
                   onClearHistory={hints.clearHistory}
                   onMessagesChange={hints.syncMessages}
-                  onConsumePendingPrompt={hints.consumePendingPrompt}
+                  onPersistHistory={hints.persistHistory}
+                  onClearDraft={hints.clearDraft}
                 />
                 <WalkthroughDim show={focusTerminal} />
                 <ResizeHandle

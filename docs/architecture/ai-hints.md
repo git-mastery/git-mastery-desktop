@@ -13,7 +13,8 @@ scrapes the title and instructions from the page, and announces an `AiSource` to
 with `ai-hints-open`.
 
 Lesson pages also contain ChatGPT `?q=` links. When AI is configured, those popups are denied and
-the same pane opens a `lesson:…` session with the decoded question. See `ai-chat-sources.md`.
+the same pane opens a `lesson:…` session with the decoded question in the composer. Send is the
+student's choice. See `ai-chat-sources.md`.
 
 Hands-on practicals have no identifier on the page beyond the `hp-…` id in their download command,
 so the injected script tags the wrapper with `data-gm-hands-on-id` when it adds its buttons. The
@@ -40,8 +41,9 @@ Finder. The click handler re-checks rather than trusting page state, since the p
 
 The chat is a pane **stacked above the terminal** in the right-hand work column, with a draggable
 divider between them. Closing it returns the full height to the terminal; the conversation survives
-close/reopen. Switching to another source keeps the previous conversation in memory; **Clear history**
-resets only the active source. The split defaults to 60% of the column and becomes a fixed pixel
+close/reopen and app restart (`ai-history.json` in userData). Switching to another source keeps the
+previous conversation; **Clear history** deletes that source from memory and disk, then leaves the
+pane on a fresh empty session. The split defaults to 60% of the column and becomes a fixed pixel
 height once dragged.
 
 The layout never exceeds three columns: lessons nav, lesson page, work column. The lesson page's

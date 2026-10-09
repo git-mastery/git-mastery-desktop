@@ -77,6 +77,10 @@ interface Window {
       callback: (payload: AiChatOpenPayload) => void,
     ) => () => void;
     previewAiContext: (source: AiSource) => Promise<AiContextBlock[]>;
+    loadAiHistory: () => Promise<StoredAiHistory>;
+    saveAiHistory: (
+      sessions: Record<string, StoredAiSession>,
+    ) => Promise<boolean>;
 
     // Carries the AI SDK's UI message stream between main and the chat panel.
     // Consumed by IpcChatTransport, not by components directly.
@@ -177,6 +181,12 @@ type IpcInvokeChannelMapping = {
     { streamId: string; source: AiSource; messages: GitMasteryUIMessage[] },
     AiChatStartResult
   >;
+
+  "ai-history-load": IIpcInvoke<null, StoredAiHistory>;
+  "ai-history-save": IIpcInvoke<
+    { sessions: Record<string, StoredAiSession> },
+    boolean
+  >;
 };
 
 type AiProviderId = "openrouter" | "openai" | "anthropic" | "google" | "custom";
@@ -246,6 +256,25 @@ type AiSession = {
   conversationId: string;
   updatedAt: string;
   messages: GitMasteryUIMessage[];
+};
+
+/** Disk projection of a session: transcript text only, no context blocks. */
+type StoredAiMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+};
+
+type StoredAiSession = {
+  source: AiSource;
+  conversationId: string;
+  updatedAt: string;
+  messages: StoredAiMessage[];
+};
+
+type StoredAiHistory = {
+  version: 1;
+  sessions: Record<string, StoredAiSession>;
 };
 
 /** Main announces this when an AI Hints button or a ChatGPT lesson link is used. */

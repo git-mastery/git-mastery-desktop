@@ -16,6 +16,7 @@ import {
   notifyAiHintsPageStateChanged,
 } from "../ai/availability.js";
 import { getProviderSpec, isProviderId } from "../ai/llmProviders.js";
+import { loadAiHistory, saveAiHistory } from "../ai/history.js";
 import { rememberBrief } from "../ai/session.js";
 import {
   getActiveConnection,
@@ -102,7 +103,8 @@ async function openHints(mainWindow: BrowserWindow, exerciseId: string) {
 /**
  * Opens or reuses the lesson session for a ChatGPT link. Returns whether the
  * popup should be denied. Title scrape is async, so the pane may open with a
- * fallback title first and then a follow-up open with the real one.
+ * fallback title first and then a follow-up open with the real one. The
+ * follow-up must not re-attach the prompt, or it would replace the draft.
  */
 function handleLessonChatLink(
   mainWindow: BrowserWindow,
@@ -124,10 +126,7 @@ function handleLessonChatLink(
     sendToRenderer(
       mainWindow,
       "ai-hints-open",
-      openPayload(lessonSource(lessonId, title), {
-        id: promptId,
-        text: prompt,
-      }),
+      openPayload(lessonSource(lessonId, title)),
     );
   });
 
@@ -147,6 +146,12 @@ export function setupAiIpc(mainWindow: BrowserWindow) {
     if (!source || source.kind === "lesson") return [];
     return collectContext(source.id);
   });
+
+  ipcMainHandle("ai-history-load", async () => loadAiHistory());
+
+  ipcMainHandle("ai-history-save", async ({ sessions }) =>
+    saveAiHistory(sessions),
+  );
 
   // Resolves as soon as the turn is accepted. Everything the panel renders
   // arrives on `ai-chat-chunk`, so the transport's ReadableStream can start

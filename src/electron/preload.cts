@@ -78,6 +78,9 @@ contextBridge.exposeInMainWorld("electron", {
     ipcOn("ai-hints-open", callback),
   previewAiContext: (source: AiSource) =>
     ipcInvoke("ai-preview-context", { source }),
+  loadAiHistory: () => ipcInvoke("ai-history-load", null),
+  saveAiHistory: (sessions: Record<string, StoredAiSession>) =>
+    ipcInvoke("ai-history-save", { sessions }),
 
   // AI SDK UI message stream
   aiChatStart: (payload: {

@@ -1,10 +1,10 @@
 # AI chat sources and sessions
 
-**Status:** Implemented (in-memory). Disk persistence is proposed in `ai-chat-persistence.md`.
+**Status:** Implemented. Disk persistence is in `ai-chat-persistence.md`.
 
 The AI Hints pane supports lesson questions as well as exercises and hands-on practicals.
-ChatGPT links in a lesson open the existing pane and ask their encoded question there, without
-creating a separate popup.
+ChatGPT links in a lesson open the existing pane and put their encoded question in the composer,
+without creating a separate popup. The question is not sent until the student clicks Send.
 
 ## Model
 
@@ -21,7 +21,7 @@ The pane, session, source, and message are separate concepts:
 flowchart LR
     P["AI chat pane"] --> S["Active session"]
     S --> L["Lesson source<br/>lesson:gitPrep"]
-    CL["ChatGPT link prompt"] -->|user message| S
+    CL["ChatGPT link prompt"] -->|composer draft| S
     ST["Selected lesson text<br/>future"] -->|included in user message| S
 ```
 
@@ -75,21 +75,23 @@ type AiChatState = {
 };
 ```
 
-The renderer keeps `sessionsBySource` as a `Record` so a later `ai-history.json` phase can hydrate
-the same shape. For a lesson, `id` is the stable lesson URL segment (`gitPrep` in `/lessons/gitPrep/`),
+The renderer keeps `sessionsBySource` as a `Record` hydrated from `ai-history.json`. For a lesson, `id`
+is the stable lesson URL segment (`gitPrep` in `/lessons/gitPrep/`),
 not the question or selected text. Exercise and hands-on ids remain their existing download
 identifiers. Every entry point returns the source's namespaced `sourceKey`.
 
 ## Session behavior
 
 - The first AI entry point for a source creates its session and opens the pane.
-- Another ChatGPT link in the same lesson reuses that lesson session and adds its prompt as a new
-  user message.
+- Another ChatGPT link in the same lesson reuses that lesson session and replaces the composer draft
+  with the new prompt. The draft is not a user message until Send.
 - Opening AI help for a different source selects or creates that source's session without clearing
   any other session.
-- Returning to a source restores its conversation from the in-memory source-keyed store.
+- Returning to a source restores its conversation from the source-keyed store, including after
+  restart.
 - Closing the pane hides it without clearing the active session.
-- **Clear history** creates a new `conversationId` while retaining the same source.
+- **Clear history** deletes that source from memory and disk, then opens a fresh empty session for
+  the same source. The empty session is not written until the next completed turn.
 
 ## ChatGPT link interception
 
@@ -101,8 +103,10 @@ The `WebContentsView` popup handler:
 1. Matches the exact `https:` protocol, `chatgpt.com` hostname, `/` path, and a non-empty `q`.
 2. Reads the current lesson id from the embedded page URL, and the title from the page.
 3. Denies the popup when AI is configured and the page is a lesson.
-4. Opens or reuses that lesson's session and submits the decoded `q` value once (keyed by a prompt
-   id, so a later title refresh does not send it again).
+4. Opens or reuses that lesson's session and puts the decoded `q` in the composer (keyed by a prompt
+   id so every click is a new draft, including the same link again). A later title scrape updates the
+   pane title only; it does not re-seed the prompt. Another link replaces the draft. Send is the
+   student's choice.
 
 Other popup URLs keep their existing behavior. If no AI provider is configured, or the page is not a
 lesson, the original ChatGPT popup remains available.

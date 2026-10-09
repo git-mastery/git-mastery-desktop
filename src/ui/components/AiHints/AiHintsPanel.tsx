@@ -70,7 +70,8 @@ export const AiHintsPanel = ({
   onClose,
   onClearHistory,
   onMessagesChange,
-  onConsumePendingPrompt,
+  onPersistHistory,
+  onClearDraft,
 }: {
   session: PanelSession;
   onClose: () => void;
@@ -80,7 +81,12 @@ export const AiHintsPanel = ({
     conversationId: string,
     messages: GitMasteryUIMessage[],
   ) => void;
-  onConsumePendingPrompt: (sourceKey: string, promptId: string) => void;
+  onPersistHistory: (
+    sourceKey: string,
+    conversationId: string,
+    messages: GitMasteryUIMessage[],
+  ) => void;
+  onClearDraft: (sourceKey: string) => void;
 }) => {
   return (
     <AiHintsConversation
@@ -89,7 +95,8 @@ export const AiHintsPanel = ({
       onClose={onClose}
       onClearHistory={onClearHistory}
       onMessagesChange={onMessagesChange}
-      onConsumePendingPrompt={onConsumePendingPrompt}
+      onPersistHistory={onPersistHistory}
+      onClearDraft={onClearDraft}
     />
   );
 };
@@ -99,7 +106,8 @@ const AiHintsConversation = ({
   onClose,
   onClearHistory,
   onMessagesChange,
-  onConsumePendingPrompt,
+  onPersistHistory,
+  onClearDraft,
 }: {
   session: PanelSession;
   onClose: () => void;
@@ -109,7 +117,12 @@ const AiHintsConversation = ({
     conversationId: string,
     messages: GitMasteryUIMessage[],
   ) => void;
-  onConsumePendingPrompt: (sourceKey: string, promptId: string) => void;
+  onPersistHistory: (
+    sourceKey: string,
+    conversationId: string,
+    messages: GitMasteryUIMessage[],
+  ) => void;
+  onClearDraft: (sourceKey: string) => void;
 }) => {
   const [transport] = useState(() => new IpcChatTransport(session.source));
   const { messages, sendMessage, status, error, stop, regenerate } =
@@ -132,9 +145,17 @@ const AiHintsConversation = ({
       session.conversationId,
       messages,
     );
+    if (busy) return;
+    onPersistHistory(
+      session.source.sourceKey,
+      session.conversationId,
+      messages,
+    );
   }, [
+    busy,
     messages,
     onMessagesChange,
+    onPersistHistory,
     session.source.sourceKey,
     session.conversationId,
   ]);
@@ -155,30 +176,6 @@ const AiHintsConversation = ({
   // streaming into a conversation nobody can see.
   useEffect(() => () => void stop(), [stop]);
 
-  const pendingId = session.pendingPrompt?.id;
-  const pendingText = session.pendingPrompt?.text;
-  useEffect(() => {
-    if (!pendingId || !pendingText) return;
-    const lastUser = [...messages]
-      .reverse()
-      .find((item) => item.role === "user");
-    if (lastUser && messageText(lastUser) === pendingText) {
-      onConsumePendingPrompt(session.source.sourceKey, pendingId);
-      return;
-    }
-    let cancelled = false;
-    void sendMessage({ text: pendingText }).finally(() => {
-      if (!cancelled) {
-        onConsumePendingPrompt(session.source.sourceKey, pendingId);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-    // Send once per prompt id for this mount. messages are the hydrate snapshot.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingId, pendingText]);
-
   // What main actually sent on the most recent turn, so the disclosure never
   // claims context a later snapshot failed to collect. Before the first turn,
   // the preview of what would be sent.
@@ -198,7 +195,10 @@ const AiHintsConversation = ({
   const waiting =
     busy && (!last || last.role !== "assistant" || !messageText(last));
 
-  const send = (text: string) => void sendMessage({ text });
+  const send = (text: string) => {
+    onClearDraft(session.source.sourceKey);
+    void sendMessage({ text });
+  };
 
   const newChat = () => {
     void stop();
@@ -322,11 +322,13 @@ const AiHintsConversation = ({
           autoFocus
           busy={busy}
           placeholder={`Ask about this ${noun}…`}
+          seed={session.pendingPrompt}
           onSend={send}
           onStop={() => void stop()}
         />
         <p className="mt-1.5 text-center text-[11px] text-faint">
-          {DISCLAIMER[session.source.kind]}
+          {DISCLAIMER[session.source.kind]} Chats are saved locally on this
+          computer.
         </p>
       </div>
     </section>
