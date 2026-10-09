@@ -113,7 +113,8 @@ function App() {
             className="relative flex min-w-[280px] flex-col border-l border-border w-[var(--gm-aside-width)]"
           >
             {/* Kept mounted while hidden so closing does not lose the
-                conversation; only a new exercise or Clear history clears it. */}
+                conversation; switching sources restores the other session
+                from the in-memory store. */}
             {hints.session && (
               <div
                 className={cx(
@@ -121,7 +122,13 @@ function App() {
                   !showHints && "hidden",
                 )}
               >
-                <AiHintsPanel session={hints.session} onClose={hints.close} />
+                <AiHintsPanel
+                  session={hints.session}
+                  onClose={hints.close}
+                  onClearHistory={hints.clearHistory}
+                  onMessagesChange={hints.syncMessages}
+                  onConsumePendingPrompt={hints.consumePendingPrompt}
+                />
                 <WalkthroughDim show={focusTerminal} />
                 <ResizeHandle
                   axis="y"

@@ -13,14 +13,14 @@ function nextStreamId() {
  * `ReadableStream` the transport contract expects. Swapping in a real endpoint
  * later means swapping this class, and nothing else.
  *
- * One transport serves one exercise: the panel is remounted, with a fresh
- * conversation, whenever the exercise changes.
+ * One transport serves one source: the panel is remounted, with a fresh
+ * conversation, whenever the source or conversation id changes.
  */
 export class IpcChatTransport implements ChatTransport<GitMasteryUIMessage> {
-  private readonly exerciseId: string;
+  private readonly source: AiSource;
 
-  constructor(exerciseId: string) {
-    this.exerciseId = exerciseId;
+  constructor(source: AiSource) {
+    this.source = source;
   }
 
   sendMessages({
@@ -29,7 +29,7 @@ export class IpcChatTransport implements ChatTransport<GitMasteryUIMessage> {
   }: Parameters<
     ChatTransport<GitMasteryUIMessage>["sendMessages"]
   >[0]): Promise<ReadableStream<UIMessageChunk>> {
-    const exerciseId = this.exerciseId;
+    const source = this.source;
     const streamId = nextStreamId();
     let finish: () => void = () => {};
 
@@ -79,7 +79,7 @@ export class IpcChatTransport implements ChatTransport<GitMasteryUIMessage> {
 
         const result = await window.electron.aiChatStart({
           streamId,
-          exerciseId,
+          source,
           messages,
         });
 

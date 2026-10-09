@@ -74,15 +74,15 @@ contextBridge.exposeInMainWorld("electron", {
     ipcInvoke("ai-save-settings", input),
 
   // AI hints panel
-  onAiHintsOpen: (callback: (session: AiHintsSession) => void) =>
+  onAiHintsOpen: (callback: (payload: AiChatOpenPayload) => void) =>
     ipcOn("ai-hints-open", callback),
-  previewAiContext: (exerciseId: string) =>
-    ipcInvoke("ai-preview-context", { exerciseId }),
+  previewAiContext: (source: AiSource) =>
+    ipcInvoke("ai-preview-context", { source }),
 
   // AI SDK UI message stream
   aiChatStart: (payload: {
     streamId: string;
-    exerciseId: string;
+    source: AiSource;
     messages: GitMasteryUIMessage[];
   }) => ipcInvoke("ai-chat-start", payload),
   aiChatAbort: (streamId: string) => ipcSend("ai-chat-abort", { streamId }),
