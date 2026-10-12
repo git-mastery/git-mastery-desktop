@@ -54,8 +54,18 @@ let bounds = { x: 0, y: 0, width: 0, height: 0 };
 /** CustardUI localStorage keys on git-mastery.org (`storageKey: "git-mastery"`). */
 const SITE_STATE_KEY = "git-mastery-custardUI-state";
 const SITE_TAB_NAV_KEY = "git-mastery-cv-tab-navs-visible";
+const SITE_ADAPTATION_KEY = "git-mastery-cv-adaptation";
 /** MarkBind DarkModeToggle / theme-manager.js */
 const SITE_THEME_KEY = "markbind-theme";
+
+/** CustardUI adaptation ids are path segments of `/versions/<id>/<id>.json`. */
+const ADAPTATION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,64}$/;
+
+function normalizeAdaptationId(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return ADAPTATION_ID_PATTERN.test(trimmed) ? trimmed : undefined;
+}
 
 /** Latest desktop-owned prefs. Null means do not override the site's localStorage. */
 let sitePrefs: SiteViewPrefs | null = null;
@@ -148,12 +158,17 @@ function writeSitePrefsScript(prefs: SiteViewPrefs) {
       : prefs.theme === "system"
         ? `localStorage.removeItem(${JSON.stringify(SITE_THEME_KEY)});`
         : "";
+  const adaptationId = normalizeAdaptationId(prefs.adaptationId);
+  const adaptationWrite = adaptationId
+    ? `localStorage.setItem(${JSON.stringify(SITE_ADAPTATION_KEY)}, ${JSON.stringify(adaptationId)});`
+    : `localStorage.removeItem(${JSON.stringify(SITE_ADAPTATION_KEY)});`;
 
   return `(function () {
     try {
       localStorage.setItem(${JSON.stringify(SITE_STATE_KEY)}, ${JSON.stringify(JSON.stringify(prefs.state))});
       localStorage.setItem(${JSON.stringify(SITE_TAB_NAV_KEY)}, ${JSON.stringify(prefs.tabNavsVisible ? "true" : "false")});
       ${themeWrite}
+      ${adaptationWrite}
     } catch (e) {}
   })()`;
 }
@@ -163,11 +178,13 @@ const READ_SITE_PREFS_SCRIPT = `(function () {
     var raw = localStorage.getItem(${JSON.stringify(SITE_STATE_KEY)});
     var tab = localStorage.getItem(${JSON.stringify(SITE_TAB_NAV_KEY)});
     var theme = localStorage.getItem(${JSON.stringify(SITE_THEME_KEY)});
-    if (!raw && tab === null && theme === null) return null;
+    var adaptation = localStorage.getItem(${JSON.stringify(SITE_ADAPTATION_KEY)});
+    if (!raw && tab === null && theme === null && !adaptation) return null;
     return {
       state: raw ? JSON.parse(raw) : {},
       tabNavsVisible: tab === null ? true : tab === "true",
-      theme: theme === "dark" || theme === "light" ? theme : "system"
+      theme: theme === "dark" || theme === "light" ? theme : "system",
+      adaptationId: adaptation || undefined
     };
   } catch (e) {
     return null;
@@ -258,6 +275,32 @@ function isSameDocumentHashChange(currentUrl: string, targetUrl: string) {
     );
   } catch {
     return false;
+  }
+}
+
+/**
+ * CustardUI URL indicators beat localStorage. Desktop owns the adaptation via
+ * `git-mastery-cv-adaptation`, so leftover `#/<id>` and `?adapt=` must not
+ * re-apply an old edition (or undo a clear) on the next load.
+ */
+function stripAdaptationUrlIndicators(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.delete("adapt");
+    if (parsed.hash.startsWith("#/")) {
+      let id = parsed.hash.slice(2);
+      try {
+        id = decodeURIComponent(id);
+      } catch {
+        // Keep the raw slice when it is not URI-encoded.
+      }
+      if (ADAPTATION_ID_PATTERN.test(id)) {
+        parsed.hash = "";
+      }
+    }
+    return parsed.toString();
+  } catch {
+    return url;
   }
 }
 
@@ -884,16 +927,17 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
 
   ipcMainOn("wcv-navigate", ({ url }: { url: string }) => {
     const view = getOrCreateWcv(mainWindow);
+    const target = stripAdaptationUrlIndicators(url);
     const currentUrl = view.webContents.getURL();
-    if (currentUrl && isSameDocumentHashChange(currentUrl, url)) {
-      const hash = new URL(url).hash;
+    if (currentUrl && isSameDocumentHashChange(currentUrl, target)) {
+      const hash = new URL(target).hash;
       void view.webContents.executeJavaScript(
         `location.hash = ${JSON.stringify(hash)};`,
       );
       return;
     }
     setLoading(mainWindow, true);
-    view.webContents.loadURL(url);
+    view.webContents.loadURL(target);
   });
 
   ipcMainOn(
@@ -921,11 +965,19 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
       state: prefs.state,
       tabNavsVisible: prefs.tabNavsVisible,
       theme: prefs.theme,
+      adaptationId: normalizeAdaptationId(prefs.adaptationId),
     };
     const view = getOrCreateWcv(mainWindow);
     await applySitePrefsToPage();
     if (reload && hasLoadedPage()) {
-      view.webContents.reload();
+      const current = view.webContents.getURL();
+      const next = stripAdaptationUrlIndicators(current);
+      if (next !== current) {
+        setLoading(mainWindow, true);
+        view.webContents.loadURL(next);
+      } else {
+        view.webContents.reload();
+      }
     }
     return true;
   });

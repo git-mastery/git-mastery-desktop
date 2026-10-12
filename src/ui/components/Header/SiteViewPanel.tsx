@@ -3,7 +3,10 @@ import { Button } from "../ui/Button";
 import { Checkbox } from "../ui/Checkbox";
 import { LoadingState } from "../ui/States";
 import { cx } from "../../utils/cx";
+import { SITE_ORIGIN } from "../../contexts/WebContentsViewContext";
 import {
+  ADAPTATION_ID_PATTERN,
+  normalizeAdaptationId,
   readDesktopSiteViewPrefs,
   writeDesktopSiteViewPrefs,
 } from "../../utils/siteViewPrefs";
@@ -20,6 +23,7 @@ type FormState = {
   toggles: Record<string, ToggleMode>;
   tabNavsVisible: boolean;
   theme: SitePageTheme;
+  adaptationId: string;
 };
 
 const THEME_MODES: { id: SitePageTheme; label: string }[] = [
@@ -61,7 +65,14 @@ function defaultsFromConfig(config: CustardUIConfigFile): FormState {
     toggles[toggle.toggleId] = toggle.default ?? "hide";
   }
 
-  return { placeholders, tabs, toggles, tabNavsVisible: true, theme: "system" };
+  return {
+    placeholders,
+    tabs,
+    toggles,
+    tabNavsVisible: true,
+    theme: "system",
+    adaptationId: "",
+  };
 }
 
 function toggleModeFromState(
@@ -101,6 +112,7 @@ function mergePrefsIntoForm(
   }
   base.tabNavsVisible = prefs.tabNavsVisible;
   base.theme = prefs.theme ?? "system";
+  base.adaptationId = normalizeAdaptationId(prefs.adaptationId) ?? "";
   return base;
 }
 
@@ -129,7 +141,51 @@ function formToPrefs(form: FormState): SiteViewPrefs {
     },
     tabNavsVisible: form.tabNavsVisible,
     theme: form.theme,
+    adaptationId: normalizeAdaptationId(form.adaptationId),
   };
+}
+
+async function resolveAdaptationId(
+  raw: string,
+): Promise<{ value: string; error?: string }> {
+  const trimmed = raw.trim();
+  if (!trimmed) return { value: "" };
+  if (!ADAPTATION_ID_PATTERN.test(trimmed)) {
+    return {
+      value: trimmed,
+      error: "Use a course edition id such as cs2103.",
+    };
+  }
+  try {
+    const encoded = encodeURIComponent(trimmed);
+    const response = await fetch(
+      `${SITE_ORIGIN}/versions/${encoded}/${encoded}.json`,
+    );
+    if (!response.ok) {
+      return {
+        value: trimmed,
+        error: `No course edition named “${trimmed}”.`,
+      };
+    }
+    const body: unknown = await response.json();
+    const id =
+      body && typeof body === "object" && "id" in body
+        ? (body as { id: unknown }).id
+        : null;
+    if (id !== trimmed) {
+      return {
+        value: trimmed,
+        error: `No course edition named “${trimmed}”.`,
+      };
+    }
+    return { value: trimmed };
+  } catch {
+    return {
+      value: trimmed,
+      error:
+        "Could not reach the Git-Mastery site. Check your connection and try again.",
+    };
+  }
 }
 
 export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
@@ -138,6 +194,7 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
   const [form, setForm] = useState<FormState | null>(null);
   const [saved, setSaved] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [adaptationError, setAdaptationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!config) return;
@@ -199,13 +256,20 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
 
   const save = async (next: FormState, close = false) => {
     setSaving(true);
+    setAdaptationError(null);
     try {
-      const prefs = formToPrefs(next);
+      const resolved = await resolveAdaptationId(next.adaptationId);
+      if (resolved.error) {
+        setAdaptationError(resolved.error);
+        return;
+      }
+      const toSave = { ...next, adaptationId: resolved.value };
+      const prefs = formToPrefs(toSave);
       writeDesktopSiteViewPrefs(prefs);
       await window.electron.setSitePrefs({ ...prefs, reload: true });
       if (prefs.theme) setPreference(prefs.theme);
-      setForm(next);
-      setSaved(next);
+      setForm(toSave);
+      setSaved(toSave);
       if (close) onClose?.();
     } finally {
       setSaving(false);
@@ -214,7 +278,24 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
 
   return (
     <div className="flex max-h-[min(70vh,36rem)] flex-col gap-6 overflow-y-auto text-sm text-fg">
-      <p>Colour for the desktop app, the lesson pages, and the terminal.</p>
+      <div className="flex flex-col gap-1.5">
+        <span className={FIELD_LABEL}>Course edition (optional)</span>
+        <input
+          type="text"
+          value={form.adaptationId}
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          onChange={(event) => {
+            setAdaptationError(null);
+            setForm({ ...form, adaptationId: event.target.value });
+          }}
+          className={INPUT}
+        />
+        {adaptationError && (
+          <p className="text-[13px] text-danger">{adaptationError}</p>
+        )}
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <span className={FIELD_LABEL}>Colour</span>
