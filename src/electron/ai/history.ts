@@ -6,7 +6,7 @@ import { parseAiSource } from "./source.js";
 const HISTORY_VERSION = 1;
 const HISTORY_NAME = "ai-history.json";
 /** Keep in sync with `src/ui/ai/history.ts`. */
-const MAX_STORED_MESSAGE_CHARS = 20_000;
+export const MAX_STORED_MESSAGE_CHARS = 20_000;
 const MAX_SESSION_BYTES = 256 * 1024;
 const MAX_HISTORY_BYTES = 5 * 1024 * 1024;
 

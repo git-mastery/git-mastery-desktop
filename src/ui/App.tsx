@@ -129,6 +129,7 @@ function App() {
                   onMessagesChange={hints.syncMessages}
                   onPersistHistory={hints.persistHistory}
                   onClearDraft={hints.clearDraft}
+                  onDraftChange={hints.setDraftText}
                 />
                 <WalkthroughDim show={focusTerminal} />
                 <ResizeHandle

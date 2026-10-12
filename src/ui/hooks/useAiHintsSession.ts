@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toStoredHistory, toUiMessages } from "../ai/history";
+import {
+  MAX_STORED_MESSAGE_CHARS,
+  toStoredHistory,
+  toUiMessages,
+} from "../ai/history";
 import { useToast } from "../contexts/ToastContext";
 
 const SAVE_FAIL_TOAST = "ai-history-save-failed";
 
 type ChatSession = AiSession & {
-  pendingPrompt?: { id: string; text: string };
+  /** Unsent composer text. In-memory only; never written to ai-history.json. */
+  draft?: { id: string; text: string };
 };
 
 type ChatState = {
@@ -57,7 +62,7 @@ function mergeSessions(
         ...disk.source,
         title: session.source.title || disk.source.title,
       },
-      pendingPrompt: session.pendingPrompt ?? disk.pendingPrompt,
+      draft: session.draft,
     };
   }
   return next;
@@ -147,11 +152,11 @@ export function useAiHintsSession() {
                   title: source.title || existing.source.title,
                 },
                 updatedAt: new Date().toISOString(),
-                pendingPrompt: pendingPrompt ?? existing.pendingPrompt,
+                draft: pendingPrompt ?? existing.draft,
               }
             : {
                 ...emptySession(source),
-                pendingPrompt,
+                draft: pendingPrompt,
               };
           return {
             paneOpen: true,
@@ -265,14 +270,36 @@ export function useAiHintsSession() {
   const clearDraft = useCallback((sourceKey: string) => {
     setState((current) => {
       const session = current.sessionsBySource[sourceKey];
-      if (!session?.pendingPrompt) return current;
+      if (!session?.draft) return current;
       return {
         ...current,
         sessionsBySource: {
           ...current.sessionsBySource,
           [sourceKey]: {
             ...session,
-            pendingPrompt: undefined,
+            draft: undefined,
+          },
+        },
+      };
+    });
+  }, []);
+
+  const setDraftText = useCallback((sourceKey: string, text: string) => {
+    setState((current) => {
+      const session = current.sessionsBySource[sourceKey];
+      if (!session) return current;
+      const clipped = text.slice(0, MAX_STORED_MESSAGE_CHARS);
+      if ((session.draft?.text ?? "") === clipped) return current;
+      return {
+        ...current,
+        sessionsBySource: {
+          ...current.sessionsBySource,
+          [sourceKey]: {
+            ...session,
+            draft: {
+              id: session.draft?.id ?? crypto.randomUUID(),
+              text: clipped,
+            },
           },
         },
       };
@@ -292,5 +319,6 @@ export function useAiHintsSession() {
     syncMessages,
     persistHistory,
     clearDraft,
+    setDraftText,
   };
 }
