@@ -1,5 +1,14 @@
 const DESKTOP_KEY = "site-view-prefs";
 
+/** CustardUI adaptation ids are path segments of `/versions/<id>/<id>.json`. */
+export const ADAPTATION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,64}$/;
+
+export function normalizeAdaptationId(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return ADAPTATION_ID_PATTERN.test(trimmed) ? trimmed : undefined;
+}
+
 export function readDesktopSiteViewPrefs(): SiteViewPrefs | null {
   try {
     const raw = window.localStorage.getItem(DESKTOP_KEY);
@@ -15,6 +24,7 @@ export function readDesktopSiteViewPrefs(): SiteViewPrefs | null {
         parsed.theme === "system"
           ? parsed.theme
           : undefined,
+      adaptationId: normalizeAdaptationId(parsed.adaptationId),
     };
   } catch {
     return null;

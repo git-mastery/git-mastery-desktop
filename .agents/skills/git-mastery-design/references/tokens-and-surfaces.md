@@ -225,7 +225,7 @@ Inverted chip so it stays readable on both canvases: dark on light (`#171717` / 
 
 ## 8. Theme
 
-One preference — Light, Dark, or System — in **Settings → Customise UI**. It themes both the Electron chrome and the embedded git-mastery.org pages.
+One preference — Light, Dark, or System — in **Settings → Customise**. It themes both the Electron chrome and the embedded git-mastery.org pages.
 
 | Preference | Chrome                         | Lesson pages                            |
 | ---------- | ------------------------------ | --------------------------------------- |

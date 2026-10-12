@@ -329,6 +329,8 @@ type SiteViewPrefs = {
   tabNavsVisible: boolean;
   /** Shared Light / Dark / System preference for chrome and MarkBind. */
   theme?: SitePageTheme;
+  /** CustardUI adaptation id (e.g. `cs2103`). Missing or empty is the standard site. */
+  adaptationId?: string;
 };
 
 /** Start was clicked; the renderer shows a loading toast until the result. */
