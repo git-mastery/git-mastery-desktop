@@ -8,7 +8,6 @@ import {
 import { collectContext } from "./context.js";
 import type { ProviderConnection, ProviderSpec } from "./llmProviders.js";
 import { buildSystemPrompt } from "./prompt.js";
-import { describeSession } from "./session.js";
 
 /**
  * Only the most recent turns are sent. Older ones cost quota on every send,
@@ -66,13 +65,13 @@ export function abortChat(streamId: string) {
  */
 export async function runChat(options: {
   streamId: string;
-  exerciseId: string;
+  source: AiSource;
   spec: ProviderSpec;
   connection: ProviderConnection;
   messages: GitMasteryUIMessage[];
   onChunk: (chunk: UIMessageChunk) => void;
 }) {
-  const { streamId, exerciseId, spec, connection, messages, onChunk } = options;
+  const { streamId, source, spec, connection, messages, onChunk } = options;
 
   const controller = new AbortController();
   running.set(streamId, controller);
@@ -80,14 +79,17 @@ export async function runChat(options: {
   const stream = createUIMessageStream<GitMasteryUIMessage>({
     onError: (error) => toUserMessage(error, spec.label, connection.model),
     execute: async ({ writer }) => {
-      // Collected per send, not per panel open, so the git-state provider sees
-      // the repo as it is after the student's latest attempt.
-      const context = await collectContext(exerciseId, controller.signal);
+      // Lessons have no workspace. Exercise and hands-on context is collected
+      // per send, so the git-state provider sees the repo after the latest try.
+      const context =
+        source.kind === "lesson"
+          ? []
+          : await collectContext(source.id, controller.signal);
       writer.write({ type: "data-context", id: "context", data: context });
 
       const result = streamText({
         model: spec.createModel(connection),
-        system: buildSystemPrompt(describeSession(exerciseId), context),
+        system: buildSystemPrompt(source, context),
         messages: await convertToModelMessages(
           messages.slice(-MAX_HISTORY_MESSAGES),
         ),

@@ -15,6 +15,7 @@ import {
   type AiHintsPageState,
 } from "../ai/availability.js";
 import type { LessonBrief } from "../ai/session.js";
+import { parseChatGptQuery } from "../ai/source.js";
 import {
   getAppliedResolvedTheme,
   registerThemeBackgroundTarget,
@@ -60,6 +61,7 @@ const SITE_THEME_KEY = "markbind-theme";
 let sitePrefs: SiteViewPrefs | null = null;
 
 let aiHintsHandler: ((exerciseId: string) => void) | null = null;
+let lessonChatHandler: ((prompt: string) => boolean) | null = null;
 
 /** Mirrors `--gm-dim` in src/ui/index.css, so the lesson dims like the DOM panes. */
 const PAGE_DIM_COLOR = {
@@ -118,6 +120,20 @@ const EXERCISE_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/i;
 /** Receives AI Hints clicks from the lesson page. */
 export function onAiHintsRequested(handler: (exerciseId: string) => void) {
   aiHintsHandler = handler;
+}
+
+/**
+ * Receives a decoded ChatGPT-link prompt from a lesson page popup. Return true
+ * to deny the popup (the pane will take the question). Return false to leave
+ * the original ChatGPT window alone.
+ */
+export function onLessonChatRequested(handler: (prompt: string) => boolean) {
+  lessonChatHandler = handler;
+}
+
+export function getEmbeddedPageUrl(): string {
+  if (!wcv || wcv.webContents.isDestroyed()) return "";
+  return wcv.webContents.getURL();
 }
 
 function hasLoadedPage() {
@@ -214,15 +230,21 @@ function applyChromeUserAgent(contents: WebContents) {
  * Electron UA unless we create them and override it before they navigate.
  */
 function allowPopupsWithChromeUserAgent(contents: WebContents) {
-  contents.setWindowOpenHandler(() => ({
-    action: "allow",
-    createWindow: (options) => {
-      const popup = new BrowserWindow(options);
-      applyChromeUserAgent(popup.webContents);
-      allowPopupsWithChromeUserAgent(popup.webContents);
-      return popup.webContents;
-    },
-  }));
+  contents.setWindowOpenHandler((details) => {
+    const prompt = parseChatGptQuery(details.url);
+    if (prompt && lessonChatHandler?.(prompt)) {
+      return { action: "deny" };
+    }
+    return {
+      action: "allow",
+      createWindow: (options) => {
+        const popup = new BrowserWindow(options);
+        applyChromeUserAgent(popup.webContents);
+        allowPopupsWithChromeUserAgent(popup.webContents);
+        return popup.webContents;
+      },
+    };
+  });
 }
 
 /** Hash-only navigations on the same lesson must not loadURL (that hides the view). */
@@ -770,6 +792,27 @@ export async function scrapeLessonBrief(
     };
   } catch (err) {
     console.warn("[wcv] failed to scrape lesson brief:", err);
+    return null;
+  }
+}
+
+/** Page title of the currently shown lesson, without the "Git-Mastery - " prefix. */
+export async function scrapeLessonTitle(): Promise<string | null> {
+  if (!wcv || wcv.webContents.isDestroyed()) return null;
+  try {
+    const title = (await wcv.webContents.executeJavaScript(`
+      (function () {
+        var raw = (document.title || "").replace(/^Git-Mastery\\s*[-–]\\s*/i, "").trim();
+        if (raw) return raw;
+        var heading = document.querySelector("h1");
+        return (heading && heading.innerText && heading.innerText.trim()) || null;
+      })()
+    `)) as unknown;
+    return typeof title === "string" && title.trim()
+      ? title.trim().slice(0, 200)
+      : null;
+  } catch (err) {
+    console.warn("[wcv] failed to scrape lesson title:", err);
     return null;
   }
 }

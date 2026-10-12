@@ -1,7 +1,14 @@
+import { randomUUID } from "crypto";
 import type { BrowserWindow } from "electron";
 import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
 import { sendToRenderer } from "./ipcUtils.js";
-import { onAiHintsRequested, scrapeLessonBrief } from "./webContentsView.js";
+import {
+  getEmbeddedPageUrl,
+  onAiHintsRequested,
+  onLessonChatRequested,
+  scrapeLessonBrief,
+  scrapeLessonTitle,
+} from "./webContentsView.js";
 import { abortChat, runChat } from "../ai/chat.js";
 import { collectContext } from "../ai/context.js";
 import {
@@ -9,12 +16,18 @@ import {
   notifyAiHintsPageStateChanged,
 } from "../ai/availability.js";
 import { getProviderSpec, isProviderId } from "../ai/llmProviders.js";
+import { loadAiHistory, saveAiHistory } from "../ai/history.js";
 import { rememberBrief } from "../ai/session.js";
 import {
   getActiveConnection,
   getSettingsView,
   saveProviderSettings,
 } from "../ai/settings.js";
+import {
+  lessonSource,
+  parseAiSource,
+  parseLessonNameFromUrl,
+} from "../ai/source.js";
 
 const NOT_CONFIGURED = "Set up AI hints in Settings first.";
 
@@ -61,6 +74,13 @@ async function saveSettings(input: AiSettingsInput): Promise<AiSaveResult> {
   return { ok: true, encrypted };
 }
 
+function openPayload(
+  source: AiSource,
+  pendingPrompt?: { id: string; text: string },
+): AiChatOpenPayload {
+  return pendingPrompt ? { source, pendingPrompt } : { source };
+}
+
 /**
  * Opens the docked panel for an AI Hints click on the lesson page. The page
  * disables the button when these checks would fail, but its state can be a
@@ -73,43 +93,94 @@ async function openHints(mainWindow: BrowserWindow, exerciseId: string) {
     return;
   }
   const brief = await scrapeLessonBrief(exerciseId);
-  sendToRenderer(mainWindow, "ai-hints-open", rememberBrief(exerciseId, brief));
+  sendToRenderer(
+    mainWindow,
+    "ai-hints-open",
+    openPayload(rememberBrief(exerciseId, brief)),
+  );
+}
+
+/**
+ * Opens or reuses the lesson session for a ChatGPT link. Returns whether the
+ * popup should be denied. Title scrape is async, so the pane may open with a
+ * fallback title first and then a follow-up open with the real one. The
+ * follow-up must not re-attach the prompt, or it would replace the draft.
+ */
+function handleLessonChatLink(
+  mainWindow: BrowserWindow,
+  prompt: string,
+): boolean {
+  if (!getActiveConnection()) return false;
+  const lessonId = parseLessonNameFromUrl(getEmbeddedPageUrl());
+  if (!lessonId) return false;
+
+  const promptId = randomUUID();
+  sendToRenderer(
+    mainWindow,
+    "ai-hints-open",
+    openPayload(lessonSource(lessonId), { id: promptId, text: prompt }),
+  );
+
+  void scrapeLessonTitle().then((title) => {
+    if (!title) return;
+    sendToRenderer(
+      mainWindow,
+      "ai-hints-open",
+      openPayload(lessonSource(lessonId, title)),
+    );
+  });
+
+  return true;
 }
 
 export function setupAiIpc(mainWindow: BrowserWindow) {
   onAiHintsRequested((exerciseId) => void openHints(mainWindow, exerciseId));
+  onLessonChatRequested((prompt) => handleLessonChatLink(mainWindow, prompt));
 
   ipcMainHandle("ai-get-settings", async () => getSettingsView());
 
   ipcMainHandle("ai-save-settings", saveSettings);
 
-  ipcMainHandle("ai-preview-context", async ({ exerciseId }) =>
-    collectContext(exerciseId),
+  ipcMainHandle("ai-preview-context", async ({ source: raw }) => {
+    const source = parseAiSource(raw);
+    if (!source || source.kind === "lesson") return [];
+    return collectContext(source.id);
+  });
+
+  ipcMainHandle("ai-history-load", async () => loadAiHistory());
+
+  ipcMainHandle("ai-history-save", async ({ sessions }) =>
+    saveAiHistory(sessions),
   );
 
   // Resolves as soon as the turn is accepted. Everything the panel renders
   // arrives on `ai-chat-chunk`, so the transport's ReadableStream can start
   // producing before the model has finished.
-  ipcMainHandle("ai-chat-start", async ({ streamId, exerciseId, messages }) => {
-    const active = getActiveConnection();
-    if (!active) return { ok: false, error: NOT_CONFIGURED };
+  ipcMainHandle(
+    "ai-chat-start",
+    async ({ streamId, source: raw, messages }) => {
+      const active = getActiveConnection();
+      if (!active) return { ok: false, error: NOT_CONFIGURED };
+      const source = parseAiSource(raw);
+      if (!source) return { ok: false, error: "That chat is no longer valid." };
 
-    void runChat({
-      streamId,
-      exerciseId,
-      spec: active.spec,
-      connection: active.connection,
-      messages,
-      onChunk: (chunk) =>
-        sendToRenderer(mainWindow, "ai-chat-chunk", { streamId, chunk }),
-    })
-      .catch((err) => console.error("[ai] chat stream failed:", err))
-      // The renderer's stream stays open until this arrives, so it has to be
-      // sent even when the turn fell over.
-      .finally(() => sendToRenderer(mainWindow, "ai-chat-end", { streamId }));
+      void runChat({
+        streamId,
+        source,
+        spec: active.spec,
+        connection: active.connection,
+        messages,
+        onChunk: (chunk) =>
+          sendToRenderer(mainWindow, "ai-chat-chunk", { streamId, chunk }),
+      })
+        .catch((err) => console.error("[ai] chat stream failed:", err))
+        // The renderer's stream stays open until this arrives, so it has to be
+        // sent even when the turn fell over.
+        .finally(() => sendToRenderer(mainWindow, "ai-chat-end", { streamId }));
 
-    return { ok: true };
-  });
+      return { ok: true };
+    },
+  );
 
   ipcMainOn("ai-chat-abort", ({ streamId }) => abortChat(streamId));
 

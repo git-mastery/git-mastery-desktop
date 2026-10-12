@@ -26,17 +26,25 @@ import { IpcChatTransport } from "../../ai/IpcChatTransport";
 import { ContextDisclosure } from "./ContextDisclosure";
 
 const KIND_LABEL: Record<AiHintsKind, string> = {
+  lesson: "Lesson",
   exercise: "Exercise",
   "hands-on": "Hands-on",
 };
 
-/** Same openers for exercises and hands-on. */
+const KIND_NOUN: Record<AiHintsKind, string> = {
+  lesson: "lesson",
+  exercise: "exercise",
+  "hands-on": "hands-on",
+};
+
+/** Same openers for exercises and hands-on. Lessons start from the link prompt. */
 const SUGGESTIONS = [
   "I'm stuck. What should I do next?",
   "Explain the underlying concepts to me",
 ];
 
 const DISCLAIMER: Record<AiHintsKind, string> = {
+  lesson: "AI can make mistakes. Check important details against the lesson.",
   exercise: "Hints only, never the full solution. AI can make mistakes.",
   "hands-on": "AI can make mistakes. Check important steps against the lesson.",
 };
@@ -48,24 +56,47 @@ function messageText(message: GitMasteryUIMessage) {
     .join("");
 }
 
+type PanelSession = AiSession & {
+  pendingPrompt?: { id: string; text: string };
+};
+
 /**
- * Wraps the conversation so "Clear history" and a change of exercise both start
- * from a clean mount: fresh messages, fresh transport, fresh context snapshot.
+ * Wraps the conversation so "Clear history" and a change of source both start
+ * from a clean mount: stored messages hydrate useChat, a fresh transport talks
+ * to the matching source.
  */
 export const AiHintsPanel = ({
   session,
   onClose,
+  onClearHistory,
+  onMessagesChange,
+  onPersistHistory,
+  onClearDraft,
 }: {
-  session: AiHintsSession;
+  session: PanelSession;
   onClose: () => void;
+  onClearHistory: () => void;
+  onMessagesChange: (
+    sourceKey: string,
+    conversationId: string,
+    messages: GitMasteryUIMessage[],
+  ) => void;
+  onPersistHistory: (
+    sourceKey: string,
+    conversationId: string,
+    messages: GitMasteryUIMessage[],
+  ) => void;
+  onClearDraft: (sourceKey: string) => void;
 }) => {
-  const [conversation, setConversation] = useState(0);
   return (
     <AiHintsConversation
-      key={`${session.exerciseId}:${conversation}`}
+      key={`${session.source.sourceKey}:${session.conversationId}`}
       session={session}
       onClose={onClose}
-      onNewChat={() => setConversation((count) => count + 1)}
+      onClearHistory={onClearHistory}
+      onMessagesChange={onMessagesChange}
+      onPersistHistory={onPersistHistory}
+      onClearDraft={onClearDraft}
     />
   );
 };
@@ -73,32 +104,75 @@ export const AiHintsPanel = ({
 const AiHintsConversation = ({
   session,
   onClose,
-  onNewChat,
+  onClearHistory,
+  onMessagesChange,
+  onPersistHistory,
+  onClearDraft,
 }: {
-  session: AiHintsSession;
+  session: PanelSession;
   onClose: () => void;
-  onNewChat: () => void;
+  onClearHistory: () => void;
+  onMessagesChange: (
+    sourceKey: string,
+    conversationId: string,
+    messages: GitMasteryUIMessage[],
+  ) => void;
+  onPersistHistory: (
+    sourceKey: string,
+    conversationId: string,
+    messages: GitMasteryUIMessage[],
+  ) => void;
+  onClearDraft: (sourceKey: string) => void;
 }) => {
-  const [transport] = useState(() => new IpcChatTransport(session.exerciseId));
+  const [transport] = useState(() => new IpcChatTransport(session.source));
   const { messages, sendMessage, status, error, stop, regenerate } =
-    useChat<GitMasteryUIMessage>({ transport });
-  const [preview, setPreview] = useState<AiContextBlock[] | null>(null);
+    useChat<GitMasteryUIMessage>({
+      id: session.conversationId,
+      messages: session.messages,
+      transport,
+    });
+  const [preview, setPreview] = useState<AiContextBlock[] | null>(
+    session.source.kind === "lesson" ? [] : null,
+  );
 
   const busy = status === "submitted" || status === "streaming";
-  const noun = session.kind === "hands-on" ? "hands-on" : "exercise";
+  const noun = KIND_NOUN[session.source.kind];
+  const showContext = session.source.kind !== "lesson";
 
   useEffect(() => {
+    onMessagesChange(
+      session.source.sourceKey,
+      session.conversationId,
+      messages,
+    );
+    if (busy) return;
+    onPersistHistory(
+      session.source.sourceKey,
+      session.conversationId,
+      messages,
+    );
+  }, [
+    busy,
+    messages,
+    onMessagesChange,
+    onPersistHistory,
+    session.source.sourceKey,
+    session.conversationId,
+  ]);
+
+  useEffect(() => {
+    if (session.source.kind === "lesson") return;
     let cancelled = false;
     window.electron
-      .previewAiContext(session.exerciseId)
+      .previewAiContext(session.source)
       .then((blocks) => !cancelled && setPreview(blocks))
       .catch(() => !cancelled && setPreview([]));
     return () => {
       cancelled = true;
     };
-  }, [session.exerciseId]);
+  }, [session.source]);
 
-  // A remount (Clear history, another exercise) must not leave the old turn
+  // A remount (Clear history, another source) must not leave the old turn
   // streaming into a conversation nobody can see.
   useEffect(() => () => void stop(), [stop]);
 
@@ -121,16 +195,19 @@ const AiHintsConversation = ({
   const waiting =
     busy && (!last || last.role !== "assistant" || !messageText(last));
 
-  const send = (text: string) => void sendMessage({ text });
+  const send = (text: string) => {
+    onClearDraft(session.source.sourceKey);
+    void sendMessage({ text });
+  };
 
   const newChat = () => {
     void stop();
-    onNewChat();
+    onClearHistory();
   };
 
   return (
     <section
-      aria-label={`AI Hints for ${session.title}`}
+      aria-label={`AI Hints for ${session.source.title}`}
       className="@container flex h-full min-h-0 flex-1 flex-col bg-surface"
     >
       <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border pr-1.5 pl-3">
@@ -140,13 +217,13 @@ const AiHintsConversation = ({
           aria-label="AI Hints"
         />
         <span className="shrink-0 rounded border border-border bg-subtle px-1.5 py-px text-[11px] font-medium text-muted">
-          {KIND_LABEL[session.kind]}
+          {KIND_LABEL[session.source.kind]}
         </span>
         <h2
           className="min-w-0 flex-1 truncate text-sm font-semibold text-fg"
-          title={session.title}
+          title={session.source.title}
         >
-          {session.title}
+          {session.source.title}
         </h2>
         <Tooltip label="Clear history" position="bottom">
           <IconButton aria-label="Clear history" size="sm" onClick={newChat}>
@@ -160,7 +237,7 @@ const AiHintsConversation = ({
         </Tooltip>
       </header>
 
-      <ContextDisclosure blocks={context} />
+      {showContext && <ContextDisclosure blocks={context} />}
 
       {messages.length === 0 ? (
         // `m-auto` rather than `justify-center`: centred flex content that
@@ -168,20 +245,24 @@ const AiHintsConversation = ({
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
           <div className="m-auto flex w-full max-w-lg flex-col items-center gap-3 text-center">
             <h3 className="font-heading text-[1.15rem]/[1.35] font-semibold text-fg">
-              Stuck on this {noun}?
+              {session.source.kind === "lesson"
+                ? "Ask about this lesson"
+                : `Stuck on this ${noun}?`}
             </h3>
-            <div className="grid w-full grid-cols-1 gap-2 @sm:grid-cols-2">
-              {SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onClick={() => send(suggestion)}
-                  className="rounded-xl border border-border bg-surface px-3 py-2 text-left text-[13px] leading-snug text-fg hover:cursor-pointer hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
+            {session.source.kind !== "lesson" && (
+              <div className="grid w-full grid-cols-1 gap-2 @sm:grid-cols-2">
+                {SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => send(suggestion)}
+                    className="rounded-xl border border-border bg-surface px-3 py-2 text-left text-[13px] leading-snug text-fg hover:cursor-pointer hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -241,11 +322,13 @@ const AiHintsConversation = ({
           autoFocus
           busy={busy}
           placeholder={`Ask about this ${noun}…`}
+          seed={session.pendingPrompt}
           onSend={send}
           onStop={() => void stop()}
         />
         <p className="mt-1.5 text-center text-[11px] text-faint">
-          {DISCLAIMER[session.kind]}
+          {DISCLAIMER[session.source.kind]} Chats are saved locally on this
+          computer.
         </p>
       </div>
     </section>

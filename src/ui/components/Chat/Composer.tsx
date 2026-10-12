@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { IconArrowUp, IconPlayerStopFilled } from "@tabler/icons-react";
+import { MAX_STORED_MESSAGE_CHARS } from "../../ai/history";
 import { cx } from "../../utils/cx";
 
 const MAX_HEIGHT = 160;
@@ -9,6 +10,8 @@ type ComposerProps = {
   busy?: boolean;
   autoFocus?: boolean;
   placeholder?: string;
+  /** When `id` changes, replace the field with `text`. Local edits stay until then. */
+  seed?: { id: string; text: string };
   onSend: (text: string) => void;
   onStop: () => void;
 };
@@ -24,11 +27,23 @@ export const Composer = ({
   busy = false,
   autoFocus = false,
   placeholder = "Ask for a hint…",
+  seed,
   onSend,
   onStop,
 }: ComposerProps) => {
   const [value, setValue] = useState("");
+  const [appliedSeedId, setAppliedSeedId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  if (seed && seed.id !== appliedSeedId) {
+    setAppliedSeedId(seed.id);
+    setValue(seed.text.slice(0, MAX_STORED_MESSAGE_CHARS));
+  }
+
+  useEffect(() => {
+    if (!appliedSeedId) return;
+    textareaRef.current?.focus();
+  }, [appliedSeedId]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -66,6 +81,7 @@ export const Composer = ({
         autoFocus={autoFocus}
         placeholder={placeholder}
         aria-label="Message"
+        maxLength={MAX_STORED_MESSAGE_CHARS}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
           // Shift+Enter keeps the newline; plain Enter sends.
