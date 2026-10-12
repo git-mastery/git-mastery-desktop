@@ -1,3 +1,11 @@
+## [1.4.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.3.0...v1.4.0) (2026-10-12)
+
+### Features
+
+* improve lessons sidebar, walkthrough, and session restore ([#29](https://github.com/git-mastery/git-mastery-desktop/issues/29)) ([8ba6311](https://github.com/git-mastery/git-mastery-desktop/commit/8ba6311dac43a65717383516be6fdc9e1ca09db8))
+* let students pick a git-mastery.org course edition ([#32](https://github.com/git-mastery/git-mastery-desktop/issues/32)) ([d9af35d](https://github.com/git-mastery/git-mastery-desktop/commit/d9af35d9e62b7a62aa719846b8bf5273d6d3a800))
+* persist per-source AI chats across restarts ([#30](https://github.com/git-mastery/git-mastery-desktop/issues/30)) ([ddc59ae](https://github.com/git-mastery/git-mastery-desktop/commit/ddc59ae7bf6ac7f27e5674f92ea872f665abf0af))
+
 ## [1.3.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.2.0...v1.3.0) (2026-09-27)
 
 ### Features
