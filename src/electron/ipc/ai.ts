@@ -5,9 +5,11 @@ import { sendToRenderer } from "./ipcUtils.js";
 import {
   getEmbeddedPageUrl,
   onAiHintsRequested,
+  onAskAiSelectionRequested,
   onLessonChatRequested,
   scrapeLessonBrief,
   scrapeLessonTitle,
+  type AskAiSelection,
 } from "./webContentsView.js";
 import { abortChat, runChat } from "../ai/chat.js";
 import { collectContext } from "../ai/context.js";
@@ -16,7 +18,11 @@ import {
   notifyAiHintsPageStateChanged,
 } from "../ai/availability.js";
 import { getProviderSpec, isProviderId } from "../ai/llmProviders.js";
-import { loadAiHistory, saveAiHistory } from "../ai/history.js";
+import {
+  loadAiHistory,
+  MAX_STORED_MESSAGE_CHARS,
+  saveAiHistory,
+} from "../ai/history.js";
 import { rememberBrief } from "../ai/session.js";
 import {
   getActiveConnection,
@@ -27,6 +33,7 @@ import {
   lessonSource,
   parseAiSource,
   parseLessonNameFromUrl,
+  workspaceSource,
 } from "../ai/source.js";
 
 const NOT_CONFIGURED = "Set up AI hints in Settings first.";
@@ -133,9 +140,64 @@ function handleLessonChatLink(
   return true;
 }
 
+function clipDraft(text: string) {
+  return text.length <= MAX_STORED_MESSAGE_CHARS
+    ? text
+    : text.slice(0, MAX_STORED_MESSAGE_CHARS);
+}
+
+/**
+ * Opens or reuses the session for a highlight → Ask AI action. Unlike
+ * `openHints`, a missing exercise folder does not block the pane: the
+ * highlight's box still picks the source, and workspace context is skipped
+ * until the folder exists.
+ */
+function handleAskAiSelection(
+  mainWindow: BrowserWindow,
+  selection: AskAiSelection,
+) {
+  if (!getActiveConnection()) return;
+  const text = clipDraft(selection.text.trim());
+  if (!text) return;
+  const promptId = randomUUID();
+
+  if (selection.kind === "lesson") {
+    sendToRenderer(
+      mainWindow,
+      "ai-hints-open",
+      openPayload(lessonSource(selection.id), { id: promptId, text }),
+    );
+    void scrapeLessonTitle().then((title) => {
+      if (!title) return;
+      sendToRenderer(
+        mainWindow,
+        "ai-hints-open",
+        openPayload(lessonSource(selection.id, title)),
+      );
+    });
+    return;
+  }
+
+  sendToRenderer(
+    mainWindow,
+    "ai-hints-open",
+    openPayload(workspaceSource(selection.id), { id: promptId, text }),
+  );
+  void scrapeLessonBrief(selection.id).then((brief) => {
+    sendToRenderer(
+      mainWindow,
+      "ai-hints-open",
+      openPayload(rememberBrief(selection.id, brief)),
+    );
+  });
+}
+
 export function setupAiIpc(mainWindow: BrowserWindow) {
   onAiHintsRequested((exerciseId) => void openHints(mainWindow, exerciseId));
   onLessonChatRequested((prompt) => handleLessonChatLink(mainWindow, prompt));
+  onAskAiSelectionRequested((selection) =>
+    handleAskAiSelection(mainWindow, selection),
+  );
 
   ipcMainHandle("ai-get-settings", async () => getSettingsView());
 
