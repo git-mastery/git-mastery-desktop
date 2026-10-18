@@ -189,7 +189,8 @@ type IpcInvokeChannelMapping = {
   >;
 };
 
-type AiProviderId = "openrouter" | "openai" | "anthropic" | "google" | "custom";
+type AiProviderId =
+  "openrouter" | "openai" | "anthropic" | "google" | "groq" | "custom";
 
 /**
  * What the settings panel needs to render a provider. The client that talks to

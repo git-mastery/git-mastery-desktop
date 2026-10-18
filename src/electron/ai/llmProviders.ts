@@ -181,10 +181,32 @@ const SPECS: ProviderSpec[] = [
       ),
   },
   {
+    id: "groq",
+    label: "Groq",
+    description: "Uses your GroqCloud API account. Free tier with rate limits.",
+    defaultModel: "openai/gpt-oss-120b",
+    keyUrl: "https://console.groq.com/keys",
+    keyPlaceholder: "gsk_…",
+    keyRequired: true,
+    baseUrlRequired: false,
+    baseUrlPlaceholder: null,
+    createModel: ({ apiKey, model }) =>
+      createOpenAICompatible({
+        name: "groq",
+        baseURL: "https://api.groq.com/openai/v1",
+        apiKey,
+        fetch: chromiumFetch,
+      }).chatModel(model),
+    validate: ({ apiKey }) =>
+      probe("Groq", "https://api.groq.com/openai/v1/models", {
+        Authorization: `Bearer ${apiKey}`,
+      }),
+  },
+  {
     id: "custom",
     label: "Custom (OpenAI-compatible)",
     description:
-      "Any endpoint that speaks the OpenAI chat API: Ollama, LM Studio, Groq, a course proxy, and so on.",
+      "Any endpoint that speaks the OpenAI chat API: Ollama, LM Studio, a course proxy, and so on.",
     defaultModel: null,
     keyUrl: null,
     keyPlaceholder: "Leave empty if the endpoint needs no key",
