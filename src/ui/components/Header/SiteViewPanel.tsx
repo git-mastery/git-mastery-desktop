@@ -6,6 +6,7 @@ import { cx } from "../../utils/cx";
 import { SITE_ORIGIN } from "../../contexts/WebContentsViewContext";
 import {
   ADAPTATION_ID_PATTERN,
+  buildAdaptationJsonUrl,
   normalizeAdaptationId,
   readDesktopSiteViewPrefs,
   writeDesktopSiteViewPrefs,
@@ -157,10 +158,7 @@ async function resolveAdaptationId(
     };
   }
   try {
-    const encoded = encodeURIComponent(trimmed);
-    const response = await fetch(
-      `${SITE_ORIGIN}/versions/${encoded}/${encoded}.json`,
-    );
+    const response = await fetch(buildAdaptationJsonUrl(SITE_ORIGIN, trimmed));
     if (!response.ok) {
       return {
         value: trimmed,

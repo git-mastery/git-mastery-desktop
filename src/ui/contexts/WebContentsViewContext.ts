@@ -145,6 +145,25 @@ export function isTourUrlActive(tour: Tour, currentUrl: string | null) {
   );
 }
 
+export function parseUrlHash(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const hash = new URL(url).hash.replace(/^#/, "");
+    if (!hash) return null;
+    try {
+      return decodeURIComponent(hash);
+    } catch {
+      return hash;
+    }
+  } catch {
+    return null;
+  }
+}
+
+export function isUrlHashActive(expected: string, currentUrl: string | null) {
+  return parseUrlHash(currentUrl) === expected;
+}
+
 export function buildExerciseUrl(exercise: Exercise) {
   const lessonName = getExerciseLessonName(exercise);
   if (!lessonName) {
@@ -154,6 +173,11 @@ export function buildExerciseUrl(exercise: Exercise) {
   return `${SITE_ORIGIN}/lessons/${lessonName}/#exercise-${exercise.identifier}`;
 }
 
-export function buildHandsOnUrl(lesson: Lesson, identifier: string) {
-  return `${SITE_ORIGIN}/lessons/${lesson.lesson_name}/#hands-on-${identifier}`;
+export function buildDetourUrl(lesson: Lesson, detourKey: string) {
+  return `${SITE_ORIGIN}/lessons/${lesson.lesson_name}/#${encodeURIComponent(detourKey)}`;
+}
+
+/** `panelId` is the lesson-page id on `.gm-hands-on-practical` (the practical title). */
+export function buildHandsOnUrl(lesson: Lesson, panelId: string) {
+  return `${SITE_ORIGIN}/lessons/${lesson.lesson_name}/#${encodeURIComponent(panelId)}`;
 }

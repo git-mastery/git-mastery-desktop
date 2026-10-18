@@ -1,5 +1,8 @@
 const DESKTOP_KEY = "site-view-prefs";
 
+/** Same-tab signal after Settings writes `site-view-prefs`. */
+export const SITE_VIEW_PREFS_CHANGED_EVENT = "gm-site-view-prefs";
+
 /** CustardUI adaptation ids are path segments of `/versions/<id>/<id>.json`. */
 export const ADAPTATION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,64}$/;
 
@@ -7,6 +10,11 @@ export function normalizeAdaptationId(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return ADAPTATION_ID_PATTERN.test(trimmed) ? trimmed : undefined;
+}
+
+export function buildAdaptationJsonUrl(origin: string, id: string) {
+  const encoded = encodeURIComponent(id);
+  return `${origin}/versions/${encoded}/${encoded}.json`;
 }
 
 export function readDesktopSiteViewPrefs(): SiteViewPrefs | null {
@@ -37,6 +45,7 @@ export function writeDesktopSiteViewPrefs(prefs: SiteViewPrefs) {
   } catch {
     // Storage can be unavailable or full; the in-memory form still applies.
   }
+  window.dispatchEvent(new Event(SITE_VIEW_PREFS_CHANGED_EVENT));
 }
 
 /** CustardUI placeholder for the GitHub username on git-mastery.org. */

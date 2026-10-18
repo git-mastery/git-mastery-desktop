@@ -726,8 +726,10 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
         }
 
         function expandHashTarget() {
-          var id = (location.hash || '').replace(/^#/, '');
-          if (!id) return;
+          var raw = (location.hash || '').replace(/^#/, '');
+          if (!raw) return;
+          var id = raw;
+          try { id = decodeURIComponent(raw); } catch (e) {}
           if (expandHandsOnHash(id)) return;
           var el = document.getElementById(id);
           if (!el) return;
