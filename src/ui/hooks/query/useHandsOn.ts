@@ -1,8 +1,13 @@
+import { formatHandsOnTitle } from "../../utils/format";
 import { useCustomQuery } from "./useCustomQuery";
 
 export type HandsOn = {
   identifier: string;
   lessonName: string;
+  /** Display title from `show_hands_on_practical`, or a formatted identifier. */
+  title: string;
+  /** Page `id` on `.gm-hands-on-practical`, when a practical title was found. */
+  panelId: string | null;
 };
 
 export type HandsOnByLesson = {
@@ -13,17 +18,39 @@ const TEXT_MD_URL = (lessonName: string) =>
   `https://raw.githubusercontent.com/git-mastery/git-mastery.github.io/master/lessons/${lessonName}/text.md`;
 
 const HOP_PREP_RE = /show_hop_prep\(\s*['"](hp-[a-z0-9-]+)['"]/g;
+const HOP_TITLE_RE = /show_hands_on_practical\(\s*(['"])(.*?)\1/g;
 
-const parseHandsOnIds = (markdown: string): string[] => {
-  const ids: string[] = [];
+export const parseHandsOn = (
+  markdown: string,
+  lessonName: string,
+): HandsOn[] => {
+  const titles: { index: number; title: string }[] = [];
+  for (const match of markdown.matchAll(HOP_TITLE_RE)) {
+    titles.push({ index: match.index ?? 0, title: match[2] });
+  }
+
+  const result: HandsOn[] = [];
   const seen = new Set<string>();
   for (const match of markdown.matchAll(HOP_PREP_RE)) {
-    const id = match[1];
-    if (seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
+    const identifier = match[1];
+    if (seen.has(identifier)) continue;
+    seen.add(identifier);
+
+    const idx = match.index ?? 0;
+    let panelId: string | null = null;
+    for (const entry of titles) {
+      if (entry.index < idx) panelId = entry.title;
+      else break;
+    }
+
+    result.push({
+      identifier,
+      lessonName,
+      title: panelId ?? formatHandsOnTitle(identifier),
+      panelId,
+    });
   }
-  return ids;
+  return result;
 };
 
 const fetchHandsOnForLesson = async (
@@ -36,13 +63,13 @@ const fetchHandsOnForLesson = async (
       `Request to ${TEXT_MD_URL(lessonName)} failed with ${response.status}`,
     );
   }
-  const ids = parseHandsOnIds(await response.text());
-  return ids.map((identifier) => ({ identifier, lessonName }));
+  return parseHandsOn(await response.text(), lessonName);
 };
 
 /**
  * Hands-on practicals are not in exercises.json. They are declared in each
- * lesson's text.md as `show_hop_prep('hp-…')`.
+ * lesson's text.md as `show_hop_prep('hp-…')` inside a
+ * `show_hands_on_practical("…")` block.
  */
 export const useHandsOn = (lessonNames: string[]) => {
   const namesKey = lessonNames.join(",");
