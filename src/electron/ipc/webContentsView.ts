@@ -1,6 +1,7 @@
 import {
   WebContentsView,
   BrowserWindow,
+  Menu,
   screen,
   type WebContents,
 } from "electron";
@@ -15,7 +16,12 @@ import {
   type AiHintsPageState,
 } from "../ai/availability.js";
 import type { LessonBrief } from "../ai/session.js";
-import { parseChatGptQuery } from "../ai/source.js";
+import {
+  parseChatGptQuery,
+  parseLessonNameFromUrl,
+  workspaceKindOf,
+} from "../ai/source.js";
+import { isAiConfigured } from "../ai/settings.js";
 import {
   getAppliedResolvedTheme,
   registerThemeBackgroundTarget,
@@ -72,6 +78,13 @@ let sitePrefs: SiteViewPrefs | null = null;
 
 let aiHintsHandler: ((exerciseId: string) => void) | null = null;
 let lessonChatHandler: ((prompt: string) => boolean) | null = null;
+let askAiSelectionHandler: ((selection: AskAiSelection) => void) | null = null;
+
+export type AskAiSelection = {
+  text: string;
+  kind: "lesson" | "exercise" | "hands-on";
+  id: string;
+};
 
 /** Mirrors `--gm-dim` in src/ui/index.css, so the lesson dims like the DOM panes. */
 const PAGE_DIM_COLOR = {
@@ -127,6 +140,98 @@ function setPageBusy(kind: "start" | "verify", id: string, busy: boolean) {
 /** Exercise identifiers are a path segment on disk and a selector in the page. */
 const EXERCISE_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/i;
 
+/**
+ * Finds workspace boxes that fully contain the current selection. Exactly one
+ * match is an exercise or hands-on; zero or more than one falls back to lesson.
+ */
+const RESOLVE_HIGHLIGHT_SOURCE_SCRIPT = `(function () {
+  var sel = window.getSelection();
+  if (!sel || sel.rangeCount !== 1) return null;
+  var range = sel.getRangeAt(0);
+  function containsRange(box) {
+    return box.contains(range.startContainer) && box.contains(range.endContainer);
+  }
+  var matches = [];
+  document.querySelectorAll(".card").forEach(function (card) {
+    var heading = card.querySelector("[id^='exercise-']");
+    if (!heading || !heading.id) return;
+    if (!containsRange(card)) return;
+    matches.push({ kind: "exercise", id: heading.id.slice("exercise-".length) });
+  });
+  document.querySelectorAll(".hands-on-practical").forEach(function (box) {
+    var anchor = box.querySelector("[data-gm-hands-on-id]");
+    if (!anchor) return;
+    var id = anchor.getAttribute("data-gm-hands-on-id");
+    if (!id || !containsRange(box)) return;
+    matches.push({ kind: "hands-on", id: id });
+  });
+  return matches.length === 1 ? matches[0] : { kind: "lesson" };
+})()`;
+
+function parseHighlightSource(
+  raw: unknown,
+  lessonId: string,
+): Pick<AskAiSelection, "kind" | "id"> {
+  if (raw && typeof raw === "object") {
+    const record = raw as Record<string, unknown>;
+    if (
+      (record.kind === "exercise" || record.kind === "hands-on") &&
+      typeof record.id === "string" &&
+      EXERCISE_ID_PATTERN.test(record.id) &&
+      workspaceKindOf(record.id) === record.kind
+    ) {
+      return { kind: record.kind, id: record.id };
+    }
+  }
+  return { kind: "lesson", id: lessonId };
+}
+
+async function resolveHighlightSource(
+  lessonId: string,
+): Promise<Pick<AskAiSelection, "kind" | "id">> {
+  if (!wcv || wcv.webContents.isDestroyed()) {
+    return { kind: "lesson", id: lessonId };
+  }
+  try {
+    const raw = await wcv.webContents.executeJavaScript(
+      RESOLVE_HIGHLIGHT_SOURCE_SCRIPT,
+    );
+    return parseHighlightSource(raw, lessonId);
+  } catch (err) {
+    console.warn("[wcv] failed to resolve highlight source:", err);
+    return { kind: "lesson", id: lessonId };
+  }
+}
+
+async function showLessonSelectionMenu(
+  mainWindow: BrowserWindow,
+  params: Electron.ContextMenuParams,
+) {
+  const text = params.selectionText?.trim() ?? "";
+  if (!text) return;
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: "Copy",
+      click: () => {
+        if (!wcv || wcv.webContents.isDestroyed()) return;
+        wcv.webContents.copy();
+      },
+    },
+  ];
+
+  const lessonId = parseLessonNameFromUrl(getEmbeddedPageUrl());
+  if (lessonId && isAiConfigured()) {
+    const source = await resolveHighlightSource(lessonId);
+    template.push({
+      label: "Ask AI",
+      click: () => askAiSelectionHandler?.({ text, ...source }),
+    });
+  }
+
+  Menu.buildFromTemplate(template).popup({ window: mainWindow });
+}
+
 /** Receives AI Hints clicks from the lesson page. */
 export function onAiHintsRequested(handler: (exerciseId: string) => void) {
   aiHintsHandler = handler;
@@ -139,6 +244,16 @@ export function onAiHintsRequested(handler: (exerciseId: string) => void) {
  */
 export function onLessonChatRequested(handler: (prompt: string) => boolean) {
   lessonChatHandler = handler;
+}
+
+/**
+ * Receives a highlight → Ask AI action from the native lesson-page context
+ * menu. Source routing is resolved in main from the page DOM.
+ */
+export function onAskAiSelectionRequested(
+  handler: (selection: AskAiSelection) => void,
+) {
+  askAiSelectionHandler = handler;
 }
 
 export function getEmbeddedPageUrl(): string {
@@ -349,6 +464,10 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     });
 
     injectExerciseButtons(mainWindow);
+
+    wcv.webContents.on("context-menu", (_event, params) => {
+      void showLessonSelectionMenu(mainWindow, params);
+    });
   }
   return wcv;
 }

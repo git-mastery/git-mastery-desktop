@@ -277,7 +277,7 @@ type StoredAiHistory = {
   sessions: Record<string, StoredAiSession>;
 };
 
-/** Main announces this when an AI Hints button or a ChatGPT lesson link is used. */
+/** Main announces this when an AI Hints button, ChatGPT link, or Ask AI highlight is used. */
 type AiChatOpenPayload = {
   source: AiSource;
   pendingPrompt?: { id: string; text: string };
