@@ -70,7 +70,8 @@ above the prompt it will be acted on in.
 
 `ai/llmProviders.ts` is a registry of `ProviderSpec`s. Each spec has display metadata, `createModel`,
 a key `validate` probe and optional `providerOptions`. Shipped: OpenRouter (default), OpenAI,
-Anthropic, Google, and **Custom** for any OpenAI-compatible base URL (Groq, Ollama, a course proxy).
+Anthropic, Google, Groq, and **Custom** for any OpenAI-compatible base URL (Ollama, LM Studio, a
+course proxy).
 Adding a provider is one spec; settings, IPC and the settings UI read the registry.
 
 - **The model is not a setting, except for Custom.** Each named provider always uses its spec's
