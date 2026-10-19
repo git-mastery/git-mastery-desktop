@@ -85,8 +85,8 @@ export function buildLessonOutline(
         const list = exercisesByDetourKey.get(key) ?? [];
         list.push({ catalogKey, exercise });
         exercisesByDetourKey.set(key, list);
-        continue;
       }
+      continue;
     } else if (exercise.lesson?.lesson_name !== lessonName) {
       continue;
     }
