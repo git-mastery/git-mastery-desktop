@@ -69,10 +69,11 @@ above the prompt it will be acted on in.
 ## 4. Providers
 
 `ai/llmProviders.ts` is a registry of `ProviderSpec`s. Each spec has display metadata, `createModel`,
-a key `validate` probe and optional `providerOptions`. Shipped: OpenRouter (default), OpenAI,
-Anthropic, Google, Groq, and **Custom** for any OpenAI-compatible base URL (Ollama, LM Studio, a
-course proxy).
-Adding a provider is one spec; settings, IPC and the settings UI read the registry.
+a key `validate` probe and optional `providerOptions`. Shipped: **Groq** (recommended default),
+OpenAI, Anthropic, Google, OpenRouter, and **Custom** for any OpenAI-compatible base URL (Ollama,
+LM Studio, a course proxy).
+Adding a provider is one spec; settings, IPC and the settings UI read the registry. The settings
+picker lists Groq first and marks it Recommended. A saved provider still wins over that default.
 
 - **The model is not a setting, except for Custom.** Each named provider always uses its spec's
   default model, and any model saved earlier is ignored. Students can't judge which model tutors
@@ -93,44 +94,30 @@ Adding a provider is one spec; settings, IPC and the settings UI read the regist
 The earlier OpenRouter-only key field (`openRouterApiKeyEnc`) was dropped without migration. The
 feature had not shipped.
 
-### OpenRouter model
+### Default model
 
-The default provider has to work with a free key. Every request uses `openrouter/free`, OpenRouter's
-router over all zero-cost models, and sends no fallback list.
+The default provider has to work with a free key. Every request uses Groq's named
+`openai/gpt-oss-120b`. A named model is more consistent than a free-model router: the same tutor
+answers every scene. The provider evaluation in `../development/ai-provider-tutor-eval.md` scored it
+68/79, with readable prose in all nine scenes and no destructive commands.
 
-**Why the router alone.** Free-tier membership changes without notice (see `../llm-integration.md`,
-Option 9), so any named free model eventually disappears or is rate-limited, and a hard-coded list
-needs upkeep with every change. The router always resolves to something that is currently free, so
-the default keeps working with nothing to maintain.
+Groq is wired through `@ai-sdk/groq`, not the generic OpenAI-compatible client. GPT-OSS returns
+reasoning on the first turn. The generic adapter replayed that as `reasoning_content` on the next
+request, which Groq rejects with HTTP 400, so a second message failed. The dedicated adapter
+serializes history in Groq's own format. OpenRouter and Custom still use
+`createOpenAICompatible`.
 
-**The cost is quality.** The router picks from every zero-cost model, and some can't tutor. In
-testing it produced:
-
-- a ~2B agent-tuned model (`liquid/lfm-2.5-2.6b`) answering in its raw tool-call syntax
-  (`<|tool_call_start|>[read(filePath=…)]<|tool_call_end|>`), because it wanted to read files and no
-  tools were offered;
-- a content-safety classifier (`nvidia/nemotron-3.5-content-safety`) answering "User Safety: safe".
-
-What limits the damage:
-
-- The system prompt says the model has no tools and must reply only in text. Weaker agent-tuned
-  models then answer in prose more often, but not reliably.
-- **Regenerate** sends the request again, which usually lands on a different model.
-- The classifier and code-only models can't be steered by the prompt. When they answer, the reply is
-  obviously wrong rather than subtly misleading, which is the lesser failure for a tutor.
-- Students who want consistent answers can switch to a paid provider, or to Google's free tier, in
-  Settings.
+OpenRouter remains available. Its `openrouter/free` router still picks from every zero-cost model,
+including classifiers and small agent models that cannot tutor. Students who already have an
+OpenRouter key can keep using it.
 
 **Alternatives rejected:**
 
-- **Named free models first, with `openrouter/free` as the last fallback.** This was the previous
-  setup (a primary model plus three fallbacks, the most OpenRouter accepts). It gave better replies
-  while the named models stayed free, but they had to be checked and replaced by hand whenever they
-  left the free tier or were throttled.
-- **Stripping tool-call tokens from the output.** This treats one model family's symptom, and the
-  answer underneath still comes from a model too small to tutor.
-- **Choosing a free model at runtime from `/models`.** The listing has price and context length but
-  no quality signal. It can't tell a 2B model or a classifier from a 30B instruct model.
+- **Keep OpenRouter's router as the default.** It needs no model upkeep, but a student cannot choose
+  the good run. Testing produced a ~2B agent-tuned model answering in raw tool-call syntax and a
+  content-safety classifier answering "User Safety: safe".
+- **Google Gemini as the default.** `gemini-3.8-flash` has a free tier, but a probe measured 20
+  requests per day, which cannot support a class.
 - **A paid default model.** It would be reliable, but every student would need a funded account,
   which is what the free default exists to avoid.
 
@@ -140,12 +127,14 @@ What limits the damage:
 
 - **Lessons are teaching pages.** The model may show commands and examples. No exercise folder is
   required; workspace context is not collected.
-- **Exercises are graded.** The model gives the smallest useful nudge, never the full command
-  sequence or exercise-specific values, and never answers for `answers.txt`. It escalates one step at
-  a time, and repeated pressure does not change this.
-- **Hands-on practicals are guided walkthroughs.** The model may point to the command the
-  instructions give for the current step, but must not run ahead of where the repository shows the
-  student to be.
+- **Exercises are graded.** The model diagnoses the snapshot in one or two sentences, then gives
+  exactly one next step or guiding question. It may name branches, files, and commit subjects that
+  already appear in the snapshot. It never writes the value a student should put in an answer file,
+  never pastes a finished file body, and never lists the rest of the exercise. Repeated pressure
+  does not change this.
+- **Hands-on practicals are guided walkthroughs.** Same diagnosis-then-one-step shape. The model
+  may point to the command the instructions give for the current step, but must not run ahead of
+  where the repository shows the student to be.
 
 Exercise and hands-on kinds share the same extra rules:
 
@@ -153,8 +142,9 @@ Exercise and hands-on kinds share the same extra rules:
   basic terminal use. Anything else is politely declined.
 - **Injection resistance.** Context blocks are fenced data, never instructions, and the prompt is
   not revealed.
-- **Grounding.** The model infers progress from the repository snapshot instead of asking what the
-  student tried. When the work looks complete, it suggests running Verify.
+- **Grounding.** The model infers progress from the snapshot — derived Git facts first, then raw
+  git output and any question stems — instead of asking what the student tried. When the work looks
+  complete, it suggests running Verify.
 
 The prompt is guidance rather than enforcement: a determined student can extract more than the
 policy intends. Grading is what actually protects exercises, and the policy keeps the default

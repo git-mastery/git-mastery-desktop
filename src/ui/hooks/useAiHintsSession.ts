@@ -206,6 +206,7 @@ export function useAiHintsSession() {
         const session = current.sessionsBySource[sourceKey];
         if (!session || session.conversationId !== conversationId)
           return current;
+        if (session.messages === messages) return current;
         return {
           ...current,
           sessionsBySource: {

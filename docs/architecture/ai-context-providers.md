@@ -31,11 +31,12 @@ type ContextProvider = {
 `collectContext` resolves the exercise location once (`locateExercise`), runs every provider in
 parallel, drops anything that fails, times out or is empty, and truncates each to `MAX_BLOCK_CHARS`.
 
-| Provider          | Block label      | Source                                                       |
-| ----------------- | ---------------- | ------------------------------------------------------------ |
-| `instructions`    | Instructions     | live scrape of the lesson page, else the copy cached on open |
-| `exercise-folder` | Exercise folder  | exercise manifest, progress store, names-only directory tree |
-| `git-state`       | Repository state | read-only `git` subprocesses in each repository found        |
+| Provider             | Block label                          | Source                                                                                          |
+| -------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `instructions`       | Instructions                         | live scrape of the lesson page, else the copy cached on open                                    |
+| `exercise-questions` | Exercise questions (answers omitted) | `Q:` stems from files named in the exercise manifest's `base_files`; answer lines are discarded |
+| `exercise-folder`    | Exercise folder                      | exercise manifest, progress store, names-only directory tree                                    |
+| `git-state`          | Repository state                     | derived structural facts, then the read-only `git` output they were computed from               |
 
 Adding a signal is one file under `ai/context/` plus one array entry. The system prompt, IPC and the
 panel's context disclosure need no changes.
@@ -80,16 +81,36 @@ rather than assuming (§5), because some practicals create the repository later.
 
 ## 4. What is never sent
 
-- **File contents.** The folder provider lists names only; `.git` is summarised, not walked.
-- **Anything outside the exercise folder.** The tree walk and repository search do not follow
-  symlinks, and every repository is containment-checked (§5).
+- **Arbitrary file contents.** The folder provider lists names only; `.git` is summarised, not
+  walked. The one exception is §4.1.
+- **Anything outside the exercise folder.** The tree walk, repository search, and question-file
+  reads do not follow file symlinks, and every repository is containment-checked (§5).
 - **The student's home path or username.** Paths are rendered relative to the folder above
   `gitmastery-exercises`, e.g. `gitmastery-exercises/under-control`.
 - **Terminal output and scrollback.** Output can echo anything the student ran, including
   credentials, and its size is unbounded.
 
-Adding any of these would cross the boundary stated in `../llm-integration.md` and needs a new
-decision, not an extension of this one.
+Adding `git diff`, other file bodies, or terminal output would cross the boundary stated in
+`../llm-integration.md` and needs a new decision, not an extension of this one.
+
+### 4.1 Question stems from allowlisted files
+
+Some exercises place a question sheet in the exercise folder (typically `answers.txt` beside the
+repository). The lesson scrape does not include those questions, and a names-only tree only proves
+the file exists. Without the stems, the model cannot tell which commit or file a halfway student is
+standing on.
+
+`exercise-questions` therefore reads **only** destination paths listed in
+`.gitmastery-exercise.json` → `base_files`. That map is authored by the CLI at download; the
+desktop app does not invent filenames. Each path must be a relative file under the exercise root,
+not a symlink, and not larger than 32 KiB. From that file the provider keeps single-line `Q:`
+stems and discards every other line, including all `A:` content and anything the student typed.
+
+The block is omitted when the manifest has no `base_files`, the files are missing, or no `Q:`
+lines survive. Hands-on practicals have no manifest, so they never send this block.
+
+This is a redacted exception to "no file contents", not a general file reader. Student answers are
+not a tutoring input; question wording is.
 
 ## 5. The git provider
 
@@ -99,8 +120,24 @@ Candidates are the working folder plus every directory within `SEARCH_DEPTH` (2)
 root that contains `.git`, nearest first. Hidden directories are skipped and symlinks are not
 followed. Each candidate must pass the containment check. At most `MAX_REPOS` (3) are described,
 each under its own `### Repository at …` heading, so exercises that set up more than one
-repository are all visible. If none pass, the block says so explicitly. For `under-control`,
-where `git init` _is_ the task, "no repository yet" is the most useful fact the model can hold.
+repository are all visible. If none pass, the block says so explicitly, as derived facts plus the same sentence. For
+`under-control`, where `git init` _is_ the task, "no repository yet" is the most useful fact the
+model can hold.
+
+### Derived facts
+
+Raw porcelain is easy for a small model to ignore. After the commands run, `git-state` prepends a
+short, conservative summary of what they already show:
+
+- working folder versus where `.git` actually is
+- attached branch or detached HEAD, plus the current commit subject
+- clean, dirty, or conflicted working tree (conflicted paths by name)
+- paused merge, rebase, cherry-pick, revert, or bisect
+- merge direction when `MERGE_HEAD` can be named (`bringing <incoming> into <current>`)
+
+The summary is structural. It does not encode exercise ids, expected branches, or verifier
+answers. The raw command output stays below it as evidence. If a fact cannot be parsed, it is
+omitted rather than guessed.
 
 ### Containment is a privacy control
 

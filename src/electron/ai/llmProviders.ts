@@ -1,6 +1,7 @@
 import { net } from "electron";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel, streamText } from "ai";
@@ -96,10 +97,28 @@ const trimSlash = (url: string) => url.replace(/\/+$/, "");
 
 const SPECS: ProviderSpec[] = [
   {
+    id: "groq",
+    label: "Groq",
+    description: "Free tier with a named model. Recommended for AI Hints.",
+    recommended: true,
+    defaultModel: "openai/gpt-oss-120b",
+    keyUrl: "https://console.groq.com/keys",
+    keyPlaceholder: "gsk_…",
+    keyRequired: true,
+    baseUrlRequired: false,
+    baseUrlPlaceholder: null,
+    createModel: ({ apiKey, model }) =>
+      createGroq({ apiKey, fetch: chromiumFetch })(model),
+    validate: ({ apiKey }) =>
+      probe("Groq", "https://api.groq.com/openai/v1/models", {
+        Authorization: `Bearer ${apiKey}`,
+      }),
+  },
+  {
     id: "openrouter",
     label: "OpenRouter",
     description:
-      "Free models with a free account. Recommended if you don't already pay for an AI API.",
+      "Free models with a free account. The router may pick a different model on each request.",
     defaultModel: OPENROUTER_FREE_MODEL,
     keyUrl: "https://openrouter.ai/keys",
     keyPlaceholder: "sk-or-v1-…",
@@ -163,7 +182,8 @@ const SPECS: ProviderSpec[] = [
     label: "Google Gemini",
     description:
       "Uses a Google AI Studio key, which has a free tier with daily limits.",
-    defaultModel: "gemini-2.5-flash",
+    // gemini-2.5-flash returns 404 for new keys. Google names this replacement.
+    defaultModel: "gemini-3.8-flash",
     keyUrl: "https://aistudio.google.com/apikey",
     keyPlaceholder: "AIza…",
     keyRequired: true,
@@ -179,28 +199,6 @@ const SPECS: ProviderSpec[] = [
         { "x-goog-api-key": apiKey },
         { rejected: [400, 401, 403] },
       ),
-  },
-  {
-    id: "groq",
-    label: "Groq",
-    description: "Uses your GroqCloud API account. Free tier with rate limits.",
-    defaultModel: "openai/gpt-oss-120b",
-    keyUrl: "https://console.groq.com/keys",
-    keyPlaceholder: "gsk_…",
-    keyRequired: true,
-    baseUrlRequired: false,
-    baseUrlPlaceholder: null,
-    createModel: ({ apiKey, model }) =>
-      createOpenAICompatible({
-        name: "groq",
-        baseURL: "https://api.groq.com/openai/v1",
-        apiKey,
-        fetch: chromiumFetch,
-      }).chatModel(model),
-    validate: ({ apiKey }) =>
-      probe("Groq", "https://api.groq.com/openai/v1/models", {
-        Authorization: `Bearer ${apiKey}`,
-      }),
   },
   {
     id: "custom",
@@ -232,10 +230,13 @@ const SPECS: ProviderSpec[] = [
   },
 ];
 
-export const DEFAULT_PROVIDER: AiProviderId = "openrouter";
+export const DEFAULT_PROVIDER: AiProviderId = "groq";
 
 export function getProviderSpec(id: AiProviderId | undefined): ProviderSpec {
-  return SPECS.find((spec) => spec.id === id) ?? getProviderSpec("openrouter");
+  return (
+    SPECS.find((spec) => spec.id === id) ??
+    SPECS.find((spec) => spec.id === DEFAULT_PROVIDER)!
+  );
 }
 
 export function isProviderId(value: unknown): value is AiProviderId {
@@ -247,6 +248,7 @@ export function listProviderInfo(): AiProviderInfo[] {
     id: spec.id,
     label: spec.label,
     description: spec.description,
+    recommended: spec.recommended,
     defaultModel: spec.defaultModel,
     keyUrl: spec.keyUrl,
     keyPlaceholder: spec.keyPlaceholder,
