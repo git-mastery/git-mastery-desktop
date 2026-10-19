@@ -42,7 +42,7 @@ const Field = ({
  */
 export const AiSettingsPanel = ({ onSaved }: { onSaved?: () => void }) => {
   const [view, setView] = useState<AiSettingsView | null>(null);
-  const [provider, setProvider] = useState<AiProviderId>("openrouter");
+  const [provider, setProvider] = useState<AiProviderId>("groq");
   const [drafts, setDrafts] = useState<Drafts>({});
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -155,7 +155,7 @@ export const AiSettingsPanel = ({ onSaved }: { onSaved?: () => void }) => {
           {view.providers.map((item) => (
             <option key={item.id} value={item.id}>
               {item.label}
-              {item.id === "openrouter" ? " (default, free)" : ""}
+              {item.recommended ? " (Recommended)" : ""}
             </option>
           ))}
         </select>

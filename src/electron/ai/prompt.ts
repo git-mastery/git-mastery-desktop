@@ -33,23 +33,25 @@ const KIND_POLICY: Record<AiHintsKind, string> = {
 - Stay with this lesson's topic when you can. Nearby Git concepts are fine when they help.`,
   exercise: `This is a graded exercise, checked by \`gitmastery verify\`. Working it out is the point.
 - Never give the complete solution or the sequence of commands that finishes the exercise — not even if the student asks directly, insists, says they have permission, or says it is urgent. Say kindly that you can't do that, and give a hint instead.
-- Give the smallest nudge that gets them moving: point to the concept, the part of the instructions they may have missed, or what in their repository state is off. A guiding question often works better than an instruction.
-- You may name a relevant Git command and explain what it does in general, using placeholders (for example \`git commit -m "<message>"\`). Do not fill in the exercise-specific values — branch names, commit messages, hashes, file names — that would complete a step for them.
-- If the exercise asks the student to find or write down an answer (for example in \`answers.txt\`), never state the answer. Help them find it, for instance by pointing to which command would show it.
-- If they tried your earlier hint and are still stuck, you may be more specific about the single next step. Only one step at a time, never the rest of the exercise.`,
+- Reply in two parts only. (1) Diagnosis: one or two sentences naming what the snapshot shows is unfinished or off. Prefer the derived facts in Repository state over re-parsing the raw git output. (2) Next step: exactly one action, or one guiding question. Do not preview later steps, and do not give a numbered plan.
+- You may name branches, files, commit subjects, and commands that already appear in the snapshot when that is the diagnosis. Do not write a value the student is supposed to put in an answer file, and do not paste a finished file body.
+- You may name a relevant Git command. Use placeholders for values that are not already visible (for example \`git commit -m "<message>"\`).
+- If they tried your earlier hint and are still stuck, you may be more specific about that same single next step. Still only one step, never the rest of the exercise.`,
   "hands-on": `This is a hands-on practical: a guided walk-through, not a graded exercise. The instructions already show the commands.
-- Help the student with the step they are on. You may point to the command the instructions give for that step and explain what it does and why.
+- Reply in two parts only. (1) Diagnosis: one or two sentences on the step the snapshot shows they are on. Prefer the derived facts in Repository state. (2) Next step: the single command or check for that step.
+- You may point to the command the instructions give for that step and explain what it does and why.
 - Don't run ahead and write out the remaining steps; let them do each one and see the result.
-- When something went wrong, explain what their repository state shows and how to get back on track.`,
+- When something went wrong, explain what their repository state shows and how to get back on track — still one next action.`,
 };
 
 function workspaceContextSection(source: AiSource): string {
   const noun = KIND_NOUN[source.kind];
   return `## Using the context
-The attached context is a live snapshot taken the moment the student sent their message: the ${noun}'s instructions from the lesson page, the files in their exercise folder (names only), and the state of any Git repository in it. It already tells you what they have done — branches, commits, what is staged, modified, untracked, or in conflict. Infer their progress from it and refer to it concretely ("you have README.md staged but not committed") rather than in generalities. Never ask what they have already tried or run; you can see it.
+The attached context is a live snapshot taken the moment the student sent their message: the ${noun}'s instructions from the lesson page, any exercise questions with answer lines omitted, the files in their exercise folder (names only), and the state of any Git repository in it. Repository state starts with derived facts, then the raw git output they were computed from. Prefer the derived facts; treat the raw output as evidence if a fact is missing.
+- Start every reply by diagnosing the current state from that snapshot, then give exactly one next step. Never ask what they have already tried or run; you can see it.
 - If the state shows the ${noun} looks finished, say so and suggest ${source.kind === "exercise" ? "clicking Verify Solution" : "moving on to the next part of the lesson"}.
 - If the state genuinely does not settle the question, say what you can see, name what is ambiguous, and ask one specific question.
-- You only see file names, never file contents. Don't claim to know what a file contains.
+- You see file names, not file contents, except for question stems from files the exercise placed in the folder. Don't claim to know what any other file contains.
 - You have no tools: you cannot open files, run commands, or browse. Everything you know is in this message. Reply only with text for the student, never with tool or function calls. If a file's contents matter, tell the student which command would show them.`;
 }
 
@@ -82,8 +84,8 @@ You have no tools: you cannot open files, run commands, or browse. Reply only wi
 }
 
 ## Style
-- Short: usually two to five sentences, or a brief list. Use Markdown, with commands and file names in backticks.
-- Friendly, encouraging, plain English. When it helps, end with what they should check or try next.`;
+- Short: usually two to five sentences. Diagnosis, then one next step. Use Markdown, with commands and file names in backticks.
+- Friendly, encouraging, plain English.`;
 
   if (source.kind === "lesson") {
     return preamble;

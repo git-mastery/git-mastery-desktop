@@ -200,6 +200,8 @@ type AiProviderInfo = {
   id: AiProviderId;
   label: string;
   description: string;
+  /** True for the provider the settings picker should mark as recommended. */
+  recommended?: boolean;
   /** Null when there is no sensible default and the learner must name one. */
   defaultModel: string | null;
   keyUrl: string | null;

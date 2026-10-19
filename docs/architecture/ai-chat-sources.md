@@ -14,8 +14,8 @@ The pane, session, source, and message are separate concepts:
 - A **session** owns one conversation. The pane displays at most one active session.
 - A **source** identifies what the conversation is about.
 - A **message** holds what the user asks, including any selected lesson text.
-- **Context** is supporting data the app collects, such as exercise instructions and repository
-  state.
+- **Context** is supporting data the app collects each send: instructions, allowlisted question
+  stems, folder names, and repository state.
 
 ```mermaid
 flowchart LR
@@ -29,7 +29,7 @@ flowchart LR
 flowchart LR
     P["AI chat pane"] --> S["Active session"]
     S --> E["Exercise source<br/>exercise:under-control"]
-    EC["Instructions + exercise folder<br/>+ repository state"] -->|per-turn context| S
+    EC["Instructions + questions<br/>+ folder + repository state"] -->|per-turn context| S
 ```
 
 ```mermaid
