@@ -39,3 +39,6 @@ jobs:
 
       - name: Typecheck
         run: npx tsc -b
+
+      - name: Test
+        run: npm test
