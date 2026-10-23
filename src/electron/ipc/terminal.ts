@@ -2,7 +2,7 @@ import { BrowserWindow } from "electron";
 import os from "os";
 import path from "path";
 import fs from "fs";
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import pty from "node-pty";
 import { ipcMainOn } from "../utils/util.js";
 import { getCliEnvironment } from "../utils/cli/getters.js";
@@ -99,10 +99,32 @@ function initialTerminalCwd(): string {
   return configuredExercisesRootCwd() ?? defaultHomeCwd();
 }
 
-/** Returns the current working directory of the pty process. */
-export function getCwd(): string {
-  console.log(`[debug] cwd of simulated terminal is ${cwd}`);
-  return cwd;
+/** Reads the shell process cwd. Never infers it from typed `cd`. */
+function probeProcessCwd(pid: number): string | null {
+  try {
+    if (process.platform === "linux") {
+      return fs.readlinkSync(`/proc/${pid}/cwd`);
+    }
+    if (process.platform === "darwin") {
+      const out = execFileSync(
+        "lsof",
+        ["-a", "-p", String(pid), "-d", "cwd", "-Fn"],
+        { encoding: "utf8" },
+      );
+      const line = out.split("\n").find((entry) => entry.startsWith("n"));
+      if (line && line.length > 1) return line.slice(1);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/** Live shell cwd, or null if it cannot be read. */
+export function getCwd(): string | null {
+  const live = ptyProcess?.pid ? probeProcessCwd(ptyProcess.pid) : null;
+  console.log(`[debug] cwd of simulated terminal is ${live}`);
+  return live;
 }
 
 /** Quotes a path for the spawned shell. Windows paths cannot contain `"`. */
@@ -112,32 +134,9 @@ function quotePath(directory: string): string {
     : `"${directory}"`;
 }
 
-/**
- * Parses a `cd` command string and updates the tracked `cwd`.
- * Handles absolute paths, `~`, `..`, and relative paths.
- */
-function updateCwdFromCdCommand(input: string): void {
-  // Match a cd command, e.g. `cd /some/path`, `cd ..`, `cd ~`, `cd "C:\path with spaces"`
-  const match = input.match(/^cd\s+"?([^"\r\n]+?)"?\s*\r?$/);
-  if (!match) return;
-
-  const target = match[1].trim();
-
-  if (!target || target === "~") {
-    cwd = defaultHomeCwd();
-  } else {
-    // path.resolve handles absolute, relative, and `..` segments
-    cwd = path.resolve(cwd, target);
-  }
-}
-
-/**
- * Writes data to the pty process.
- * If the data is a `cd` command, the tracked cwd is updated.
- */
+/** Writes data to the pty process. */
 export function writeToPty(data: string) {
   if (ptyProcess) {
-    updateCwdFromCdCommand(data);
     ptyProcess.write(data);
   }
 }
@@ -234,7 +233,6 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
   });
 
   // Handle pty input from renderer
-  // writeToPty already handles cwd tracking for cd commands
   ipcMainOn("pty-write", ({ data }: { data: string }) => {
     writeToPty(data);
   });

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   IconCheck,
+  IconChevronDown,
   IconCopy,
   IconEye,
   IconEyeOff,
@@ -13,6 +14,12 @@ import { LoadingState } from "../ui/States";
 type Drafts = Partial<Record<AiProviderId, AiProviderSettings>>;
 
 const EMPTY_DRAFT: AiProviderSettings = { model: "", baseUrl: "", apiKey: "" };
+
+const FREE_TIER_PROVIDERS: ReadonlySet<AiProviderId> = new Set([
+  "groq",
+  "openrouter",
+  "google",
+]);
 
 const INPUT_CLASS =
   "h-9 w-full min-w-0 rounded-xl border border-border bg-surface px-3 text-sm text-fg placeholder:text-faint focus:border-brand-400 focus:ring-2 focus:ring-focus-ring focus:outline-none disabled:pointer-events-none disabled:opacity-50";
@@ -141,30 +148,41 @@ export const AiSettingsPanel = ({ onSaved }: { onSaved?: () => void }) => {
 
   return (
     <div className="flex flex-col gap-5 text-sm text-fg">
-      <Field label="Provider" hint={info.description}>
-        <select
-          value={provider}
-          disabled={saving}
-          onChange={(event) => {
-            setProvider(event.target.value as AiProviderId);
-            setRevealed(false);
-            setError(null);
-          }}
-          className={INPUT_CLASS}
-        >
-          {view.providers.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-              {item.recommended ? " (Recommended)" : ""}
-            </option>
-          ))}
-        </select>
+      <p className="text-[13px] leading-normal text-muted">
+        The app does not run a model of its own, so you need an API key from a
+        provider below.
+      </p>
+      <Field label="Provider">
+        <div className="relative">
+          <select
+            value={provider}
+            disabled={saving}
+            onChange={(event) => {
+              setProvider(event.target.value as AiProviderId);
+              setRevealed(false);
+              setError(null);
+            }}
+            className={`${INPUT_CLASS} appearance-none pr-10`}
+          >
+            {view.providers.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+                {item.recommended ? " (Recommended for free tier users)" : ""}
+              </option>
+            ))}
+          </select>
+          <IconChevronDown
+            size={16}
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-muted"
+          />
+        </div>
       </Field>
 
       {info.baseUrlRequired && (
         <Field
           label="Base URL"
-          hint="The URL that ends before /chat/completions."
+          hint="The address of the local server."
         >
           <input
             type="url"
@@ -183,7 +201,8 @@ export const AiSettingsPanel = ({ onSaved }: { onSaved?: () => void }) => {
         hint={
           info.keyUrl && (
             <>
-              Create a key at{" "}
+              Use a paid API key if you have one, or create{" "}
+              {FREE_TIER_PROVIDERS.has(provider) ? "a free one" : "one"} at{" "}
               <button
                 type="button"
                 className="inline-flex items-center gap-1 font-medium text-accent hover:cursor-pointer hover:underline"
@@ -230,7 +249,7 @@ export const AiSettingsPanel = ({ onSaved }: { onSaved?: () => void }) => {
       {!info.defaultModel && (
         <Field
           label="Model"
-          hint="The model name your endpoint expects, for example llama3.1."
+          hint="The model's name on that server, for example llama3.1."
         >
           <input
             type="text"

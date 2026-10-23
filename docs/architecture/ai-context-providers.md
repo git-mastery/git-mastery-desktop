@@ -69,10 +69,9 @@ the task.
 ## 3. Directory resolution
 
 The location comes from `resolveExerciseCwd`, mirroring `resolveReadyExerciseCwd` in
-`ipc/gitmastery.ts`. The pty's tracked cwd (`getCwd()`) is deliberately **not** used. It is
-regex-guessed from typed `cd` commands and drifts on `pushd`, `cd -`, subshells and chained commands,
-so by the time a hint is requested it can point anywhere. See `exercise-directory-resolution.md` §9
-for the same problem in `verify`.
+`ipc/gitmastery.ts`. The terminal's live cwd (`getCwd()`) is not used for hints: a hint
+should still see the exercise folder even if the learner `cd`'d elsewhere. Verify uses
+`getCwd()` as a gate; see `exercise-directory-resolution.md` §9.
 
 `ExerciseLocation` carries the exercises root, the exercise root and the working folder (where Start
 `cd`s). For hands-on practicals Start `cd`s into the single subdirectory when there is one

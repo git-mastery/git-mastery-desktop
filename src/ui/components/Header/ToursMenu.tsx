@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   IconChevronDown,
   IconChevronLeft,
@@ -52,7 +52,7 @@ export const LessonsPanelToggle = ({
       type="button"
       aria-label={opened ? "Close tours" : "Open tours"}
       onClick={onToggle}
-      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] text-muted hover:cursor-pointer focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] font-semibold text-muted hover:cursor-pointer focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
     >
       {opened ? <IconChevronLeft size={16} /> : <IconChevronRight size={16} />}
       Tours
@@ -60,66 +60,63 @@ export const LessonsPanelToggle = ({
   );
 };
 
-const TYPE_DOTS = {
+const TYPE_BARS = {
   lesson: { className: "bg-faint", label: "Lesson" },
   "hands-on": { className: "bg-info", label: "Hands-on" },
   exercise: { className: "bg-gm-olive", label: "Exercise" },
   detour: { className: "bg-warning", label: "Detour" },
 } as const;
 
-type ItemKind = keyof typeof TYPE_DOTS;
+type ItemKind = keyof typeof TYPE_BARS;
 
-const TypeDot = ({
+const TypeBar = ({
   kind,
   decorative = false,
+  compact = false,
 }: {
   kind: ItemKind;
   decorative?: boolean;
+  compact?: boolean;
 }) => {
-  const { className, label } = TYPE_DOTS[kind];
+  const { className, label } = TYPE_BARS[kind];
   return (
     <span
       role={decorative ? undefined : "img"}
       aria-hidden={decorative || undefined}
       aria-label={decorative ? undefined : label}
       title={label}
-      className={cx("inline-block size-1.5 shrink-0 rounded-full", className)}
+      className={cx(
+        "shrink-0 rounded-lg",
+        compact ? "h-3 w-1" : "w-1 self-stretch",
+        className,
+      )}
     />
   );
 };
 
 const TypeLegend = () => (
-  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-3 py-1.5 text-[11px] text-muted">
-    {(Object.keys(TYPE_DOTS) as ItemKind[]).map((kind) => (
+  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-3 py-1.5 text-[11px] font-semibold text-muted">
+    {(Object.keys(TYPE_BARS) as ItemKind[]).map((kind) => (
       <span key={kind} className="inline-flex items-center gap-1.5">
-        <TypeDot kind={kind} decorative />
-        {TYPE_DOTS[kind].label}
+        <TypeBar kind={kind} decorative compact />
+        {TYPE_BARS[kind].label}
       </span>
     ))}
   </div>
 );
 
 const REQUIREMENT_TONE_CLASSES: Record<RequirementLabel["tone"], string> = {
-  danger: "border-danger-border bg-danger-soft text-danger",
-  info: "border-info-border bg-info-soft text-info",
-  muted: "border-border bg-subtle text-muted",
+  danger: "border-danger-border/60 bg-danger-soft/40 text-danger",
+  info: "border-info-border/60 bg-info-soft/40 text-info",
+  muted: "border-border/60 bg-subtle/40 text-muted",
 };
-
-const isCompulsoryLabel = (label?: RequirementLabel) =>
-  label?.value.toLowerCase() === "compulsory";
-
-const CompulsoryAsterisk = () => (
-  <span className="text-danger" aria-label="Compulsory" title="Compulsory">
-    *
-  </span>
-);
 
 const RequirementChip = ({ label }: { label: RequirementLabel }) => (
   <span
     title={label.value}
     aria-label={label.value}
     className={cx(
-      "inline-flex shrink-0 items-center rounded border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
+      "inline-flex shrink-0 items-center rounded border px-2 py-0.5 text-[11px] font-normal whitespace-nowrap",
       REQUIREMENT_TONE_CLASSES[label.tone],
     )}
   >
@@ -127,21 +124,36 @@ const RequirementChip = ({ label }: { label: RequirementLabel }) => (
   </span>
 );
 
-const TitleWithRequirement = ({
+const TitleCluster = ({
   title,
+  opened,
   label,
+  extra,
 }: {
   title: string;
+  opened?: boolean;
   label?: RequirementLabel;
+  extra?: ReactNode;
 }) => (
   <span className="min-w-0">
-    {title}
-    {isCompulsoryLabel(label) && (
+    <span className="whitespace-normal break-words">{title}</span>
+    {opened !== undefined && (
+      <IconChevronDown
+        size={12}
+        aria-hidden
+        className={cx(
+          "ml-1 inline-block align-text-top text-muted transition-transform duration-150 ease-in-out",
+          opened && "rotate-180",
+        )}
+      />
+    )}
+    {label && (
       <>
         {" "}
-        <CompulsoryAsterisk />
+        <RequirementChip label={label} />
       </>
     )}
+    {extra}
   </span>
 );
 
@@ -203,7 +215,9 @@ export const ToursPanel = ({ onClose }: { onClose: () => void }) => {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex flex-col gap-1 p-3">
           {isLoading && (
-            <span className="px-2 text-[13px] text-muted">Loading…</span>
+            <span className="px-2 text-[13px] font-semibold text-muted">
+              Loading…
+            </span>
           )}
           {tours.map((tour) => (
             <TourItem
@@ -223,18 +237,21 @@ export const ToursPanel = ({ onClose }: { onClose: () => void }) => {
 };
 
 const listItemClasses =
-  "w-full rounded-lg px-2 py-2 text-left text-sm leading-normal text-fg hover:cursor-pointer focus-visible:outline-none";
+  "flex w-full items-stretch overflow-hidden rounded-lg text-left text-sm font-semibold leading-normal text-fg hover:cursor-pointer focus-visible:outline-none";
+
+const listItemBody =
+  "flex min-w-0 flex-1 items-start justify-between gap-2 px-2 py-2";
 
 const listItemHover = "hover:bg-hover focus-visible:bg-hover";
 
-const activeItemClasses = "bg-accent-soft text-accent font-medium";
+const activeItemClasses = "bg-accent-soft text-accent";
 
 const doneToggleButtonClasses =
-  "mt-0.5 shrink-0 rounded-lg px-1 py-2 text-muted hover:cursor-pointer focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none";
+  "self-center shrink-0 rounded-lg px-1 py-2 text-muted hover:cursor-pointer focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none";
 
 const titleRowClasses = (done: boolean, isActive: boolean) =>
   cx(
-    "flex min-w-0 items-stretch rounded-lg",
+    "flex min-w-0 items-stretch overflow-hidden rounded-lg",
     done && isActive
       ? "bg-accent-soft-hover"
       : done || isActive
@@ -288,12 +305,15 @@ const TourItem = ({
   onNavigate: (url: string) => void;
 }) => {
   const isActive = isTourUrlActive(tour, currentUrl);
-  const { areAllLessonsDone, setLessonsDone } = useLessonsDone();
+  const { isLessonDone } = useLessonsDone();
   const tourLessonNames = useMemo(
     () => Object.values(tour.lessons).map((lesson) => lesson.lesson_name),
     [tour.lessons],
   );
-  const tourDone = areAllLessonsDone(tourLessonNames);
+  const lessonCount = tourLessonNames.length;
+  const doneCount = tourLessonNames.filter(isLessonDone).length;
+  const percent = lessonCount === 0 ? 0 : (doneCount / lessonCount) * 100;
+  const tourDone = lessonCount > 0 && doneCount === lessonCount;
   const [opened, setOpened] = useState(isActive);
   const [wasActive, setWasActive] = useState(isActive);
 
@@ -302,35 +322,36 @@ const TourItem = ({
     if (isActive) setOpened(true);
   }
 
-  const filled = tourDone || isActive;
-
   return (
     <div className="flex flex-col">
-      <div className={titleRowClasses(tourDone, isActive)}>
-        <DoneCircleToggle
-          done={tourDone}
-          subject={tour.title}
-          quiet={filled}
-          onToggle={() => setLessonsDone(tourLessonNames, !tourDone)}
-        />
+      <div className="relative flex min-w-0 items-stretch overflow-hidden rounded-lg">
+        {lessonCount > 0 && (
+          <span
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={lessonCount}
+            aria-valuenow={doneCount}
+            aria-label={`${doneCount} of ${lessonCount} lessons completed`}
+            className={cx(
+              "pointer-events-none absolute inset-y-0 left-0",
+              tourDone ? "bg-accent-soft-hover" : "bg-accent-soft",
+            )}
+            style={{ width: `${percent}%` }}
+          />
+        )}
         <button
           type="button"
           aria-expanded={opened}
           onClick={() => setOpened((value) => !value)}
           className={cx(
-            listItemClasses,
-            "min-w-0 flex-1",
-            isActive && "text-accent font-medium",
-            !filled && listItemHover,
+            "relative z-[1] flex min-w-0 flex-1 items-stretch text-left text-sm font-semibold leading-normal text-fg hover:cursor-pointer focus-visible:outline-none",
+            isActive && "text-accent",
+            percent === 0 && listItemHover,
           )}
         >
-          <span className="flex min-w-0 items-center gap-1.5">
-            <IconChevronDown
-              size={12}
-              className={`shrink-0 text-muted transition-transform duration-150 ease-in-out ${opened ? "rotate-180" : ""}`}
-            />
-            <TypeDot kind="lesson" />
-            <span className="min-w-0">{tour.title}</span>
+          <TypeBar kind="lesson" />
+          <span className="min-w-0 flex-1 px-2 py-2">
+            <TitleCluster title={tour.title} opened={opened} />
           </span>
         </button>
       </div>
@@ -345,9 +366,9 @@ const TourItem = ({
             )}
             onClick={() => onNavigate(buildTourHomeUrl(tour))}
           >
-            <span className="flex items-center gap-1.5">
-              <TypeDot kind="lesson" />
-              Tour Intro
+            <TypeBar kind="lesson" />
+            <span className="min-w-0 flex-1 px-2 py-2">
+              <TitleCluster title="Tour Intro" />
             </span>
           </button>
           {Object.values(tour.lessons).map((lesson) => (
@@ -371,9 +392,9 @@ const TourItem = ({
             )}
             onClick={() => onNavigate(buildTourOutroUrl(tour))}
           >
-            <span className="flex items-center gap-1.5">
-              <TypeDot kind="lesson" />
-              Tour Outro
+            <TypeBar kind="lesson" />
+            <span className="min-w-0 flex-1 px-2 py-2">
+              <TitleCluster title="Tour Outro" />
             </span>
           </button>
         </div>
@@ -416,12 +437,6 @@ const LessonItem = ({
   return (
     <div className="flex flex-col">
       <div className={titleRowClasses(done, isActive)}>
-        <DoneCircleToggle
-          done={done}
-          subject={lesson.title}
-          quiet={filled}
-          onToggle={() => setLessonDone(lesson.lesson_name, !done)}
-        />
         <button
           type="button"
           aria-expanded={opened}
@@ -430,24 +445,26 @@ const LessonItem = ({
             setOpened((value) => !value);
           }}
           className={cx(
-            listItemClasses,
-            "min-w-0 flex-1",
-            isActive && "text-accent font-medium",
+            "flex min-w-0 flex-1 items-stretch text-left text-sm font-semibold leading-normal text-fg hover:cursor-pointer focus-visible:outline-none",
+            isActive && "text-accent",
             !filled && listItemHover,
           )}
         >
-          <span className="flex min-w-0 items-center gap-1.5">
-            <IconChevronDown
-              size={12}
-              className={`shrink-0 text-muted transition-transform duration-150 ease-in-out ${opened ? "rotate-180" : ""}`}
+          <TypeBar kind="lesson" />
+          <span className="min-w-0 flex-1 px-2 py-2">
+            <TitleCluster
+              title={lesson.title}
+              opened={opened}
+              label={lessonLabel}
             />
-            <TypeDot kind="lesson" />
-            <TitleWithRequirement title={lesson.title} label={lessonLabel} />
-            {lessonLabel && !isCompulsoryLabel(lessonLabel) && (
-              <RequirementChip label={lessonLabel} />
-            )}
           </span>
         </button>
+        <DoneCircleToggle
+          done={done}
+          subject={lesson.title}
+          quiet={filled}
+          onToggle={() => setLessonDone(lesson.lesson_name, !done)}
+        />
       </div>
       {opened && (
         <div className="pl-3">
@@ -470,7 +487,7 @@ const LessonItem = ({
               />
             ))
           ) : (
-            <span className="block px-2 py-1.5 text-[13px] text-faint">
+            <span className="block px-2 py-1.5 text-[13px] font-semibold text-faint">
               No exercises
             </span>
           )}
@@ -508,11 +525,9 @@ const OutlineRow = ({
         )}
         onClick={() => onNavigate(buildHandsOnUrl(lesson, item.panelId))}
       >
-        <span className="flex items-center justify-between gap-2">
-          <span className="flex min-w-0 items-center gap-1.5">
-            <TypeDot kind="hands-on" />
-            <span className="min-w-0 truncate">{item.title}</span>
-          </span>
+        <TypeBar kind="hands-on" />
+        <span className={listItemBody}>
+          <TitleCluster title={item.title} />
           {status === "downloaded" && <StatusPill status="downloaded" />}
         </span>
       </button>
@@ -545,12 +560,9 @@ const OutlineRow = ({
         )}
         onClick={() => onNavigate(buildDetourUrl(lesson, item.detourKey))}
       >
-        <span className="flex min-w-0 items-center gap-1.5">
-          <TypeDot kind="detour" />
-          <TitleWithRequirement title={item.title} label={detourLabel} />
-          {detourLabel && !isCompulsoryLabel(detourLabel) && (
-            <RequirementChip label={detourLabel} />
-          )}
+        <TypeBar kind="detour" />
+        <span className="min-w-0 flex-1 px-2 py-2">
+          <TitleCluster title={item.title} label={detourLabel} />
         </span>
       </button>
       {item.exercises.length > 0 && (
@@ -607,20 +619,19 @@ const ExerciseRow = ({
       )}
       onClick={() => onNavigate(buildExerciseUrl(exercise))}
     >
-      <span className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <TypeDot kind="exercise" />
-          <TitleWithRequirement
-            title={formatExerciseIdentifier(exercise.identifier)}
-            label={editionLabel}
-          />
-          {editionLabel && !isCompulsoryLabel(editionLabel) && (
-            <RequirementChip label={editionLabel} />
-          )}
-          {showHeuristic && (
-            <span className="shrink-0 text-[11px] text-muted">Optional</span>
-          )}
-        </span>
+      <TypeBar kind="exercise" />
+      <span className={listItemBody}>
+        <TitleCluster
+          title={formatExerciseIdentifier(exercise.identifier)}
+          label={editionLabel}
+          extra={
+            showHeuristic ? (
+              <span className="ml-1 text-[11px] font-normal text-muted">
+                Optional
+              </span>
+            ) : undefined
+          }
+        />
         {status && <StatusPill status={status} />}
       </span>
     </button>
