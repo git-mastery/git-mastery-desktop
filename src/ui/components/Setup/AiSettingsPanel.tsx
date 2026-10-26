@@ -180,10 +180,7 @@ export const AiSettingsPanel = ({ onSaved }: { onSaved?: () => void }) => {
       </Field>
 
       {info.baseUrlRequired && (
-        <Field
-          label="Base URL"
-          hint="The address of the local server."
-        >
+        <Field label="Base URL" hint="The address of the local server.">
           <input
             type="url"
             value={draft.baseUrl}
