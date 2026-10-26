@@ -1,3 +1,12 @@
+## [1.5.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.4.0...v1.5.0) (2026-10-26)
+
+### Features
+
+* add groq as a named provider ([#37](https://github.com/git-mastery/git-mastery-desktop/issues/37)) ([478af18](https://github.com/git-mastery/git-mastery-desktop/commit/478af18d8a0bcb8fb78baad213811903ba6c21df))
+* complete the tours sidebar from catalogs and course edition labels ([#36](https://github.com/git-mastery/git-mastery-desktop/issues/36)) ([ceb764b](https://github.com/git-mastery/git-mastery-desktop/commit/ceb764b99fa7b9bdde3d5d1524ce4328a4a531f7))
+* ground exercise hints and recommend Groq ([#38](https://github.com/git-mastery/git-mastery-desktop/issues/38)) ([f19715a](https://github.com/git-mastery/git-mastery-desktop/commit/f19715a1024c3bca9d7787c70f5cbb4f5b45c027))
+* restyle tours sidebar and gate verify on live cwd ([#40](https://github.com/git-mastery/git-mastery-desktop/issues/40)) ([67169b6](https://github.com/git-mastery/git-mastery-desktop/commit/67169b68ff86052d31b5db1ce9c0fe498f6398aa))
+
 ## [1.4.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.3.0...v1.4.0) (2026-10-12)
 
 ### Features
