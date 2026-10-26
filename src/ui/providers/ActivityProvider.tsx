@@ -18,6 +18,7 @@ import { useLocalExercises } from "../hooks/query/useLocalExercises";
 import { useToast, type ToastOptions } from "../contexts/ToastContext";
 import { ActivityContext } from "../contexts/ActivityContext";
 import { FirstStartModal } from "../components/Setup/FirstStartModal";
+import { VerifyBlockedModal } from "../components/Setup/VerifyBlockedModal";
 import { useExercises } from "../hooks/query/useExercises";
 import { formatActivityName, isHandsOnIdentifier } from "../utils/format";
 
@@ -42,6 +43,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     exerciseIdentifier: string;
     step: FirstRunStep;
   } | null>(null);
+  const [verifyBlocked, setVerifyBlocked] = useState(false);
 
   const startExercise = (exercise: Exercise) => {
     void window.electron.startExercise(exercise.identifier);
@@ -119,21 +121,18 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const onStartExerciseStartedRef = useRef(onStartExerciseStarted);
   const onStartExerciseResultRef = useRef(onStartExerciseResult);
-  const onVerifyBlockedRef = useRef((payload: VerifyBlocked) => {
-    settleToast(verifyToastId(payload.exerciseIdentifier), {
-      title: "Not in the exercise folder",
-      tone: "info",
-    });
-  });
+  const onVerifyBlocked = (payload: VerifyBlocked) => {
+    const id = verifyToastId(payload.exerciseIdentifier);
+    openActionToasts.current.delete(id);
+    hideToast(id);
+    setVerifyBlocked(true);
+  };
+
+  const onVerifyBlockedRef = useRef(onVerifyBlocked);
   useEffect(() => {
     onStartExerciseStartedRef.current = onStartExerciseStarted;
     onStartExerciseResultRef.current = onStartExerciseResult;
-    onVerifyBlockedRef.current = (payload: VerifyBlocked) => {
-      settleToast(verifyToastId(payload.exerciseIdentifier), {
-        title: "Not in the exercise folder",
-        tone: "info",
-      });
-    };
+    onVerifyBlockedRef.current = onVerifyBlocked;
   });
   useEffect(
     () =>
@@ -256,6 +255,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
           onClose={() => setGate(null)}
           onResolved={onGateResolved}
         />
+      )}
+      {verifyBlocked && (
+        <VerifyBlockedModal onClose={() => setVerifyBlocked(false)} />
       )}
     </ActivityContext.Provider>
   );

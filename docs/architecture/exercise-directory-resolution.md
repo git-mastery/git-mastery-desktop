@@ -271,19 +271,19 @@ two when this is picked up.
 ## 9. The `verify` working directory
 
 Verify uses the same resolver as Start (`resolveExerciseCwd`) to know which directory the
-learner should be in. It then compares that to the terminal's tracked cwd (`getCwd()`). Only an
-exact match (case-insensitive on Windows) is accepted.
+learner should be in. It then compares that to the shell process cwd (`getCwd()` reads it
+from the pty via `lsof` / `/proc`; it does not parse typed `cd`). If the live cwd cannot
+be read, verify is blocked. Only an exact match (case-insensitive on Windows) is accepted.
 
 If the identifier is invalid, the exercise is not `ready`, or the terminal is somewhere else,
-`gitmastery verify` is **not** spawned. The renderer shows an info toast asking the learner to
-click Start Exercise, which is the path that downloads if needed and `cd`s. Spawning anyway
-from a synthetic cwd hid the fact that the learner was not in the exercise folder, and made
-Start look optional.
+`gitmastery verify` is **not** spawned. The renderer shows a small modal: the learner is not
+in the exercise folder and should click Start Exercise, which downloads if needed and `cd`s.
+Spawning anyway from a synthetic cwd hid the fact that the learner was not in the exercise
+folder, and made Start look optional.
 
 When the check passes, verify still spawns with `cwd` set to the resolved exercise directory —
-the same path Start would `cd` into — rather than trusting `getCwd()` as the subprocess cwd.
-`getCwd()` is regex-guessed (`updateCwdFromCdCommand` in `src/electron/ipc/terminal.ts`) and
-misses `pushd`, `cd -`, subshells, and chained commands; it is only used as the gate.
+the same path Start would `cd` into — rather than using `getCwd()` as the subprocess cwd.
+The gate is the live shell directory so a typed `cd` away from the exercise blocks verify.
 
 The CLI itself is tolerant of where inside the exercise it runs: `verify` is decorated
 `@in_exercise_root()` with `must=False` (`app/commands/verify.py`) and `find_root` walks

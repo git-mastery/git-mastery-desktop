@@ -12,7 +12,7 @@ owns the output. That was rejected:
 - **Structured results still need a clean stdout stream.** Verify parses `INFO  Status:
 Completed` / `Incomplete` and comments to patch exercise progress. Mixing that with a
   prompt, user typing, and shell colour would make the parse fragile.
-- **The spawn path is load-bearing.** Verify is gated on the tracked cwd, spawned with an
+- **The spawn path is load-bearing.** Verify is gated on the live shell cwd, spawned with an
   explicit exercise directory, and reports progress over `gitmastery-task-data`. See
   [exercise-directory-resolution.md](exercise-directory-resolution.md) §9.
 - **Running in both places would verify twice.**
@@ -26,6 +26,10 @@ One in-place toast per button click. Loading titles (`Verifying...`, `Starting e
 while the action runs, then a one-line result (`Exercise answer correct` / `incorrect`,
 `Could not start exercise`). CLI `INFO` lines and comments stay in the terminal. A successful
 Start dismisses the loading toast — the `cd` is already visible in the pane.
+
+Verify clicked while the terminal is not in the exercise folder does not toast. It opens a
+modal telling the learner to click Start Exercise first. The cwd check runs before the
+`Verifying...` payload, so that loading toast never appears.
 
 ## Persistence
 

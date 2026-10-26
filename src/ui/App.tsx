@@ -87,7 +87,7 @@ function App() {
           {showLessonsPanel && (
             <nav className="relative w-[300px] min-w-0 shrink-0 border-r border-border bg-surface">
               <ToursPanel onClose={() => setLessonsPanelOpened(false)} />
-              <WalkthroughDim show={inPaneTour} />
+              <WalkthroughDim show={focusTerminal} />
             </nav>
           )}
 

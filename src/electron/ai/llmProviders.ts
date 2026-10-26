@@ -202,12 +202,12 @@ const SPECS: ProviderSpec[] = [
   },
   {
     id: "custom",
-    label: "Custom (OpenAI-compatible)",
+    label: "Custom (Ollama, LM Studio, etc.)",
     description:
       "Any endpoint that speaks the OpenAI chat API: Ollama, LM Studio, a course proxy, and so on.",
     defaultModel: null,
     keyUrl: null,
-    keyPlaceholder: "Leave empty if the endpoint needs no key",
+    keyPlaceholder: "Usually empty for a local server",
     keyRequired: false,
     baseUrlRequired: true,
     baseUrlPlaceholder: "http://localhost:11434/v1",

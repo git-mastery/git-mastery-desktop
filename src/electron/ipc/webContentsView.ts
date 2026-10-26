@@ -75,8 +75,8 @@ let lessonChatHandler: ((prompt: string) => boolean) | null = null;
 
 /** Mirrors `--gm-dim` in src/ui/index.css, so the lesson dims like the DOM panes. */
 const PAGE_DIM_COLOR = {
-  light: "rgb(23 23 23 / 0.45)",
-  dark: "rgb(0 0 0 / 0.6)",
+  light: "rgba(23, 23, 23, 0.7)",
+  dark: "rgba(0, 0, 0, 0.7)",
 } as const;
 
 /** Walkthrough guard on the lesson page. Survives navigation. */
@@ -96,14 +96,14 @@ function applyPageWalkthroughOverlay() {
         if (!el) {
           el = document.createElement("div");
           el.id = "gm-walkthrough-dim";
-          (document.body || document.documentElement).appendChild(el);
+          document.documentElement.appendChild(el);
         }
-        var background =
-          mode === "dim" ? color : "transparent";
+        var background = mode === "dim" ? color : "transparent";
         el.style.cssText =
-          "position:fixed; inset:0; z-index:2147483647; background:" +
+          "position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;" +
+          "z-index:2147483647;background:" +
           background +
-          ";";
+          ";pointer-events:auto;cursor:default;";
       })(${JSON.stringify(pageWalkthroughOverlay)}, ${JSON.stringify(color)})`,
     )
     .catch(() => {});

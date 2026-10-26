@@ -34,11 +34,13 @@ Label keys match CustardUI names:
 - Detour: detour key e.g. `undoRepoInit`
 - Exercise: catalog key e.g. `under_control` (underscores)
 
-**Compulsory** is a red asterisk after the title (`aria-label="Compulsory"`).
-Other values are an 11px chip (truncated to 24 characters). Color letters map
-onto existing tokens, and green stays “done”, not a requirement color:
+Every `preset.labels` entry is an 11px chip with the configured `value`
+(truncated to 24 characters). The sidebar does not special-case any word, so
+a course that uses Compulsory, Required, or another label all render the same
+way. Color letters map onto existing tokens, and green stays “done”, not a
+requirement color:
 
-- `r` → danger (Compulsory uses this as the asterisk colour)
+- `r` → danger
 - `g` → muted
 - `b` → info
 - anything else, or missing `color` → muted, still show `value`

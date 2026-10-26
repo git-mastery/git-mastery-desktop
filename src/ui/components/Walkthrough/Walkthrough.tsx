@@ -67,7 +67,7 @@ const CONTENT: Record<PaneWalkthroughStep, { title: string; body: string[] }> =
   };
 
 const shieldClasses =
-  "absolute inset-0 z-[20] cursor-default pointer-events-auto";
+  "absolute -inset-px z-[20] cursor-default pointer-events-auto";
 
 /** Dulls a DOM pane that is not the focus of the current walkthrough step. */
 export const WalkthroughDim = ({ show }: { show: boolean }) =>
