@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 
 export type WalkthroughStep = "welcome" | "lessons" | "terminal";
@@ -38,18 +38,6 @@ export function useWalkthrough() {
     if (index === null) return;
     setIndex(Math.max(0, index - 1));
   }, [index]);
-
-  // The lesson page is a native view, so scroll and clicks are stopped from
-  // inside the page rather than by a DOM overlay.
-  useEffect(() => {
-    if (step === "lessons") {
-      window.electron.setEmbeddedWalkthroughOverlay("block");
-    } else if (step === "terminal") {
-      window.electron.setEmbeddedWalkthroughOverlay("dim");
-    } else {
-      window.electron.setEmbeddedWalkthroughOverlay("off");
-    }
-  }, [step]);
 
   return { step, index, start, next, back };
 }

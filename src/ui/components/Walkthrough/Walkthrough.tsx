@@ -69,9 +69,20 @@ const CONTENT: Record<PaneWalkthroughStep, { title: string; body: string[] }> =
 const shieldClasses =
   "absolute -inset-px z-[20] cursor-default pointer-events-auto";
 
-/** Dulls a DOM pane that is not the focus of the current walkthrough step. */
-export const WalkthroughDim = ({ show }: { show: boolean }) =>
-  show ? <div aria-hidden className={`${shieldClasses} bg-dim`} /> : null;
+/** Covers a DOM pane that is not the focus of the current flow. */
+export const WalkthroughDim = ({
+  show,
+  opaque = false,
+}: {
+  show: boolean;
+  opaque?: boolean;
+}) =>
+  show ? (
+    <div
+      aria-hidden
+      className={`${shieldClasses} ${opaque ? "bg-focus-mask" : "bg-dim"}`}
+    />
+  ) : null;
 
 /** Captures pointer events without dulling (e.g. the focused lesson pane). */
 export const WalkthroughShield = ({ show }: { show: boolean }) =>

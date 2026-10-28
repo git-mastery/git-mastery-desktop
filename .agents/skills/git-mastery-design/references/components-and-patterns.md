@@ -164,6 +164,8 @@ Two rules specific to this app:
 
 - Render modals inside the provider tree they read context from, not from a detached portal root that sits outside those providers.
 - Open and close instantly (no transition) whenever the modal covers the native view — see § Native view constraints.
+- The default is a full-window `bg-overlay` scrim. A workflow that deliberately keeps one pane active may set `dimBackground={false}` and must dim and block every inactive pane itself.
+- Activity feedback keeps the work column active, so it also uses `excludeWorkColumn` to centre the modal in the space to the left of `--gm-aside-width`.
 
 ### Toast
 

@@ -42,7 +42,7 @@ House design language for Git-Mastery Desktop: semantic light/dark surfaces, one
 ## Design principles
 
 1. **Tool UI, not marketing.** Quiet chrome, hairline borders, flat opaque panels — not hero gradients, neon glow, or landing-page typography.
-2. **One brand accent.** Primary actions and focus rings use brand green (`#2d864e`). Status meaning uses the same green for success plus red / amber / sky — never as decorative page chrome.
+2. **One brand accent.** Primary actions and focus rings use brand green (`#1f8444`). Status meaning uses the same green for success plus red / amber / sky — never as decorative page chrome.
 3. **Solid surfaces by default.** Panes, cards, and modals are opaque with a hairline border. Light: white on bone canvas. Dark: `#212529` matching git-mastery.org.
 4. **Serif for titles, sans for everything else.** Noto Serif carries page and section titles; Inter carries all body, control, and chip text.
 5. **Density with air.** ~13–14px body, ~11px chips and field labels. Comfortable padding inside cards; tight toolbars above lists.
@@ -87,7 +87,7 @@ Tailwind v4 matters: custom colors, fonts, and shadows are declared as CSS varia
 ## Always
 
 - Inter body / Noto Serif headings; semantic canvas / surface / `text-fg`.
-- Brand CTA `#2d864e` → hover `#236e3d` in both themes.
+- Brand CTA `#1f8444` → hover `#186d37` in both themes.
 - Surfaces: `bg-surface`, `border-border`, 12–16px radius; `shadow-card` only on elevated panels (modals, dropdowns).
 - Inputs: 12px radius, `border-border`, brand focus ring (`ring-focus-ring`).
 - Status pills: 11px, semantic fill / text / border, paired with text or `aria-label`.

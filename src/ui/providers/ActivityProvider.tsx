@@ -15,8 +15,10 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Exercise } from "../../types/Exercise";
 import { useElectronStream } from "../hooks/useElectronStream";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
-import { useToast, type ToastOptions } from "../contexts/ToastContext";
-import { ActivityContext } from "../contexts/ActivityContext";
+import {
+  ActivityContext,
+  type ActivityFocusNotice,
+} from "../contexts/ActivityContext";
 import { FirstStartModal } from "../components/Setup/FirstStartModal";
 import { VerifyBlockedModal } from "../components/Setup/VerifyBlockedModal";
 import { useExercises } from "../hooks/query/useExercises";
@@ -24,77 +26,63 @@ import { formatActivityName, isHandsOnIdentifier } from "../utils/format";
 
 const isVerifyCommand = (cmd: string) => cmd.startsWith("verify");
 
-const verifyToastId = (exerciseIdentifier?: string) =>
-  `verify-${exerciseIdentifier ?? "exercise"}`;
-
-const startToastId = (exerciseIdentifier?: string) =>
-  `start-${exerciseIdentifier ?? "exercise"}`;
-
 export function ActivityProvider({ children }: { children: ReactNode }) {
-  const { showToast, updateToast, hideToast } = useToast();
-
   const { downloadedExerciseData, patchExerciseStatus } = useLocalExercises();
   const { query: exercisesQuery } = useExercises();
 
-  /** Loading toasts currently on screen, so settle can update them in place. */
-  const openActionToasts = useRef<Set<string>>(new Set());
-
   const [gate, setGate] = useState<{
     exerciseIdentifier: string;
-    step: FirstRunStep;
+    step: Exclude<FirstRunStep, "intro">;
   } | null>(null);
   const [verifyBlocked, setVerifyBlocked] = useState(false);
+  const [focusNotice, setFocusNotice] = useState<ActivityFocusNotice | null>(
+    null,
+  );
 
   const startExercise = (exercise: Exercise) => {
-    void window.electron.startExercise(exercise.identifier);
-  };
-
-  const showLoadingToast = (id: string, title: string) => {
-    if (openActionToasts.current.has(id)) return;
-    openActionToasts.current.add(id);
-    showToast({
-      id,
-      title,
-      loading: true,
-      autoClose: false,
-      withCloseButton: false,
+    void window.electron.startExercise(exercise.identifier, {
+      skipIntro: true,
     });
   };
 
-  const settleToast = (id: string, patch: Omit<ToastOptions, "id">) => {
-    // Loading toasts set `autoClose: false`; an update merges over them, so the
-    // countdown has to be handed back to the tone default explicitly.
-    const settled = {
-      loading: false,
-      withCloseButton: true,
-      autoClose: undefined,
-      ...patch,
-    };
-    if (openActionToasts.current.delete(id)) {
-      updateToast(id, settled);
-    } else {
-      showToast({ id, ...settled });
-    }
+  const activityNameFor = (exerciseIdentifier: string) => {
+    const exercise = Object.values(exercisesQuery.data ?? {}).find(
+      (item) => item.identifier === exerciseIdentifier,
+    );
+    return formatActivityName(exerciseIdentifier, exercise);
   };
 
   const onStartExerciseStarted = (payload: StartExerciseStarted) => {
-    showLoadingToast(
-      startToastId(payload.exerciseIdentifier),
-      "Starting exercise...",
-    );
+    const { exerciseIdentifier } = payload;
+    setFocusNotice({
+      kind: "start",
+      exerciseIdentifier,
+      activityName: activityNameFor(exerciseIdentifier),
+      activityKind: isHandsOnIdentifier(exerciseIdentifier)
+        ? "hands-on"
+        : "exercise",
+      status: "downloading",
+      open: true,
+    });
   };
 
   /**
    * The main process reports every start, whether it came from the app or from
-   * the button injected into the embedded lesson page. Success is a `cd` in the
-   * terminal plus a toast; failures that are not CLI output still need a
-   * one-line toast.
+   * the button injected into the embedded lesson page. The modal stays open
+   * while the download runs, but dismissing it never cancels the task.
    */
   const onStartExerciseResult = (result: StartExerciseResult) => {
-    const id = startToastId(result.exerciseIdentifier);
     if (result.firstRunStep && result.exerciseIdentifier) {
-      openActionToasts.current.delete(id);
-      hideToast(id);
+      setFocusNotice(null);
+      if (result.firstRunStep === "intro") {
+        const exerciseIdentifier = result.exerciseIdentifier;
+        void window.electron.hideStartIntro().then(() =>
+          window.electron.startExercise(exerciseIdentifier, {
+            skipIntro: true,
+          }),
+        );
+        return;
+      }
       setGate({
         exerciseIdentifier: result.exerciseIdentifier,
         step: result.firstRunStep,
@@ -102,29 +90,38 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       return;
     }
     setGate(null);
-    if (result.ok) {
-      settleToast(id, {
-        title: "Started exercise",
-        tone: "success",
-      });
-      return;
-    }
-
-    settleToast(id, {
-      title: "Could not start exercise",
-      message: result.needsRestart
-        ? "Delete that folder and start the exercise again for a clean copy."
-        : undefined,
-      tone: "danger",
+    if (!result.exerciseIdentifier) return;
+    const exerciseIdentifier = result.exerciseIdentifier;
+    setFocusNotice((current) => {
+      const matching =
+        current?.kind === "start" &&
+        current.exerciseIdentifier === exerciseIdentifier;
+      const base = matching
+        ? current
+        : {
+            kind: "start" as const,
+            exerciseIdentifier,
+            activityName: activityNameFor(exerciseIdentifier),
+            activityKind: isHandsOnIdentifier(exerciseIdentifier)
+              ? ("hands-on" as const)
+              : ("exercise" as const),
+            open: true,
+          };
+      return {
+        ...base,
+        status: result.ok ? "ready" : "failed",
+        message: result.ok
+          ? undefined
+          : result.needsRestart
+            ? "Delete that folder and start the activity again for a clean copy."
+            : result.error,
+      };
     });
   };
 
   const onStartExerciseStartedRef = useRef(onStartExerciseStarted);
   const onStartExerciseResultRef = useRef(onStartExerciseResult);
-  const onVerifyBlocked = (payload: VerifyBlocked) => {
-    const id = verifyToastId(payload.exerciseIdentifier);
-    openActionToasts.current.delete(id);
-    hideToast(id);
+  const onVerifyBlocked = () => {
     setVerifyBlocked(true);
   };
 
@@ -149,19 +146,11 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     [],
   );
   useEffect(
-    () =>
-      window.electron.onVerifyBlocked((payload) =>
-        onVerifyBlockedRef.current(payload),
-      ),
+    () => window.electron.onVerifyBlocked(() => onVerifyBlockedRef.current()),
     [],
   );
 
-  const _onExerciseVerifyData = (
-    _originalCommand: string,
-    data: GitMasteryTaskData,
-  ) => {
-    showLoadingToast(verifyToastId(data.exerciseIdentifier), "Verifying...");
-  };
+  const ignoreVerifyProgress = () => {};
 
   const _onExerciseVerifiedSuccess = (
     _originalCommand: string,
@@ -172,25 +161,17 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       incorrect?: boolean;
     };
 
-    const id = verifyToastId(data.exerciseIdentifier);
-    if (correct) {
-      settleToast(id, {
-        title: "Exercise answer correct",
-        tone: "success",
-      });
-    } else if (incorrect) {
-      settleToast(id, {
-        title: "Exercise answer incorrect",
-        tone: "danger",
-      });
-    } else {
-      settleToast(id, {
-        title: "Verification complete",
-        tone: "success",
+    const exerciseIdentifier = data.exerciseIdentifier;
+    if (exerciseIdentifier) {
+      setFocusNotice({
+        kind: "verify",
+        exerciseIdentifier,
+        activityName: activityNameFor(exerciseIdentifier),
+        result: correct ? "correct" : incorrect ? "incorrect" : "complete",
+        open: true,
       });
     }
 
-    const exerciseIdentifier = data.exerciseIdentifier;
     if (exerciseIdentifier && isHandsOnIdentifier(exerciseIdentifier)) {
       return;
     }
@@ -209,16 +190,20 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     data: GitMasteryTaskData,
   ) => {
     const message = data.completed?.message;
-    settleToast(verifyToastId(data.exerciseIdentifier), {
-      title: "Verification failed",
+    if (!data.exerciseIdentifier) return;
+    setFocusNotice({
+      kind: "verify",
+      exerciseIdentifier: data.exerciseIdentifier,
+      activityName: activityNameFor(data.exerciseIdentifier),
+      result: "failed",
       message: message && message.length <= 200 ? message : undefined,
-      tone: "danger",
+      open: true,
     });
   };
 
   useElectronStream({
     condition: isVerifyCommand,
-    onData: _onExerciseVerifyData,
+    onData: ignoreVerifyProgress,
     onSuccessExit: _onExerciseVerifiedSuccess,
     onFailedExit: _onExerciseVerifiedFailure,
   });
@@ -233,25 +218,26 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       });
       return;
     }
-    setGate({ exerciseIdentifier: gate.exerciseIdentifier, step });
+    if (step !== "intro") {
+      setGate({ exerciseIdentifier: gate.exerciseIdentifier, step });
+    }
   };
 
   return (
     <ActivityContext.Provider
       value={{
         startExercise,
+        focusNotice,
+        dismissFocusNotice: () =>
+          setFocusNotice((current) =>
+            current ? { ...current, open: false } : current,
+          ),
       }}
     >
       {children}
       {gate && (
         <FirstStartModal
           step={gate.step}
-          activityName={formatActivityName(
-            gate.exerciseIdentifier,
-            Object.values(exercisesQuery.data ?? {}).find(
-              (exercise) => exercise.identifier === gate.exerciseIdentifier,
-            ),
-          )}
           onClose={() => setGate(null)}
           onResolved={onGateResolved}
         />

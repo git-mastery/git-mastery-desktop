@@ -13,27 +13,28 @@ semantic token exists.
 
 ### Semantic chrome (use these)
 
-| Token             | Light                  | Dark                      | Role                                  |
-| ----------------- | ---------------------- | ------------------------- | ------------------------------------- |
-| Canvas            | `#f8f8f8`              | `#212529`                 | Onboarding / window background        |
-| Surface           | `#ffffff`              | `#212529`                 | Header, panes, cards, modals          |
-| Subtle            | `#f5f5f5`              | `#2b3035`                 | Code chips, raised/secondary fill     |
-| Hover             | `#f5f5f5`              | `#343a40`                 | Row / control hover                   |
-| Text primary      | `#333333`              | `#dee2e6`                 | Body, headings                        |
-| Text muted        | `#666666`              | `#c2c8ce`                 | Helpers, secondary                    |
-| Text faint        | `#a3a3a3`              | `#adb5bd`                 | Placeholders, meta                    |
-| Border            | `#e5e5e5`              | `#495057`                 | Hairlines, dividers                   |
-| Overlay           | `rgb(23 23 23 / 0.25)` | `rgb(0 0 0 / 0.5)`        | Modal scrim                           |
-| Accent text       | `#236e3d`              | `#75b798`                 | Active nav, outline CTA, success text |
-| Accent soft       | `#f2faf5`              | `#1f3932`                 | Soft fill, selected row               |
-| Accent soft hover | `#e1f4e8`              | `#264a40`                 | Soft icon hover                       |
-| Accent border     | `#c8ead4`              | `#4ab98a`                 | Success pill / mint panel border      |
-| Focus ring        | `#e1f4e8`              | `rgb(117 183 152 / 0.35)` | Control focus                         |
-| Terminal          | `#f1f3f4`              | `#1a1d20`                 | xterm pane — slightly off surface     |
+| Token             | Light                  | Dark                    | Role                                  |
+| ----------------- | ---------------------- | ----------------------- | ------------------------------------- |
+| Canvas            | `#f8f8f8`              | `#212529`               | Onboarding / window background        |
+| Surface           | `#ffffff`              | `#212529`               | Header, panes, cards, modals          |
+| Subtle            | `#f5f5f5`              | `#2b3035`               | Code chips, raised/secondary fill     |
+| Hover             | `#f5f5f5`              | `#343a40`               | Row / control hover                   |
+| Text primary      | `#333333`              | `#dee2e6`               | Body, headings                        |
+| Text muted        | `#666666`              | `#c2c8ce`               | Helpers, secondary                    |
+| Text faint        | `#a3a3a3`              | `#adb5bd`               | Placeholders, meta                    |
+| Border            | `#e5e5e5`              | `#495057`               | Hairlines, dividers                   |
+| Overlay           | `rgb(23 23 23 / 0.25)` | `rgb(0 0 0 / 0.5)`      | Modal scrim                           |
+| Accent text       | `#186d37`              | `#40c972`               | Active nav, outline CTA, success text |
+| Accent soft       | `#ebf9f0`              | `#193825`               | Soft fill, selected row               |
+| Accent soft hover | `#d9f2e2`              | `#1f472e`               | Soft icon hover                       |
+| Accent border     | `#ace2c0`              | `#3db86a`               | Success pill / mint panel border      |
+| Focus ring        | `#d9f2e2`              | `rgb(64 201 114 / 0.4)` | Control focus                         |
+| Focus mask        | `#d9dcdf`              | `#17191b`               | Opaque inactive learning panes        |
+| Terminal          | `#f1f3f4`              | `#1a1d20`               | xterm pane — slightly off surface     |
 
-Tailwind: `bg-canvas`, `bg-surface`, `bg-subtle`, `bg-hover`, `bg-terminal`, `text-fg`, `text-muted`, `text-faint`, `border-border`, `bg-overlay`, `text-accent`, `bg-accent-soft`, `border-accent-border`, `ring-focus-ring`.
+Tailwind: `bg-canvas`, `bg-surface`, `bg-subtle`, `bg-hover`, `bg-terminal`, `bg-focus-mask`, `text-fg`, `text-muted`, `text-faint`, `border-border`, `bg-overlay`, `text-accent`, `bg-accent-soft`, `border-accent-border`, `ring-focus-ring`.
 
-Dark chrome values match git-mastery.org’s Bootstrap 5.3 / MarkBind theme (`[data-bs-theme=dark]`): page/card `#212529`, text `#dee2e6`, muted `#c2c8ce` (site `.dimmed`), border `#495057`, green accents `#75b798` / `#4ab98a`, mint panel `#1f3932`.
+Dark chrome greys match git-mastery.org’s Bootstrap 5.3 / MarkBind theme (`[data-bs-theme=dark]`): page/card `#212529`, text `#dee2e6`, muted `#c2c8ce` (site `.dimmed`), border `#495057`. Green accents stay on the brand hue (`#40c972` / `#3db86a`, mint panel `#193825`) rather than the site’s greyer sage, so they read on desktop chrome.
 
 Do not use `slate-*`. Light-only leftover `neutral-*` utilities are fine for a static gray, but themed chrome should use the semantic tokens above.
 
@@ -43,16 +44,16 @@ Unchanged across themes. Solid CTAs stay this green — it remains accessible on
 
 | Step    | Hex           | Role                           |
 | ------- | ------------- | ------------------------------ |
-| 50      | `#f2faf5`     | Light soft fill alias          |
-| 100     | `#e1f4e8`     | Light focus ring alias         |
-| 200     | `#c8ead4`     | Light soft border              |
-| 300     | `#9ad6af`     |                                |
-| 400     | `#5dc080`     | Focus border                   |
-| 500     | `#3ba561`     |                                |
-| **600** | **`#2d864e`** | **CTA / primary — `gm-green`** |
-| 700     | `#236e3d`     | Primary hover / light accent   |
-| 800     | `#1c5a31`     |                                |
-| 900     | `#164928`     |                                |
+| 50      | `#ebf9f0`     | Light soft fill alias          |
+| 100     | `#d9f2e2`     | Light focus ring alias         |
+| 200     | `#ace2c0`     | Light soft border              |
+| 300     | `#73d396`     |                                |
+| 400     | `#40c972`     | Focus border / dark accent     |
+| 500     | `#2bab5a`     |                                |
+| **600** | **`#1f8444`** | **CTA / primary — `gm-green`** |
+| 700     | `#186d37`     | Primary hover / light accent   |
+| 800     | `#13532b`     |                                |
+| 900     | `#103c20`     |                                |
 
 `--color-gm-green` is an alias of brand-600, so existing usages keep working.
 
@@ -65,7 +66,7 @@ Pattern: fill + text + border, **11px**, medium weight. Use the semantic classes
 | Role                              | Light fill / text / border        | Dark fill / text / border         |
 | --------------------------------- | --------------------------------- | --------------------------------- |
 | Neutral / idle                    | `#f5f5f5` / `#666666` / `#e5e5e5` | `#2b3035` / `#c2c8ce` / `#495057` |
-| Success / completed / ready       | `#f2faf5` / `#236e3d` / `#c8ead4` | `#1f3932` / `#75b798` / `#4ab98a` |
+| Success / completed / ready       | `#ebf9f0` / `#186d37` / `#ace2c0` | `#193825` / `#40c972` / `#3db86a` |
 | Danger / failed / needs work      | `#fef3f2` / `#b42318` / `#fecdca` | `#2c0b0e` / `#ea868f` / `#842029` |
 | Warning / in progress / attention | `#fffaeb` / `#b54708` / `#fedf89` | `#332701` / `#ffda6a` / `#997404` |
 | Info / downloading / running      | `#f0f9ff` / `#0369a1` / `#bae6fd` | `#032830` / `#6edff6` / `#087990` |
@@ -254,7 +255,7 @@ Tailwind v4 has no JS config here. Brand scale and semantic aliases live in `@th
   --font-body: "Inter", system-ui, sans-serif;
   --font-heading: "Noto Serif", Georgia, serif;
 
-  --color-brand-600: #2d864e;
+  --color-brand-600: #1f8444;
   --color-canvas: var(--gm-canvas);
   --color-surface: var(--gm-surface);
   --color-fg: var(--gm-fg);

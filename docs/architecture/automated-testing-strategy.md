@@ -89,7 +89,8 @@ sent to an AI provider.
 ### Lesson catalog joins
 
 These tests check how separate lesson, exercise, detour, and hands-on catalogs
-are combined into the ordered outline shown by the app.
+are combined into the ordered outline shown by the app, including `text.md`
+marker order and catalog fallbacks.
 
 They are meant to catch:
 
@@ -97,11 +98,14 @@ They are meant to catch:
 - work-in-progress exercises becoming visible;
 - detour exercises appearing at the top level or under the wrong detour;
 - missing detours causing unrelated content to be joined accidentally;
-- catalog order being lost; and
+- catalog order being lost when lesson source is missing;
+- interleaved marker order being flattened back into kind groups;
+- preview panels or duplicate hop identifiers becoming extra rows; and
 - hands-on items receiving an invalid panel identity.
 
-The inputs are small in-memory catalog objects. The expected result is
-structured data rather than rendered UI, so no browser or DOM is needed.
+The inputs are small in-memory catalog objects and markdown snippets. The
+expected result is structured data rather than rendered UI, so no browser or
+DOM is needed.
 
 ### Renderer history conversion
 
