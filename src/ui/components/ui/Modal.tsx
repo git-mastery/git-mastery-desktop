@@ -14,12 +14,18 @@ export const Modal = ({
   onClose,
   title,
   size = "md",
+  dimBackground = true,
+  excludeWorkColumn = false,
   children,
 }: {
   opened: boolean;
   onClose: () => void;
   title?: ReactNode;
   size?: keyof typeof SIZES;
+  /** Turn off the full-window scrim when the caller dims individual panes. */
+  dimBackground?: boolean;
+  /** Centre within the header/sidebar/lesson area, excluding the work column. */
+  excludeWorkColumn?: boolean;
   children: ReactNode;
 }) => {
   const id = useId();
@@ -59,16 +65,20 @@ export const Modal = ({
     // Opens and closes instantly: the native view underneath cannot animate with
     // the DOM, so any transition here only reads as a flicker.
     <div
-      className="fixed inset-0 z-[300] flex items-center justify-center overflow-y-auto bg-overlay p-6"
+      className={cx(
+        "fixed inset-y-0 left-0 z-[300] flex items-center justify-center overflow-y-auto p-6",
+        excludeWorkColumn ? "right-[var(--gm-aside-width)]" : "right-0",
+        dimBackground ? "bg-overlay" : "pointer-events-none",
+      )}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (dimBackground && event.target === event.currentTarget) onClose();
       }}
     >
       <div
         role="dialog"
         aria-modal="true"
         className={cx(
-          "w-full rounded-2xl border border-border bg-surface shadow-card",
+          "pointer-events-auto w-full rounded-2xl border border-border bg-surface shadow-card",
           SIZES[size],
         )}
       >

@@ -11,16 +11,16 @@
 
   --animate-gm-typing: gm-typing 1.1s ease-in-out infinite;
 
-  --color-brand-50: #f2faf5;
-  --color-brand-100: #e1f4e8;
-  --color-brand-200: #c8ead4;
-  --color-brand-300: #9ad6af;
-  --color-brand-400: #5dc080;
-  --color-brand-500: #3ba561;
-  --color-brand-600: #2d864e;
-  --color-brand-700: #236e3d;
-  --color-brand-800: #1c5a31;
-  --color-brand-900: #164928;
+  --color-brand-50: #ebf9f0;
+  --color-brand-100: #d9f2e2;
+  --color-brand-200: #ace2c0;
+  --color-brand-300: #73d396;
+  --color-brand-400: #40c972;
+  --color-brand-500: #2bab5a;
+  --color-brand-600: #1f8444;
+  --color-brand-700: #186d37;
+  --color-brand-800: #13532b;
+  --color-brand-900: #103c20;
 
   --color-gm-green: var(--color-brand-600);
   --color-gm-bone: #f8f8f8;
@@ -42,6 +42,7 @@
   --color-accent-soft-hover: var(--gm-accent-soft-hover);
   --color-accent-border: var(--gm-accent-border);
   --color-focus-ring: var(--gm-focus-ring);
+  --color-focus-mask: var(--gm-focus-mask);
   --color-danger: var(--gm-danger);
   --color-danger-solid: var(--gm-danger-solid);
   --color-danger-solid-hover: var(--gm-danger-solid-hover);
@@ -91,11 +92,12 @@
   --gm-overlay: rgb(23 23 23 / 0.25);
   /* Walkthrough dimming. Mirrored in src/electron/ipc/webContentsView.ts for the lesson page. */
   --gm-dim: rgb(23 23 23 / 0.7);
-  --gm-accent: #236e3d;
-  --gm-accent-soft: #f2faf5;
-  --gm-accent-soft-hover: #e1f4e8;
-  --gm-accent-border: #c8ead4;
-  --gm-focus-ring: #e1f4e8;
+  --gm-accent: #186d37;
+  --gm-accent-soft: #ebf9f0;
+  --gm-accent-soft-hover: #d9f2e2;
+  --gm-accent-border: #ace2c0;
+  --gm-focus-ring: #d9f2e2;
+  --gm-focus-mask: #d9dcdf;
   --gm-danger: #b42318;
   --gm-danger-solid: #b42318;
   --gm-danger-solid-hover: #912018;
@@ -133,11 +135,12 @@ html[data-theme="dark"] {
   --gm-border: #495057;
   --gm-overlay: rgb(0 0 0 / 0.5);
   --gm-dim: rgb(0 0 0 / 0.7);
-  --gm-accent: #75b798;
-  --gm-accent-soft: #1f3932;
-  --gm-accent-soft-hover: #264a40;
-  --gm-accent-border: #4ab98a;
-  --gm-focus-ring: rgb(117 183 152 / 0.35);
+  --gm-accent: #40c972;
+  --gm-accent-soft: #193825;
+  --gm-accent-soft-hover: #1f472e;
+  --gm-accent-border: #3db86a;
+  --gm-focus-ring: rgb(64 201 114 / 0.4);
+  --gm-focus-mask: #17191b;
   --gm-danger: #ea868f;
   --gm-danger-solid: #b42318;
   --gm-danger-solid-hover: #912018;

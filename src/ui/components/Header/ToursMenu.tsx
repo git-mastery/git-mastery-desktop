@@ -29,7 +29,7 @@ import {
 } from "../../hooks/query/useCourseEdition";
 import { useDetours } from "../../hooks/query/useDetours";
 import { useExercises } from "../../hooks/query/useExercises";
-import { useHandsOn } from "../../hooks/query/useHandsOn";
+import { useLessonSource } from "../../hooks/query/useLessonSource";
 import { StatusPill } from "../ui/StatusPill";
 import { formatExerciseIdentifier } from "../../utils/format";
 import {
@@ -186,7 +186,7 @@ export const ToursPanel = ({ onClose }: { onClose: () => void }) => {
     return [...names].sort();
   }, [tours]);
 
-  const { data: handsOnByLesson } = useHandsOn(lessonNames);
+  const { data: markersByLesson } = useLessonSource(lessonNames);
 
   const outlinesByLesson = useMemo(() => {
     const map = new Map<string, LessonOutlineItem[]>();
@@ -198,13 +198,13 @@ export const ToursPanel = ({ onClose }: { onClose: () => void }) => {
             lesson.lesson_name,
             exercisesQuery.data,
             detours,
-            handsOnByLesson?.[lesson.lesson_name],
+            markersByLesson?.[lesson.lesson_name],
           ),
         );
       }
     }
     return map;
-  }, [tours, exercisesQuery.data, detours, handsOnByLesson]);
+  }, [tours, exercisesQuery.data, detours, markersByLesson]);
 
   return (
     <div className="flex h-full flex-col bg-surface">
@@ -344,7 +344,7 @@ const TourItem = ({
           aria-expanded={opened}
           onClick={() => setOpened((value) => !value)}
           className={cx(
-            "relative z-[1] flex min-w-0 flex-1 items-stretch text-left text-sm font-semibold leading-normal text-fg hover:cursor-pointer focus-visible:outline-none",
+            "relative z-[1] flex min-w-0 flex-1 items-stretch text-left text-sm font-black leading-normal text-fg hover:cursor-pointer focus-visible:outline-none",
             isActive && "text-accent",
             percent === 0 && listItemHover,
           )}
@@ -445,7 +445,7 @@ const LessonItem = ({
             setOpened((value) => !value);
           }}
           className={cx(
-            "flex min-w-0 flex-1 items-stretch text-left text-sm font-semibold leading-normal text-fg hover:cursor-pointer focus-visible:outline-none",
+            "flex min-w-0 flex-1 items-stretch text-left text-sm font-black leading-normal text-fg hover:cursor-pointer focus-visible:outline-none",
             isActive && "text-accent",
             !filled && listItemHover,
           )}

@@ -20,6 +20,8 @@ import {
 } from "./components/Walkthrough/Walkthrough";
 import { LessonsDoneProvider } from "./providers/LessonsDoneProvider";
 import { cx } from "./utils/cx";
+import { useActivity } from "./contexts/ActivityContext";
+import { ActivityFeedbackModal } from "./components/Exercise/ActivityFeedbackModal";
 
 const MIN_MAIN = 320;
 const MIN_ASIDE = 280;
@@ -46,6 +48,8 @@ function App() {
   const focusTerminal = walkthrough.step === "terminal";
   const inPaneTour = focusLessons || focusTerminal;
   const walkthroughActive = walkthrough.step !== null;
+  const { focusNotice, dismissFocusNotice } = useActivity();
+  const activityFocusActive = Boolean(focusNotice?.open);
 
   const onLessons = getSiteSection(currentUrl) === "lessons";
   const showLessonsPanel = onLessons && lessonsPanelOpened;
@@ -56,6 +60,18 @@ function App() {
   useEffect(() => {
     setEmbeddedVisible(true);
   }, [setEmbeddedVisible]);
+
+  // The lesson page is a native view, so walkthrough steps must dim and block
+  // it from inside the page rather than with a React element.
+  useEffect(() => {
+    if (focusLessons) {
+      window.electron.setEmbeddedWalkthroughOverlay("block");
+    } else if (focusTerminal) {
+      window.electron.setEmbeddedWalkthroughOverlay("dim");
+    } else {
+      window.electron.setEmbeddedWalkthroughOverlay("off");
+    }
+  }, [focusLessons, focusTerminal]);
 
   // Pane sizes live in custom properties so a drag can resize them — and with
   // them the native view's bounds — without a React render.
@@ -87,7 +103,10 @@ function App() {
           {showLessonsPanel && (
             <nav className="relative w-[300px] min-w-0 shrink-0 border-r border-border bg-surface">
               <ToursPanel onClose={() => setLessonsPanelOpened(false)} />
-              <WalkthroughDim show={focusTerminal} />
+              <WalkthroughDim
+                show={focusTerminal || activityFocusActive}
+                opaque={activityFocusActive}
+              />
             </nav>
           )}
 
@@ -102,7 +121,10 @@ function App() {
             )}
             <WebsiteWrapper />
             <WalkthroughShield show={focusLessons} />
-            <WalkthroughDim show={focusTerminal} />
+            <WalkthroughDim
+              show={focusTerminal || activityFocusActive}
+              opaque={activityFocusActive}
+            />
           </main>
 
           {/* The work column: AI hints stacked over the terminal, so a hint
@@ -184,6 +206,12 @@ function App() {
         </div>
       </div>
       {onWelcome && <WalkthroughWelcome onNext={walkthrough.next} />}
+      {focusNotice?.open && (
+        <ActivityFeedbackModal
+          notice={focusNotice}
+          onClose={dismissFocusNotice}
+        />
+      )}
     </LessonsDoneProvider>
   );
 }

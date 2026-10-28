@@ -659,7 +659,9 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
         case "download":
           // Routed through startExercise so this path keeps the guard against
           // downloading over an exercise that already exists.
-          void startExercise(mainWindow, commandArgs.join(" "));
+          void startExercise(mainWindow, commandArgs.join(" "), {
+            skipIntro: true,
+          });
           break;
         case "verify":
           void _verify(mainWindow, commandArgs.join(" "));

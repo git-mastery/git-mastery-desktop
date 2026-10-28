@@ -371,7 +371,7 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
     if (channel === "wcv-start-exercise") {
       const { exerciseId } = args[0] as { exerciseId: string };
       console.log("[wcv] start exercise clicked:", exerciseId);
-      void startExercise(mainWindow, `${exerciseId}`);
+      void startExercise(mainWindow, `${exerciseId}`, { skipIntro: true });
     } else if (channel === "wcv-verify-exercise") {
       const { exerciseId } = args[0] as { exerciseId: string };
       console.log("[wcv] verify exercise clicked:", exerciseId);
@@ -391,9 +391,9 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
     // window.wcvBridge is available because wcv-preload.cts is loaded.
     await wcv.webContents.executeJavaScript(`
       (function() {
-        var SOLID_BG = "#2d864e";
-        var SOLID_HOVER = "#236e3d";
-        var OUTLINE_BORDER = "#2d864e";
+        var SOLID_BG = "#1f8444";
+        var SOLID_HOVER = "#186d37";
+        var OUTLINE_BORDER = "#1f8444";
 
         function isDark() {
           return document.documentElement.getAttribute("data-bs-theme") === "dark";
@@ -401,8 +401,8 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
 
         function outlineColors() {
           return isDark()
-            ? { text: "#75b798", hoverBg: "#1f3932" }
-            : { text: "#236e3d", hoverBg: "#f2faf5" };
+            ? { text: "#40c972", hoverBg: "#193825" }
+            : { text: "#186d37", hoverBg: "#ebf9f0" };
         }
 
         var ICON_DOWNLOAD = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>';
@@ -434,7 +434,7 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           btn.disabled = busy;
           btn.setAttribute("aria-busy", busy ? "true" : "false");
           btn.style.opacity = busy ? "0.7" : "1";
-          btn.style.cursor = busy ? "progress" : "pointer";
+          btn.style.cursor = busy ? "default" : "pointer";
           if (busy) {
             btn.dataset.gmIdleHtml = btn.innerHTML;
             var label = btn.querySelector("span");

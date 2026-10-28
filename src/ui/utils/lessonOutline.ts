@@ -1,11 +1,6 @@
 import type { Detours } from "../../types/Detour";
 import type { Exercise, Exercises } from "../../types/Exercise";
-
-type HandsOnInput = {
-  identifier: string;
-  title: string;
-  panelId: string | null;
-};
+import type { LessonMarker } from "./lessonMarkers";
 
 export type LessonOutlineHandsOn = {
   kind: "hands-on";
@@ -36,39 +31,24 @@ export type LessonOutlineItem =
 const detourIdentity = (lessonName: string, title: string) =>
   `${lessonName}\0${title}`;
 
-/**
- * Ordered contents of one lesson: hands-on, then lesson exercises, then
- * detours (each with the exercises that belong to that detour).
- *
- * JSON key order is the order they appear on the lesson page. Exercises with a
- * `detour` nest under that detour rather than listing as lesson exercises.
- */
-export function buildLessonOutline(
+const indexLessonCatalog = (
   lessonName: string,
   exercises: Exercises | undefined,
   detours: Detours | undefined,
-  handsOn: HandsOnInput[] | undefined,
-): LessonOutlineItem[] {
-  const items: LessonOutlineItem[] = [];
-
-  for (const hop of handsOn ?? []) {
-    items.push({
-      kind: "hands-on",
-      identifier: hop.identifier,
-      title: hop.title,
-      panelId: hop.panelId ?? `hands-on-${hop.identifier}`,
-    });
-  }
-
+) => {
   const detoursForLesson: { key: string; title: string }[] = [];
+  const detourByKey = new Map<string, { key: string; title: string }>();
   const detourKeyByIdentity = new Map<string, string>();
   for (const [key, detour] of Object.entries(detours ?? {})) {
     if (detour.lesson.lesson_name !== lessonName) continue;
-    detoursForLesson.push({ key, title: detour.title });
+    const entry = { key, title: detour.title };
+    detoursForLesson.push(entry);
+    detourByKey.set(key, entry);
     detourKeyByIdentity.set(detourIdentity(lessonName, detour.title), key);
   }
 
   const lessonExercises: CataloguedExercise[] = [];
+  const lessonExerciseByKey = new Map<string, CataloguedExercise>();
   const exercisesByDetourKey = new Map<string, CataloguedExercise[]>();
 
   for (const [catalogKey, exercise] of Object.entries(exercises ?? {})) {
@@ -91,20 +71,91 @@ export function buildLessonOutline(
       continue;
     }
 
-    lessonExercises.push({ catalogKey, exercise });
+    const item = { catalogKey, exercise };
+    lessonExercises.push(item);
+    lessonExerciseByKey.set(catalogKey, item);
+  }
+
+  return {
+    detoursForLesson,
+    detourByKey,
+    lessonExercises,
+    lessonExerciseByKey,
+    exercisesByDetourKey,
+  };
+};
+
+const handsOnItem = (marker: Extract<LessonMarker, { kind: "hands-on" }>) => ({
+  kind: "hands-on" as const,
+  identifier: marker.identifier,
+  title: marker.title,
+  panelId: marker.panelId ?? `hands-on-${marker.identifier}`,
+});
+
+const detourItem = (
+  detour: { key: string; title: string },
+  exercisesByDetourKey: Map<string, CataloguedExercise[]>,
+): LessonOutlineDetour => ({
+  kind: "detour",
+  detourKey: detour.key,
+  title: detour.title,
+  exercises: exercisesByDetourKey.get(detour.key) ?? [],
+});
+
+/**
+ * Ordered contents of one lesson. When `text.md` markers are available they
+ * set the row order; unmatched catalog exercises and detours are appended in
+ * JSON key order. Hands-on rows come only from markers.
+ *
+ * Exercises with a `detour` nest under that detour rather than listing as
+ * lesson exercises. `wip` exercises are omitted.
+ */
+export function buildLessonOutline(
+  lessonName: string,
+  exercises: Exercises | undefined,
+  detours: Detours | undefined,
+  markers: LessonMarker[] | undefined,
+): LessonOutlineItem[] {
+  const {
+    detoursForLesson,
+    detourByKey,
+    lessonExercises,
+    lessonExerciseByKey,
+    exercisesByDetourKey,
+  } = indexLessonCatalog(lessonName, exercises, detours);
+
+  const items: LessonOutlineItem[] = [];
+  const usedExerciseKeys = new Set<string>();
+  const usedDetourKeys = new Set<string>();
+
+  for (const marker of markers ?? []) {
+    if (marker.kind === "hands-on") {
+      items.push(handsOnItem(marker));
+      continue;
+    }
+
+    if (marker.kind === "exercise") {
+      const found = lessonExerciseByKey.get(marker.catalogKey);
+      if (!found || usedExerciseKeys.has(marker.catalogKey)) continue;
+      usedExerciseKeys.add(marker.catalogKey);
+      items.push({ kind: "exercise", ...found });
+      continue;
+    }
+
+    const detour = detourByKey.get(marker.detourKey);
+    if (!detour || usedDetourKeys.has(marker.detourKey)) continue;
+    usedDetourKeys.add(marker.detourKey);
+    items.push(detourItem(detour, exercisesByDetourKey));
   }
 
   for (const item of lessonExercises) {
+    if (usedExerciseKeys.has(item.catalogKey)) continue;
     items.push({ kind: "exercise", ...item });
   }
 
   for (const detour of detoursForLesson) {
-    items.push({
-      kind: "detour",
-      detourKey: detour.key,
-      title: detour.title,
-      exercises: exercisesByDetourKey.get(detour.key) ?? [],
-    });
+    if (usedDetourKeys.has(detour.key)) continue;
+    items.push(detourItem(detour, exercisesByDetourKey));
   }
 
   return items;
