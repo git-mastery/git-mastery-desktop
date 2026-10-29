@@ -3,10 +3,8 @@ import { Terminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { useTheme } from "../../contexts/ThemeContext";
-import type { ResolvedTheme } from "../../utils/theme";
-
 /** Background sits slightly off chrome so the pane reads as a terminal. */
-const XTERM_THEMES: Record<ResolvedTheme, ITheme> = {
+const XTERM_THEMES: Record<SitePageTheme, ITheme> = {
   light: {
     background: "#f1f3f4",
     foreground: "#333333",
@@ -30,7 +28,7 @@ const XTERM_THEMES: Record<ResolvedTheme, ITheme> = {
 };
 
 const XTermComponent = () => {
-  const { resolved } = useTheme();
+  const { theme } = useTheme();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
 
@@ -85,8 +83,8 @@ const XTermComponent = () => {
   useEffect(() => {
     const term = termRef.current;
     if (!term) return;
-    term.options.theme = XTERM_THEMES[resolved];
-  }, [resolved]);
+    term.options.theme = XTERM_THEMES[theme];
+  }, [theme]);
 
   return <div ref={wrapperRef} className="h-full w-full bg-terminal" />;
 };

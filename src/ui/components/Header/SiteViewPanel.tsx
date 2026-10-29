@@ -11,7 +11,6 @@ import {
   readDesktopSiteViewPrefs,
   writeDesktopSiteViewPrefs,
 } from "../../utils/siteViewPrefs";
-import { useTheme } from "../../contexts/ThemeContext";
 import {
   useCustardUIConfig,
   type CustardUIConfigFile,
@@ -23,15 +22,8 @@ type FormState = {
   tabs: Record<string, string>;
   toggles: Record<string, ToggleMode>;
   tabNavsVisible: boolean;
-  theme: SitePageTheme;
   adaptationId: string;
 };
-
-const THEME_MODES: { id: SitePageTheme; label: string }[] = [
-  { id: "light", label: "Light" },
-  { id: "dark", label: "Dark" },
-  { id: "system", label: "System" },
-];
 
 const TOGGLE_MODES: { id: ToggleMode; label: string }[] = [
   { id: "show", label: "Show" },
@@ -71,7 +63,6 @@ function defaultsFromConfig(config: CustardUIConfigFile): FormState {
     tabs,
     toggles,
     tabNavsVisible: true,
-    theme: "system",
     adaptationId: "",
   };
 }
@@ -112,7 +103,6 @@ function mergePrefsIntoForm(
     );
   }
   base.tabNavsVisible = prefs.tabNavsVisible;
-  base.theme = prefs.theme ?? "system";
   base.adaptationId = normalizeAdaptationId(prefs.adaptationId) ?? "";
   return base;
 }
@@ -141,7 +131,6 @@ function formToPrefs(form: FormState): SiteViewPrefs {
       placeholders,
     },
     tabNavsVisible: form.tabNavsVisible,
-    theme: form.theme,
     adaptationId: normalizeAdaptationId(form.adaptationId),
   };
 }
@@ -188,7 +177,6 @@ async function resolveAdaptationId(
 
 export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
   const { data: config, isPending, isError, refetch } = useCustardUIConfig();
-  const { setPreference } = useTheme();
   const [form, setForm] = useState<FormState | null>(null);
   const [saved, setSaved] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
@@ -200,11 +188,7 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
 
     const seed = async () => {
       const desktop = readDesktopSiteViewPrefs();
-      const site =
-        desktop?.theme != null ? null : await window.electron.getSitePrefs();
-      const prefs = desktop
-        ? { ...desktop, theme: desktop.theme ?? site?.theme }
-        : site;
+      const prefs = desktop ?? (await window.electron.getSitePrefs());
       const next = prefs
         ? mergePrefsIntoForm(config, prefs)
         : defaultsFromConfig(config);
@@ -265,7 +249,6 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
       const prefs = formToPrefs(toSave);
       writeDesktopSiteViewPrefs(prefs);
       await window.electron.setSitePrefs({ ...prefs, reload: true });
-      if (prefs.theme) setPreference(prefs.theme);
       setForm(toSave);
       setSaved(toSave);
       if (close) onClose?.();
@@ -293,33 +276,6 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
         {adaptationError && (
           <p className="text-[13px] text-danger">{adaptationError}</p>
         )}
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span className={FIELD_LABEL}>Colour</span>
-        <div role="radiogroup" aria-label="Colour" className="flex gap-1">
-          {THEME_MODES.map((mode) => {
-            const active = form.theme === mode.id;
-            return (
-              <button
-                key={mode.id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => setForm({ ...form, theme: mode.id })}
-                className={cx(
-                  "rounded-md px-2.5 py-1 text-[13px] font-medium hover:cursor-pointer",
-                  "focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none",
-                  active
-                    ? "bg-accent-soft text-accent"
-                    : "text-muted hover:bg-hover hover:text-fg",
-                )}
-              >
-                {mode.label}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {placeholders.length > 0 && (

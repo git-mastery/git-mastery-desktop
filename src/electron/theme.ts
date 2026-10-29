@@ -7,57 +7,72 @@ export const THEME_BACKGROUND = {
   dark: "#212529",
 } as const;
 
-let appliedPreference: SitePageTheme = "system";
-let appliedResolved: "light" | "dark" = "light";
+let appliedTheme: SitePageTheme = "light";
 let backgroundTarget: ((color: string) => void) | null = null;
+let pageThemeTarget: ((theme: SitePageTheme, reload: boolean) => void) | null =
+  null;
 
-export function getAppliedResolvedTheme(): "light" | "dark" {
-  return appliedResolved;
+export function getAppliedResolvedTheme(): SitePageTheme {
+  return appliedTheme;
 }
 
 export function registerThemeBackgroundTarget(setter: (color: string) => void) {
   backgroundTarget = setter;
-  setter(THEME_BACKGROUND[appliedResolved]);
+  setter(THEME_BACKGROUND[appliedTheme]);
 }
 
-export function resolveFromOs(preference: SitePageTheme): "light" | "dark" {
-  if (preference === "light" || preference === "dark") return preference;
+export function registerThemePageTarget(
+  setter: (theme: SitePageTheme, reload: boolean) => void,
+) {
+  pageThemeTarget = setter;
+  setter(appliedTheme, false);
+}
+
+export function resolveFromOs(): SitePageTheme {
   return nativeTheme.shouldUseDarkColors ? "dark" : "light";
 }
 
+/** Missing or legacy `"system"` values resolve from the OS once and are persisted. */
 export function readStoredThemePreference(): SitePageTheme {
   const theme = getConfig().theme;
-  return theme === "light" || theme === "dark" || theme === "system"
-    ? theme
-    : "system";
+  if (theme === "light" || theme === "dark") return theme;
+  const resolved = resolveFromOs();
+  saveConfig({ theme: resolved });
+  return resolved;
 }
 
 export function applyAppTheme(
   mainWindow: BrowserWindow,
-  preference: SitePageTheme,
-  resolved: "light" | "dark" = resolveFromOs(preference),
+  theme: SitePageTheme,
   persist = false,
 ) {
-  appliedPreference = preference;
-  appliedResolved = resolved;
-  nativeTheme.themeSource = preference;
-  const background = THEME_BACKGROUND[resolved];
+  if (theme !== "light" && theme !== "dark") {
+    console.warn("[theme] ignored invalid theme value:", theme);
+    return;
+  }
+  const changed = theme !== appliedTheme;
+  appliedTheme = theme;
+  nativeTheme.themeSource = theme;
+  const background = THEME_BACKGROUND[theme];
   if (!mainWindow.isDestroyed()) {
     mainWindow.setBackgroundColor(background);
   }
   backgroundTarget?.(background);
-  if (persist) saveConfig({ theme: preference });
+  pageThemeTarget?.(theme, persist && changed);
+  if (persist) saveConfig({ theme });
 }
 
-export function setupTheme(mainWindow: BrowserWindow) {
-  applyAppTheme(mainWindow, readStoredThemePreference());
+export function setupTheme(
+  mainWindow: BrowserWindow,
+  theme = readStoredThemePreference(),
+) {
+  applyAppTheme(mainWindow, theme);
 
-  nativeTheme.on("updated", () => {
-    if (appliedPreference !== "system") return;
-    applyAppTheme(mainWindow, "system");
-  });
-
-  ipcMainOn("set-app-theme", ({ preference, resolved }) => {
-    applyAppTheme(mainWindow, preference, resolved, true);
+  ipcMainOn("set-app-theme", (payload) => {
+    // Keep the original `{ preference, resolved }` IPC contract. The `theme`
+    // branch tolerates a renderer left open during development while this
+    // binary-only migration was being introduced.
+    const next = "theme" in payload ? payload.theme : payload.resolved;
+    applyAppTheme(mainWindow, next, true);
   });
 }

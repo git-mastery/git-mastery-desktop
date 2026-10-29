@@ -4,8 +4,7 @@ Agent SSOT for color, typography, spacing, radius, shadow, motion, and surface r
 The shipped subset lives in [`src/ui/index.css`](../../../../src/ui/index.css).
 
 Light and Dark share the same token names. Values swap on `html[data-theme]`.
-System follows `prefers-color-scheme`. Do not add `dark:` class variants when a
-semantic token exists.
+Do not add `dark:` class variants when a semantic token exists.
 
 ---
 
@@ -226,20 +225,19 @@ Inverted chip so it stays readable on both canvases: dark on light (`#171717` / 
 
 ## 8. Theme
 
-One preference — Light, Dark, or System — in **Settings → Customise**. It themes both the Electron chrome and the embedded git-mastery.org pages.
+One preference — Light or Dark — from the **header sun/moon toggle**. It themes the Electron chrome, xterm, and the embedded git-mastery.org pages. Missing or legacy `"system"` values resolve from the OS once, then persist as Light or Dark.
 
-| Preference | Chrome                         | Lesson pages                            |
-| ---------- | ------------------------------ | --------------------------------------- |
-| Light      | `data-theme="light"`           | `localStorage.markbind-theme = "light"` |
-| Dark       | `data-theme="dark"`            | `localStorage.markbind-theme = "dark"`  |
-| System     | follows `prefers-color-scheme` | key removed; MarkBind follows the OS    |
+| Preference | Chrome               | Lesson pages                            |
+| ---------- | -------------------- | --------------------------------------- |
+| Light      | `data-theme="light"` | `localStorage.markbind-theme = "light"` |
+| Dark       | `data-theme="dark"`  | `localStorage.markbind-theme = "dark"`  |
 
 Rules:
 
 - Apply `data-theme` and `color-scheme` on `<html>` **before paint** (inline script in `index.html`).
-- Persist in renderer `site-view-prefs` and electron `config.json` (`theme`).
+- Persist in renderer `gm-theme` and electron `config.json` (`theme`).
 - Main process sets `nativeTheme.themeSource`, `BrowserWindow` background, and `WebContentsView` background (`#ffffff` / `#212529`) so loads do not flash the wrong colour.
-- Saving reloads the embedded page so MarkBind’s `theme-manager.js` sees the new key.
+- Toggling writes `markbind-theme` and reloads the loaded lesson once so MarkBind applies its complete theme. Synchronizing an unchanged theme during startup must not reload.
 - Do **not** add a second theme control, and do **not** use `dark:` utilities when a semantic token already swaps.
 
 ---
