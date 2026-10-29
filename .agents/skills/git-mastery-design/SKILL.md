@@ -49,7 +49,7 @@ House design language for Git-Mastery Desktop: semantic light/dark surfaces, one
 6. **Semantic color is never the only signal.** Pair color with text, icons, or `aria-label` on status dots and pills.
 7. **One solid primary per action cluster.** Everything else is secondary, outline, or ghost.
 8. **The native view wins.** Anything painted by `WebContentsView` sits above all DOM — design around it rather than over it (see [`references/components-and-patterns.md`](references/components-and-patterns.md) § Native view constraints).
-9. **One theme preference.** Light / Dark / System applies to desktop chrome, the embedded lesson pages, and the xterm pane. Reach for semantic tokens (`bg-surface`, `text-fg`), not `dark:` class variants or one-off hex.
+9. **One theme preference.** Light or Dark from the header sun/moon toggle applies to desktop chrome, the embedded lesson pages, and the xterm pane. Reach for semantic tokens (`bg-surface`, `text-fg`), not `dark:` class variants or one-off hex.
 
 ## Shell modes
 
@@ -59,7 +59,7 @@ Two layouts. **Tokens and components are identical**; only chrome and title scal
 
 The normal running state of the app.
 
-- Fixed 64px header (Lessons / Exercises / Progress on the left, settings on the right), a main content pane, and a resizable aside holding the terminal. The lessons panel toggle lives in the content pane (slim bar above the native view when closed; panel header when open), not in the header.
+- Fixed 64px header (Lessons / Exercises / Progress on the left, help / theme / settings on the right), a main content pane, and a resizable aside holding the terminal. The lessons panel toggle lives in the content pane (slim bar above the native view when closed; panel header when open), not in the header.
 - **No page-level scroll.** The window is the viewport; each pane owns its own scroll container.
 - Content pane titles use the serif h1 scale; per-view toolbars sit inside the pane, not in the header.
 - The main pane may host the native web view, in which case it must stay an empty bounds placeholder.

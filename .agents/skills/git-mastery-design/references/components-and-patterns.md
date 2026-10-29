@@ -8,26 +8,26 @@ Component recipes and screen composition patterns. Pair with [`tokens-and-surfac
 
 Build screens from these composable pieces:
 
-| Primitive                        | Role                                                 |
-| -------------------------------- | ---------------------------------------------------- |
-| `AppHeader`                      | Fixed 64px bar — site nav left, settings right       |
-| `Card`                           | Solid opaque panel with border (and optional shadow) |
-| `SectionTitle`                   | Serif group header with hairline underline           |
-| `ListRow`                        | Dense catalog / result row with trailing action      |
-| `StatusPill`                     | Exercise or task state                               |
-| `Field` + `TextInput` / `Select` | Form controls with uppercase micro-labels            |
-| `SearchInput`                    | Leading icon, grows to fill the toolbar              |
-| `TabFilter`                      | Underlined tabs with counts                          |
-| `MenuDropdown`                   | Icon trigger + labelled item list                    |
-| `Modal`                          | Solid dialog over a dim overlay                      |
-| `Toast`                          | Top-right ephemeral feedback                         |
-| `Stepper`                        | Short progress rail for first-run flows              |
-| `ChecklistRow`                   | Status icon + label + detail + inline actions        |
-| `EmptyState`                     | Centered muted icon + title + hint                   |
-| `LoadingState` / `ErrorState`    | Centered spinner or failure copy                     |
-| `ResizeHandle`                   | 6px col-resize strip on a pane edge                  |
-| `TerminalPane`                   | Full-bleed xterm; `bg-terminal` half-step off chrome |
-| `NativeViewSlot`                 | Empty bounds placeholder for the native web view     |
+| Primitive                        | Role                                                          |
+| -------------------------------- | ------------------------------------------------------------- |
+| `AppHeader`                      | Fixed 64px bar — site nav left, help / theme / settings right |
+| `Card`                           | Solid opaque panel with border (and optional shadow)          |
+| `SectionTitle`                   | Serif group header with hairline underline                    |
+| `ListRow`                        | Dense catalog / result row with trailing action               |
+| `StatusPill`                     | Exercise or task state                                        |
+| `Field` + `TextInput` / `Select` | Form controls with uppercase micro-labels                     |
+| `SearchInput`                    | Leading icon, grows to fill the toolbar                       |
+| `TabFilter`                      | Underlined tabs with counts                                   |
+| `MenuDropdown`                   | Icon trigger + labelled item list                             |
+| `Modal`                          | Solid dialog over a dim overlay                               |
+| `Toast`                          | Top-right ephemeral feedback                                  |
+| `Stepper`                        | Short progress rail for first-run flows                       |
+| `ChecklistRow`                   | Status icon + label + detail + inline actions                 |
+| `EmptyState`                     | Centered muted icon + title + hint                            |
+| `LoadingState` / `ErrorState`    | Centered spinner or failure copy                              |
+| `ResizeHandle`                   | 6px col-resize strip on a pane edge                           |
+| `TerminalPane`                   | Full-bleed xterm; `bg-terminal` half-step off chrome          |
+| `NativeViewSlot`                 | Empty bounds placeholder for the native web view              |
 
 ---
 
@@ -38,7 +38,7 @@ Build screens from these composable pieces:
 ```text
 h-16 bg-surface border-b border-border px-4
 left:  Lessons / Exercises / Progress (text-base bold; active is accent, no underline)
-right: settings icon button
+right: help, sun/moon theme toggle, settings
 overflow-visible so dropdowns escape the bar
 ```
 
@@ -219,7 +219,7 @@ Empty and error must read differently — "nothing matches your search" is not "
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│ header 64px — Lessons  Exercises  Progress             settings │
+│ header 64px — Lessons  Exercises  Progress     help theme gear │
 ├──────────────┬───────────────────────────┬──────────────────────┤
 │ side panel   │ toggle bar (lessons only) │ terminal aside       │
 │ 300px        │ + native view             │ resizable, 512px     │

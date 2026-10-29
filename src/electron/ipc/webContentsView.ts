@@ -19,6 +19,7 @@ import { parseChatGptQuery } from "../ai/source.js";
 import {
   getAppliedResolvedTheme,
   registerThemeBackgroundTarget,
+  registerThemePageTarget,
   THEME_BACKGROUND,
 } from "../theme.js";
 
@@ -28,7 +29,7 @@ const EMBED_CSS = `
   footer {
     display: none !important;
   }
-  #flex-body > #site-nav,
+  #site-nav,
   #page-nav,
   .toggle-page-nav-button,
   .lower-navbar-container,
@@ -50,6 +51,7 @@ let wcv: WebContentsView | null = null;
 let isHidden = true;
 let isLoading = false;
 let bounds = { x: 0, y: 0, width: 0, height: 0 };
+let navigationGeneration = 0;
 
 /** CustardUI localStorage keys on git-mastery.org (`storageKey: "git-mastery"`). */
 const SITE_STATE_KEY = "git-mastery-custardUI-state";
@@ -152,12 +154,6 @@ function hasLoadedPage() {
 }
 
 function writeSitePrefsScript(prefs: SiteViewPrefs) {
-  const themeWrite =
-    prefs.theme === "light" || prefs.theme === "dark"
-      ? `localStorage.setItem(${JSON.stringify(SITE_THEME_KEY)}, ${JSON.stringify(prefs.theme)});`
-      : prefs.theme === "system"
-        ? `localStorage.removeItem(${JSON.stringify(SITE_THEME_KEY)});`
-        : "";
   const adaptationId = normalizeAdaptationId(prefs.adaptationId);
   const adaptationWrite = adaptationId
     ? `localStorage.setItem(${JSON.stringify(SITE_ADAPTATION_KEY)}, ${JSON.stringify(adaptationId)});`
@@ -167,23 +163,44 @@ function writeSitePrefsScript(prefs: SiteViewPrefs) {
     try {
       localStorage.setItem(${JSON.stringify(SITE_STATE_KEY)}, ${JSON.stringify(JSON.stringify(prefs.state))});
       localStorage.setItem(${JSON.stringify(SITE_TAB_NAV_KEY)}, ${JSON.stringify(prefs.tabNavsVisible ? "true" : "false")});
-      ${themeWrite}
       ${adaptationWrite}
     } catch (e) {}
   })()`;
+}
+
+async function applyEmbeddedTheme(
+  theme = getAppliedResolvedTheme(),
+  reload = false,
+) {
+  if (!wcv || wcv.webContents.isDestroyed() || !hasLoadedPage()) return;
+  if (reload) {
+    beginLoading(getMainWindow());
+  }
+  await wcv.webContents
+    .executeJavaScript(
+      `(function (theme) {
+        try {
+          localStorage.setItem(${JSON.stringify(SITE_THEME_KEY)}, theme);
+        } catch (e) {}
+        document.documentElement.setAttribute("data-bs-theme", theme);
+        if (document.body) document.body.setAttribute("data-bs-theme", theme);
+      })(${JSON.stringify(theme)})`,
+    )
+    .catch(() => {});
+  if (reload && wcv && !wcv.webContents.isDestroyed() && hasLoadedPage()) {
+    wcv.webContents.reload();
+  }
 }
 
 const READ_SITE_PREFS_SCRIPT = `(function () {
   try {
     var raw = localStorage.getItem(${JSON.stringify(SITE_STATE_KEY)});
     var tab = localStorage.getItem(${JSON.stringify(SITE_TAB_NAV_KEY)});
-    var theme = localStorage.getItem(${JSON.stringify(SITE_THEME_KEY)});
     var adaptation = localStorage.getItem(${JSON.stringify(SITE_ADAPTATION_KEY)});
-    if (!raw && tab === null && theme === null && !adaptation) return null;
+    if (!raw && tab === null && !adaptation) return null;
     return {
       state: raw ? JSON.parse(raw) : {},
       tabNavsVisible: tab === null ? true : tab === "true",
-      theme: theme === "dark" || theme === "light" ? theme : "system",
       adaptationId: adaptation || undefined
     };
   } catch (e) {
@@ -219,6 +236,27 @@ function setLoading(mainWindow: BrowserWindow, loading: boolean) {
   isLoading = loading;
   applyBounds();
   sendToRenderer(mainWindow, "wcv-loading", { loading });
+}
+
+function beginLoading(mainWindow: BrowserWindow) {
+  navigationGeneration += 1;
+  setLoading(mainWindow, true);
+  return navigationGeneration;
+}
+
+async function finishEmbed(mainWindow: BrowserWindow, generation: number) {
+  if (!wcv || wcv.webContents.isDestroyed()) return;
+
+  const cssReady = wcv.webContents.insertCSS(EMBED_CSS).catch(() => {});
+  await applySitePrefsToPage();
+  await applyEmbeddedTheme();
+  await cssReady;
+
+  if (generation !== navigationGeneration) return;
+  if (!wcv || wcv.webContents.isDestroyed()) return;
+
+  applyPageWalkthroughOverlay();
+  setLoading(mainWindow, false);
 }
 
 function normalizePathname(pathname: string) {
@@ -326,27 +364,22 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     };
     wcv.webContents.on("did-start-navigation", (details) => {
       if (!details.isMainFrame || details.isSameDocument) return;
-      setLoading(mainWindow, true);
+      beginLoading(mainWindow);
     });
     wcv.webContents.on("did-navigate", emitUrl);
     wcv.webContents.on("did-navigate-in-page", emitUrl);
     wcv.webContents.on("dom-ready", () => {
-      // Write prefs before CustardUI finishes fetchConfig() so it reads our blob.
-      void (async () => {
-        await applySitePrefsToPage();
-        await wcv!.webContents.insertCSS(EMBED_CSS).catch(() => {});
-      })();
-      applyPageWalkthroughOverlay();
+      void finishEmbed(mainWindow, navigationGeneration);
     });
-    wcv.webContents.on("did-fail-load", () => {
-      setLoading(mainWindow, false);
-    });
-    wcv.webContents.on("did-stop-loading", () => {
-      setLoading(mainWindow, false);
-    });
-    wcv.webContents.on("did-finish-load", async () => {
-      await wcv!.webContents.insertCSS(EMBED_CSS).catch(() => {});
-    });
+    wcv.webContents.on(
+      "did-fail-load",
+      (_event, errorCode, _desc, _url, isMainFrame) => {
+        if (!isMainFrame) return;
+        if (errorCode === -3) return;
+        if (wcv?.webContents.isLoadingMainFrame()) return;
+        setLoading(mainWindow, false);
+      },
+    );
 
     injectExerciseButtons(mainWindow);
   }
@@ -867,6 +900,9 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
     wcv?.setBackgroundColor(color);
     if (pageWalkthroughOverlay !== "off") applyPageWalkthroughOverlay();
   });
+  registerThemePageTarget((theme, reload) => {
+    void applyEmbeddedTheme(theme, reload);
+  });
   onAiHintsPageStateChange(pushAiHintsState);
   onExercisePageBusy(setPageBusy);
   ipcMainOn(
@@ -938,7 +974,7 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
       );
       return;
     }
-    setLoading(mainWindow, true);
+    beginLoading(mainWindow);
     view.webContents.loadURL(target);
   });
 
@@ -966,7 +1002,6 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
     sitePrefs = {
       state: prefs.state,
       tabNavsVisible: prefs.tabNavsVisible,
-      theme: prefs.theme,
       adaptationId: normalizeAdaptationId(prefs.adaptationId),
     };
     const view = getOrCreateWcv(mainWindow);
@@ -975,9 +1010,10 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
       const current = view.webContents.getURL();
       const next = stripAdaptationUrlIndicators(current);
       if (next !== current) {
-        setLoading(mainWindow, true);
+        beginLoading(mainWindow);
         view.webContents.loadURL(next);
       } else {
+        beginLoading(mainWindow);
         view.webContents.reload();
       }
     }

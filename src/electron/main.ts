@@ -11,7 +11,6 @@ import { setupAiIpc } from "./ipc/ai.js";
 import { setupStartPrereqIpc } from "./startPrereqs.js";
 import {
   readStoredThemePreference,
-  resolveFromOs,
   setupTheme,
   THEME_BACKGROUND,
 } from "./theme.js";
@@ -26,14 +25,13 @@ export function getMainWindow() {
 }
 
 app.on("ready", () => {
-  const themePreference = readStoredThemePreference();
-  const resolvedTheme = resolveFromOs(themePreference);
+  const theme = readStoredThemePreference();
 
   mainWindow = new BrowserWindow({
     minWidth: 1024,
     minHeight: 680,
     show: false,
-    backgroundColor: THEME_BACKGROUND[resolvedTheme],
+    backgroundColor: THEME_BACKGROUND[theme],
     webPreferences: {
       preload: getPreloadPath(),
     },
@@ -42,7 +40,7 @@ app.on("ready", () => {
     mainWindow?.maximize();
     mainWindow?.show();
   });
-  setupTheme(mainWindow);
+  setupTheme(mainWindow, theme);
   setupTerminalIpc(mainWindow);
   setupGitmasteryIpc(mainWindow);
   setupWebContentsViewIpc(mainWindow);

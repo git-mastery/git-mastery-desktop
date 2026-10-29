@@ -26,12 +26,6 @@ export function readDesktopSiteViewPrefs(): SiteViewPrefs | null {
     return {
       state: parsed.state,
       tabNavsVisible: parsed.tabNavsVisible !== false,
-      theme:
-        parsed.theme === "dark" ||
-        parsed.theme === "light" ||
-        parsed.theme === "system"
-          ? parsed.theme
-          : undefined,
       adaptationId: normalizeAdaptationId(parsed.adaptationId),
     };
   } catch {

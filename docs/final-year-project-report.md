@@ -141,7 +141,7 @@ State is stored according to who needs it:
 
 - Electron `config.json`: exercises root, start preference, theme, provider selection, and provider credentials;
 - Electron `ai-history.json`: versioned, bounded, per-source visible chat transcripts;
-- renderer `localStorage`: walkthrough status, last embedded URL, completed lessons, and desktop copies of site preferences;
+- renderer `localStorage`: walkthrough status, last embedded URL, completed lessons, theme, and desktop copies of site preferences;
 - `git-mastery.org` origin `localStorage`: CustardUI content settings, course edition, and MarkBind theme;
 - Git-Mastery's own files: exercise manifests and progress.
 
@@ -305,7 +305,7 @@ The root selector accepts the folder containing `.gitmastery.json`, or a parent 
 
 The left sidebar follows lesson order and includes hands-on practicals, exercises, and detours. Each item links to the relevant lesson section. Learners can mark lessons as done; each tour row fills from the left to show how many of its lessons are complete. Exercises show **Downloaded**, **In progress**, or **Completed**, and hands-on practicals show whether their sandbox is downloaded.
 
-The Customisation panel controls Light, Dark, or System theme, lesson content and tabs, profile details, and course edition. These settings apply across the desktop interface, terminal, embedded lessons, and sidebar labels. The app also restores the last visited page and opens the terminal in the saved exercises folder.
+A header sun/moon control switches Light and Dark across the desktop interface, terminal, and embedded lessons. On first launch the app follows the operating-system colour once, then keeps that explicit choice. The Customisation panel controls lesson content and tabs, profile details, and course edition. The app also restores the last visited page and opens the terminal in the saved exercises folder.
 
 **Evaluation.** Navigation and progress are available in one place, settings remain consistent across surfaces, and learners can resume where they stopped after restarting.
 
