@@ -40,14 +40,9 @@ While drafting, use the report's placeholder format:
 
 Number figures by chapter and describe the exact state or annotation needed.
 
-To capture the Electron app:
+For Electron screenshots, read and follow the `git-mastery-electron-automation` skill. Navigate to the exact requested state, save the accepted capture under `docs/images/<document-name>/` with a descriptive lowercase filename, and retain it as a documentation artifact.
 
-1. Start it with `npm run dev` and wait for the window to finish rendering.
-2. Identify the Electron main-process PID belonging to this repository; other Electron apps may be running.
-3. Use CoreGraphics window information to find the on-screen, layer-zero window owned by that PID, then capture it with `screencapture -x -l <window-id> <output.png>`.
-4. Inspect the image. Retake it if content is loading, clipped, blank, sensitive, or not representative.
-5. Save it under `docs/images/<document-name>/` with a descriptive lowercase filename.
-6. Replace the TODO with a relative image link and italic caption:
+Replace the TODO with a relative image link and italic caption:
 
 ```markdown
 ![Concise description of the visible feature](images/<document-name>/figure-3-1-description.png)
@@ -55,7 +50,7 @@ To capture the Electron app:
 _Figure 3.1: Concise explanatory caption._
 ```
 
-Adjust the relative path for documents in subdirectories. Never expose API keys, credentials, personal paths, usernames, or unrelated user data. Stop the development app when finished.
+Adjust the relative path for documents in subdirectories. Never expose API keys, credentials, personal paths, usernames, or unrelated user data.
 
 ## Final check
 
