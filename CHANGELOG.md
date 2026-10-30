@@ -1,3 +1,10 @@
+## [1.6.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.5.0...v1.6.0) (2026-10-30)
+
+### Features
+
+* improve learning navigation and feedback ([#41](https://github.com/git-mastery/git-mastery-desktop/issues/41)) ([16fa37a](https://github.com/git-mastery/git-mastery-desktop/commit/16fa37a134426b71fa52f0a349c6e2d2ee1a5aaf))
+* switch Light/Dark from the header without flashing site chrome ([#44](https://github.com/git-mastery/git-mastery-desktop/issues/44)) ([680f8f9](https://github.com/git-mastery/git-mastery-desktop/commit/680f8f9721e678a8a95a3bd58d2450900d739e36))
+
 ## [1.5.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.4.0...v1.5.0) (2026-10-26)
 
 ### Features
