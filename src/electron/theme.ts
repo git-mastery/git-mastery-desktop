@@ -58,7 +58,11 @@ export function applyAppTheme(
     mainWindow.setBackgroundColor(background);
   }
   backgroundTarget?.(background);
-  pageThemeTarget?.(theme, persist && changed);
+  if (persist) {
+    pageThemeTarget?.(theme, changed);
+  } else {
+    pageThemeTarget?.(theme, false);
+  }
   if (persist) saveConfig({ theme });
 }
 
