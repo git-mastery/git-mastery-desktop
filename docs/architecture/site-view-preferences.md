@@ -32,7 +32,7 @@ Renderer `gm-theme` and electron `config.json` `theme` store the same Light / Da
 
 The renderer cannot read `https://git-mastery.org` storage (different origin from `localhost:5123`). Main writes and reads it with `webContents.executeJavaScript`.
 
-MarkBind’s `theme-manager.js` runs in `<head>` and sets `data-bs-theme` from `markbind-theme`. Main writes that key before reloading after a theme toggle, preserving MarkBind’s normal startup path on every lesson. On `dom-ready`, main also synchronizes the key and attributes without triggering another reload.
+MarkBind’s `theme-manager.js` runs in `<head>` and sets `data-bs-theme` from `markbind-theme`. Main writes that key before reloading after a theme toggle, preserving MarkBind’s normal startup path on every lesson. On `dom-ready` and `did-finish-load`, main also synchronizes MarkBind’s full theme surface (`data-bs-theme`, body `data-code-theme`, highlight stylesheets, `__MARKBIND_THEME__`, CustardUI `data-cv-theme`) without an extra reload when the scheme is already correct.
 
 Desktop chrome: an inline script in `index.html` reads `gm-theme` (migrating a leftover `site-view-prefs.theme` if needed) and sets `data-theme` before React paints. `ThemeProvider` keeps it in sync and tells main (`set-app-theme`) so `nativeTheme.themeSource`, the `BrowserWindow` background, and the WebContentsView background (`#ffffff` / `#212529`) match.
 
@@ -40,13 +40,14 @@ Precedence CustardUI uses on boot: URL query (then stripped) > `localStorage` > 
 
 ## Apply path
 
-CustardUI `await`s `fetchConfig()` before it reads `localStorage`. Electron `dom-ready` fires at DOMContentLoaded, so main writes the blob there and wins that race on every navigation.
+CustardUI reads `git-mastery-custardUI-state` during its synchronous boot script, before `dom-ready`. Main therefore writes desktop prefs and `markbind-theme` into the page origin, then **reloads once** when prefs were pushed from the renderer before the first `loadURL` (or when Customise saves with reload). That second load matches the save path: localStorage is updated on the live document, then reload so CustardUI and MarkBind `theme-manager.js` read the desktop-owned keys in `<head>`.
 
 1. Renderer may already have `site-view-prefs`. `WebsiteWrapper` sends them to main (`reload: false`) before the first `loadURL`.
-2. On each WCV `dom-ready`, main writes the CustardUI keys if it holds a blob, writes `markbind-theme` plus `data-bs-theme` from the applied desktop theme, and awaits `insertCSS(EMBED_CSS)` before restoring native-view bounds.
-3. Saving in Customise writes renderer storage, updates main, writes the page, and reloads the current URL. It does not change theme.
-4. The header toggle updates chrome immediately, persists `gm-theme` and `config.json`, writes `markbind-theme`, and reloads the loaded lesson once. Startup synchronization of an unchanged theme does not reload.
-5. A course edition is saved the same way after the renderer has fetched `https://git-mastery.org/versions/<id>/<id>.json` and checked that the JSON `id` matches. An empty field removes `git-mastery-cv-adaptation` and reloads. A failed lookup stays in the panel and does not write the key: CustardUI would clear a missing adaptation, and the next `dom-ready` would put a bad id back.
+2. On each WCV `dom-ready`, main writes CustardUI keys (when it holds a blob) and the MarkBind theme (`markbind-theme`, `data-bs-theme`, `data-code-theme`, code-block stylesheets, `data-cv-theme`), awaits `insertCSS(EMBED_CSS)`, then restores native-view bounds. If prefs were queued before the first paint, it reloads once before revealing.
+3. `did-finish-load` runs the same MarkBind-aligned theme sync again so Vue-mounted controls cannot leave the page on the wrong scheme.
+4. Saving in Customise writes renderer storage, updates main, writes the page, and reloads the current URL. It does not change theme.
+5. The header toggle updates chrome immediately, persists `gm-theme` and `config.json`, writes `markbind-theme` (and CustardUI keys when present), and reloads the loaded lesson once. Startup synchronization of an unchanged theme does not reload.
+6. A course edition is saved the same way after the renderer has fetched `https://git-mastery.org/versions/<id>/<id>.json` and checked that the JSON `id` matches. An empty field removes `git-mastery-cv-adaptation` and reloads. A failed lookup stays in the panel and does not write the key: CustardUI would clear a missing adaptation, and the next bootstrap would put a bad id back.
 
 ## Native-view visibility
 

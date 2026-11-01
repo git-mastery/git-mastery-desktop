@@ -72,6 +72,13 @@ function normalizeAdaptationId(value: unknown): string | undefined {
 /** Latest desktop-owned prefs. Null means do not override the site's localStorage. */
 let sitePrefs: SiteViewPrefs | null = null;
 
+/**
+ * CustardUI reads `git-mastery-custardUI-state` during its synchronous init, before
+ * `dom-ready`. After the first paint we write desktop prefs, then reload once so
+ * the next load sees them (same pattern as saving Customise with reload).
+ */
+let needsCustardBootstrapReload = false;
+
 let aiHintsHandler: ((exerciseId: string) => void) | null = null;
 let lessonChatHandler: ((prompt: string) => boolean) | null = null;
 
@@ -168,28 +175,47 @@ function writeSitePrefsScript(prefs: SiteViewPrefs) {
   })()`;
 }
 
+/** Mirrors MarkBind `applyTheme` / `theme-manager.js`, plus CustardUI `data-cv-theme`. */
+function buildEmbeddedThemeScript(theme: SitePageTheme) {
+  return `(function (theme) {
+    try {
+      localStorage.setItem(${JSON.stringify(SITE_THEME_KEY)}, theme);
+    } catch (e) {}
+    document.documentElement.setAttribute("data-bs-theme", theme);
+    document.documentElement.setAttribute("data-cv-theme", theme);
+    if (document.body) document.body.setAttribute("data-code-theme", theme);
+    window.__MARKBIND_THEME__ = theme;
+    window.__MARKBIND_DARK_MODE__ = true;
+    var lightSheet = document.getElementById("markbind-highlight-light");
+    var darkSheet = document.getElementById("markbind-highlight-dark");
+    if (lightSheet && darkSheet) {
+      lightSheet.disabled = theme !== "light";
+      darkSheet.disabled = theme !== "dark";
+    }
+  })(${JSON.stringify(theme)})`;
+}
+
 async function applyEmbeddedTheme(
   theme = getAppliedResolvedTheme(),
   reload = false,
 ) {
   if (!wcv || wcv.webContents.isDestroyed() || !hasLoadedPage()) return;
-  if (reload) {
-    beginLoading(getMainWindow());
+  if (sitePrefs) {
+    await wcv.webContents
+      .executeJavaScript(writeSitePrefsScript(sitePrefs))
+      .catch(() => {});
   }
   await wcv.webContents
-    .executeJavaScript(
-      `(function (theme) {
-        try {
-          localStorage.setItem(${JSON.stringify(SITE_THEME_KEY)}, theme);
-        } catch (e) {}
-        document.documentElement.setAttribute("data-bs-theme", theme);
-        if (document.body) document.body.setAttribute("data-bs-theme", theme);
-      })(${JSON.stringify(theme)})`,
-    )
+    .executeJavaScript(buildEmbeddedThemeScript(theme))
     .catch(() => {});
   if (reload && wcv && !wcv.webContents.isDestroyed() && hasLoadedPage()) {
+    beginLoading(getMainWindow());
     wcv.webContents.reload();
   }
+}
+
+async function pushDesktopBootstrapToPage() {
+  await applyEmbeddedTheme(getAppliedResolvedTheme(), false);
 }
 
 const READ_SITE_PREFS_SCRIPT = `(function () {
@@ -207,13 +233,6 @@ const READ_SITE_PREFS_SCRIPT = `(function () {
     return null;
   }
 })()`;
-
-async function applySitePrefsToPage() {
-  if (!wcv || !sitePrefs || !hasLoadedPage()) return;
-  await wcv.webContents
-    .executeJavaScript(writeSitePrefsScript(sitePrefs))
-    .catch(() => {});
-}
 
 async function readSitePrefsFromPage(): Promise<SiteViewPrefs | null> {
   if (!wcv || !hasLoadedPage()) return null;
@@ -248,12 +267,18 @@ async function finishEmbed(mainWindow: BrowserWindow, generation: number) {
   if (!wcv || wcv.webContents.isDestroyed()) return;
 
   const cssReady = wcv.webContents.insertCSS(EMBED_CSS).catch(() => {});
-  await applySitePrefsToPage();
-  await applyEmbeddedTheme();
+  await pushDesktopBootstrapToPage();
   await cssReady;
 
   if (generation !== navigationGeneration) return;
   if (!wcv || wcv.webContents.isDestroyed()) return;
+
+  if (needsCustardBootstrapReload && sitePrefs) {
+    needsCustardBootstrapReload = false;
+    beginLoading(mainWindow);
+    wcv.webContents.reload();
+    return;
+  }
 
   applyPageWalkthroughOverlay();
   setLoading(mainWindow, false);
@@ -370,6 +395,10 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     wcv.webContents.on("did-navigate-in-page", emitUrl);
     wcv.webContents.on("dom-ready", () => {
       void finishEmbed(mainWindow, navigationGeneration);
+    });
+    wcv.webContents.on("did-finish-load", () => {
+      if (!wcv || wcv.webContents.isDestroyed() || !hasLoadedPage()) return;
+      void applyEmbeddedTheme(getAppliedResolvedTheme(), false);
     });
     wcv.webContents.on(
       "did-fail-load",
@@ -1004,8 +1033,13 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
       tabNavsVisible: prefs.tabNavsVisible,
       adaptationId: normalizeAdaptationId(prefs.adaptationId),
     };
+    if (!hasLoadedPage()) {
+      needsCustardBootstrapReload = true;
+    }
     const view = getOrCreateWcv(mainWindow);
-    await applySitePrefsToPage();
+    if (hasLoadedPage()) {
+      await pushDesktopBootstrapToPage();
+    }
     if (reload && hasLoadedPage()) {
       const current = view.webContents.getURL();
       const next = stripAdaptationUrlIndicators(current);
