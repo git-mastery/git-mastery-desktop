@@ -55,6 +55,7 @@ const CONTENT: Record<PaneWalkthroughStep, { title: string; body: string[] }> =
       body: [
         "Go through the lessons in order and follow their instructions.",
         "When a lesson has an exercise or hands-on practical, attempt it.",
+        "Select any text and right-click to ask AI about it.",
       ],
     },
     terminal: {

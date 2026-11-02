@@ -45,7 +45,7 @@ const SUGGESTIONS = [
 
 const DISCLAIMER: Record<AiHintsKind, string> = {
   lesson: "AI can make mistakes. Check important details against the lesson.",
-  exercise: "Hints only, never the full solution. AI can make mistakes.",
+  exercise: "AI can make mistakes.",
   "hands-on": "AI can make mistakes. Check important steps against the lesson.",
 };
 
