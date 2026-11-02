@@ -32,6 +32,13 @@ export const EXERCISE_MANIFEST_NAME = ".gitmastery-exercise.json";
  */
 export const HANDS_ON_PREFIX = "hp-";
 
+const EXERCISE_REPO_TYPES: ExerciseManifest["exercise_repo"]["repo_type"][] = [
+  "local",
+  "local-ignore",
+  "remote",
+  "ignore",
+];
+
 /**
  * `repo_name` and the exercise identifier are joined onto a parent path, so
  * they have to stay a single path segment. Absolute paths and backslashes are
@@ -39,6 +46,7 @@ export const HANDS_ON_PREFIX = "hp-";
  * so `C:\foo` would otherwise pass on macOS.
  */
 export const isPathSegment = (name: string) =>
+  name.length > 0 &&
   name !== "." &&
   name !== ".." &&
   !path.isAbsolute(name) &&
@@ -80,7 +88,11 @@ export function readExerciseManifest(
       "utf-8",
     );
     const parsed = JSON.parse(raw) as ExerciseManifest;
-    if (!parsed?.exercise_repo?.repo_type || !parsed.exercise_repo.repo_name) {
+    if (
+      !EXERCISE_REPO_TYPES.includes(parsed?.exercise_repo?.repo_type) ||
+      typeof parsed.exercise_repo.repo_name !== "string" ||
+      !parsed.exercise_repo.repo_name
+    ) {
       return null;
     }
     return parsed;

@@ -1,5 +1,6 @@
 import { locateExercise, type ExerciseLocation } from "./availability.js";
 import { exerciseFolderProvider } from "./context/exerciseFolder.js";
+import { exerciseQuestionsProvider } from "./context/exerciseQuestions.js";
 import { gitStateProvider } from "./context/gitState.js";
 import { instructionsProvider } from "./context/instructions.js";
 
@@ -34,6 +35,7 @@ const PROVIDER_TIMEOUT_MS = 2500;
  */
 const PROVIDERS: ContextProvider[] = [
   instructionsProvider,
+  exerciseQuestionsProvider,
   exerciseFolderProvider,
   gitStateProvider,
 ];

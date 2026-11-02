@@ -343,6 +343,20 @@ const runVerify = (
       return;
     }
 
+    const exerciseCwd = resolveReadyExerciseCwd(exerciseIdentifier);
+    const terminalCwd = getCwd();
+    if (
+      exerciseCwd === null ||
+      terminalCwd === null ||
+      !isSameDirectory(terminalCwd, exerciseCwd)
+    ) {
+      sendToRenderer(mainWindow, VERIFY_BLOCKED_CHANNEL, {
+        exerciseIdentifier,
+      });
+      finish();
+      return;
+    }
+
     sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
       originalCommand: `verify`,
       data: {
@@ -353,15 +367,6 @@ const runVerify = (
         },
       },
     });
-
-    const exerciseCwd = resolveReadyExerciseCwd(exerciseIdentifier);
-    if (exerciseCwd === null || !isSameDirectory(getCwd(), exerciseCwd)) {
-      sendToRenderer(mainWindow, VERIFY_BLOCKED_CHANNEL, {
-        exerciseIdentifier,
-      });
-      finish();
-      return;
-    }
 
     const childProcess = _spawnChildProcess({
       args: ["verify"],
@@ -654,7 +659,9 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
         case "download":
           // Routed through startExercise so this path keeps the guard against
           // downloading over an exercise that already exists.
-          void startExercise(mainWindow, commandArgs.join(" "));
+          void startExercise(mainWindow, commandArgs.join(" "), {
+            skipIntro: true,
+          });
           break;
         case "verify":
           void _verify(mainWindow, commandArgs.join(" "));

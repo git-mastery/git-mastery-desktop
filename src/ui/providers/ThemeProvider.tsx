@@ -2,35 +2,20 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ThemeContext } from "../contexts/ThemeContext";
 import {
   applyResolvedTheme,
-  prefersDark,
+  persistTheme,
   readStoredThemePreference,
-  resolveTheme,
 } from "../utils/theme";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreference] = useState<SitePageTheme>(
-    readStoredThemePreference,
-  );
-  const [systemDark, setSystemDark] = useState(prefersDark);
+  const [theme, setTheme] = useState<SitePageTheme>(readStoredThemePreference);
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setSystemDark(media.matches);
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, []);
+    persistTheme(theme);
+    applyResolvedTheme(theme);
+    window.electron.setAppTheme({ preference: theme, resolved: theme });
+  }, [theme]);
 
-  const resolved = resolveTheme(preference, systemDark);
-
-  useEffect(() => {
-    applyResolvedTheme(resolved);
-    window.electron.setAppTheme({ preference, resolved });
-  }, [preference, resolved]);
-
-  const value = useMemo(
-    () => ({ preference, resolved, setPreference }),
-    [preference, resolved, setPreference],
-  );
+  const value = useMemo(() => ({ theme, setTheme }), [theme]);
 
   return (
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

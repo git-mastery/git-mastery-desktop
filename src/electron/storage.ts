@@ -19,7 +19,7 @@ interface Config {
   exercisesRoot?: string;
   /** When true, Start skips the introduction modal. */
   hideStartIntro?: boolean;
-  /** Desktop + site colour preference. System follows the OS. */
+  /** Desktop + lesson colour. Light or Dark only; missing values resolve from the OS once. */
   theme?: SitePageTheme;
   /** Parent folder chosen by older builds. Migrated to `exercisesRoot` on read. */
   dataDirectory?: string;

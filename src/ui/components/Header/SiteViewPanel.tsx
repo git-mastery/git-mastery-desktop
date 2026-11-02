@@ -3,11 +3,14 @@ import { Button } from "../ui/Button";
 import { Checkbox } from "../ui/Checkbox";
 import { LoadingState } from "../ui/States";
 import { cx } from "../../utils/cx";
+import { SITE_ORIGIN } from "../../contexts/WebContentsViewContext";
 import {
+  ADAPTATION_ID_PATTERN,
+  buildAdaptationJsonUrl,
+  normalizeAdaptationId,
   readDesktopSiteViewPrefs,
   writeDesktopSiteViewPrefs,
 } from "../../utils/siteViewPrefs";
-import { useTheme } from "../../contexts/ThemeContext";
 import {
   useCustardUIConfig,
   type CustardUIConfigFile,
@@ -19,14 +22,8 @@ type FormState = {
   tabs: Record<string, string>;
   toggles: Record<string, ToggleMode>;
   tabNavsVisible: boolean;
-  theme: SitePageTheme;
+  adaptationId: string;
 };
-
-const THEME_MODES: { id: SitePageTheme; label: string }[] = [
-  { id: "light", label: "Light" },
-  { id: "dark", label: "Dark" },
-  { id: "system", label: "System" },
-];
 
 const TOGGLE_MODES: { id: ToggleMode; label: string }[] = [
   { id: "show", label: "Show" },
@@ -61,7 +58,13 @@ function defaultsFromConfig(config: CustardUIConfigFile): FormState {
     toggles[toggle.toggleId] = toggle.default ?? "hide";
   }
 
-  return { placeholders, tabs, toggles, tabNavsVisible: true, theme: "system" };
+  return {
+    placeholders,
+    tabs,
+    toggles,
+    tabNavsVisible: true,
+    adaptationId: "",
+  };
 }
 
 function toggleModeFromState(
@@ -100,7 +103,7 @@ function mergePrefsIntoForm(
     );
   }
   base.tabNavsVisible = prefs.tabNavsVisible;
-  base.theme = prefs.theme ?? "system";
+  base.adaptationId = normalizeAdaptationId(prefs.adaptationId) ?? "";
   return base;
 }
 
@@ -128,16 +131,56 @@ function formToPrefs(form: FormState): SiteViewPrefs {
       placeholders,
     },
     tabNavsVisible: form.tabNavsVisible,
-    theme: form.theme,
+    adaptationId: normalizeAdaptationId(form.adaptationId),
   };
+}
+
+async function resolveAdaptationId(
+  raw: string,
+): Promise<{ value: string; error?: string }> {
+  const trimmed = raw.trim();
+  if (!trimmed) return { value: "" };
+  if (!ADAPTATION_ID_PATTERN.test(trimmed)) {
+    return {
+      value: trimmed,
+      error: "Use a course edition id such as cs2103.",
+    };
+  }
+  try {
+    const response = await fetch(buildAdaptationJsonUrl(SITE_ORIGIN, trimmed));
+    if (!response.ok) {
+      return {
+        value: trimmed,
+        error: `No course edition named “${trimmed}”.`,
+      };
+    }
+    const body: unknown = await response.json();
+    const id =
+      body && typeof body === "object" && "id" in body
+        ? (body as { id: unknown }).id
+        : null;
+    if (id !== trimmed) {
+      return {
+        value: trimmed,
+        error: `No course edition named “${trimmed}”.`,
+      };
+    }
+    return { value: trimmed };
+  } catch {
+    return {
+      value: trimmed,
+      error:
+        "Could not reach the Git-Mastery site. Check your connection and try again.",
+    };
+  }
 }
 
 export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
   const { data: config, isPending, isError, refetch } = useCustardUIConfig();
-  const { setPreference } = useTheme();
   const [form, setForm] = useState<FormState | null>(null);
   const [saved, setSaved] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [adaptationError, setAdaptationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!config) return;
@@ -145,11 +188,7 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
 
     const seed = async () => {
       const desktop = readDesktopSiteViewPrefs();
-      const site =
-        desktop?.theme != null ? null : await window.electron.getSitePrefs();
-      const prefs = desktop
-        ? { ...desktop, theme: desktop.theme ?? site?.theme }
-        : site;
+      const prefs = desktop ?? (await window.electron.getSitePrefs());
       const next = prefs
         ? mergePrefsIntoForm(config, prefs)
         : defaultsFromConfig(config);
@@ -199,13 +238,19 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
 
   const save = async (next: FormState, close = false) => {
     setSaving(true);
+    setAdaptationError(null);
     try {
-      const prefs = formToPrefs(next);
+      const resolved = await resolveAdaptationId(next.adaptationId);
+      if (resolved.error) {
+        setAdaptationError(resolved.error);
+        return;
+      }
+      const toSave = { ...next, adaptationId: resolved.value };
+      const prefs = formToPrefs(toSave);
       writeDesktopSiteViewPrefs(prefs);
       await window.electron.setSitePrefs({ ...prefs, reload: true });
-      if (prefs.theme) setPreference(prefs.theme);
-      setForm(next);
-      setSaved(next);
+      setForm(toSave);
+      setSaved(toSave);
       if (close) onClose?.();
     } finally {
       setSaving(false);
@@ -214,33 +259,23 @@ export const SiteViewPanel = ({ onClose }: { onClose?: () => void }) => {
 
   return (
     <div className="flex max-h-[min(70vh,36rem)] flex-col gap-6 overflow-y-auto text-sm text-fg">
-      <p>Colour for the desktop app, the lesson pages, and the terminal.</p>
-
       <div className="flex flex-col gap-1.5">
-        <span className={FIELD_LABEL}>Colour</span>
-        <div role="radiogroup" aria-label="Colour" className="flex gap-1">
-          {THEME_MODES.map((mode) => {
-            const active = form.theme === mode.id;
-            return (
-              <button
-                key={mode.id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => setForm({ ...form, theme: mode.id })}
-                className={cx(
-                  "rounded-md px-2.5 py-1 text-[13px] font-medium hover:cursor-pointer",
-                  "focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none",
-                  active
-                    ? "bg-accent-soft text-accent"
-                    : "text-muted hover:bg-hover hover:text-fg",
-                )}
-              >
-                {mode.label}
-              </button>
-            );
-          })}
-        </div>
+        <span className={FIELD_LABEL}>Course edition (optional)</span>
+        <input
+          type="text"
+          value={form.adaptationId}
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          onChange={(event) => {
+            setAdaptationError(null);
+            setForm({ ...form, adaptationId: event.target.value });
+          }}
+          className={INPUT}
+        />
+        {adaptationError && (
+          <p className="text-[13px] text-danger">{adaptationError}</p>
+        )}
       </div>
 
       {placeholders.length > 0 && (

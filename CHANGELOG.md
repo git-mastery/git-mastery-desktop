@@ -1,3 +1,27 @@
+## [1.6.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.5.0...v1.6.0) (2026-10-30)
+
+### Features
+
+* improve learning navigation and feedback ([#41](https://github.com/git-mastery/git-mastery-desktop/issues/41)) ([16fa37a](https://github.com/git-mastery/git-mastery-desktop/commit/16fa37a134426b71fa52f0a349c6e2d2ee1a5aaf))
+* switch Light/Dark from the header without flashing site chrome ([#44](https://github.com/git-mastery/git-mastery-desktop/issues/44)) ([680f8f9](https://github.com/git-mastery/git-mastery-desktop/commit/680f8f9721e678a8a95a3bd58d2450900d739e36))
+
+## [1.5.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.4.0...v1.5.0) (2026-10-26)
+
+### Features
+
+* add groq as a named provider ([#37](https://github.com/git-mastery/git-mastery-desktop/issues/37)) ([478af18](https://github.com/git-mastery/git-mastery-desktop/commit/478af18d8a0bcb8fb78baad213811903ba6c21df))
+* complete the tours sidebar from catalogs and course edition labels ([#36](https://github.com/git-mastery/git-mastery-desktop/issues/36)) ([ceb764b](https://github.com/git-mastery/git-mastery-desktop/commit/ceb764b99fa7b9bdde3d5d1524ce4328a4a531f7))
+* ground exercise hints and recommend Groq ([#38](https://github.com/git-mastery/git-mastery-desktop/issues/38)) ([f19715a](https://github.com/git-mastery/git-mastery-desktop/commit/f19715a1024c3bca9d7787c70f5cbb4f5b45c027))
+* restyle tours sidebar and gate verify on live cwd ([#40](https://github.com/git-mastery/git-mastery-desktop/issues/40)) ([67169b6](https://github.com/git-mastery/git-mastery-desktop/commit/67169b68ff86052d31b5db1ce9c0fe498f6398aa))
+
+## [1.4.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.3.0...v1.4.0) (2026-10-12)
+
+### Features
+
+* improve lessons sidebar, walkthrough, and session restore ([#29](https://github.com/git-mastery/git-mastery-desktop/issues/29)) ([8ba6311](https://github.com/git-mastery/git-mastery-desktop/commit/8ba6311dac43a65717383516be6fdc9e1ca09db8))
+* let students pick a git-mastery.org course edition ([#32](https://github.com/git-mastery/git-mastery-desktop/issues/32)) ([d9af35d](https://github.com/git-mastery/git-mastery-desktop/commit/d9af35d9e62b7a62aa719846b8bf5273d6d3a800))
+* persist per-source AI chats across restarts ([#30](https://github.com/git-mastery/git-mastery-desktop/issues/30)) ([ddc59ae](https://github.com/git-mastery/git-mastery-desktop/commit/ddc59ae7bf6ac7f27e5674f92ea872f665abf0af))
+
 ## [1.3.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.2.0...v1.3.0) (2026-09-27)
 
 ### Features

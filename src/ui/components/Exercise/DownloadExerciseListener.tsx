@@ -7,7 +7,7 @@ const isDownloadCommand = (cmd: string) => cmd.startsWith("download");
 /**
  * Globally mounted listener for exercise download streams. Keeps history
  * refresh working wherever a download starts from. Progress lives in the
- * terminal; the start-exercise toast owns loading and failure.
+ * terminal; ActivityProvider owns the activity modal.
  */
 export const DownloadExerciseListener = () => {
   const { downloadedExerciseData, patchExerciseStatus } = useLocalExercises();

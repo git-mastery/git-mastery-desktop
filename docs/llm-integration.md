@@ -112,13 +112,13 @@ Two details worth recording, both confirmed by probe rather than documentation:
 
 ### Free-tier capacity
 
-| Provider   | Reported free allowance                                  | Confidence                    |
-| ---------- | -------------------------------------------------------- | ----------------------------- |
-| OpenRouter | 21 models at `pricing.prompt == 0`; contexts 64k–1M      | **Probed directly**           |
-| Cerebras   | ~1M tokens/day                                           | Vendor reporting              |
-| Mistral    | ~1B tokens/month, open-weight models                     | Vendor reporting              |
-| Groq       | ~30 req/min, ~14,400 req/day                             | Vendor reporting              |
-| Gemini     | ~10–15 req/min; daily cap reported between 250 and 1,500 | **Sources disagree — verify** |
+| Provider   | Reported free allowance                                                            | Confidence          |
+| ---------- | ---------------------------------------------------------------------------------- | ------------------- |
+| OpenRouter | 21 models at `pricing.prompt == 0`; contexts 64k–1M                                | **Probed directly** |
+| Cerebras   | ~1M tokens/day                                                                     | Vendor reporting    |
+| Mistral    | ~1B tokens/month, open-weight models                                               | Vendor reporting    |
+| Groq       | ~30 req/min, ~14,400 req/day                                                       | Vendor reporting    |
+| Gemini     | 5 req/min and 20 req/day on `gemini-3.8-flash` free tier (measured 18–19 Oct 2026) | **Probed directly** |
 
 The OpenRouter zero-cost list at time of probe included `thinkingmachines/inkling` and
 `minimax/minimax-m3` at 1M context, `nvidia/nemotron-3.5-lightning` at 1M, and
@@ -363,16 +363,20 @@ conversation has a concrete artifact to point at rather than a question.
 - the exercise or hands-on instructions, as rendered on the lesson page;
 - the exercise id, its manifest metadata (repository setup, topics), whether it has been verified,
   and the **names** of files and folders inside the exercise folder;
-- for each repository inside the exercise folder: the current branch, recent commit subjects,
-  branch, tag, remote and stash names, any paused merge or rebase, and the **names and
-  staged/unstaged status** of changed files.
+- **question stems** (`Q:` lines only) from files the exercise manifest lists in `base_files`,
+  with answer lines omitted;
+- for each repository inside the exercise folder: a short derived summary (branch or detached
+  HEAD, working-tree cleanliness, paused operation, merge direction when known), then the raw
+  read-only git output — current branch, recent commit subjects, branch, tag, remote and stash
+  names, and the **names and staged/unstaged status** of changed files.
 
 Paths are relative to the folder containing `gitmastery-exercises`, so no home directory or
 username is sent.
 
 **Never sent:**
 
-- the contents of any file;
+- the contents of files other than those allowlisted question stems;
+- student answers from question files;
 - anything outside the exercise folder;
 - terminal scrollback;
 - any credential.
@@ -389,8 +393,9 @@ Two properties make that boundary real rather than aspirational:
 2. **Disclosure is by construction.** Every block sent is rendered in the AI Hints pane's expandable
    "AI can see" row, so a student can read exactly what left their machine, per answer.
 
-Adding `git diff`, file contents, or terminal output would cross this boundary and needs to be
-treated as a new decision, not an extension of this one.
+Adding `git diff`, other file bodies, or terminal output would cross this boundary and needs to
+be treated as a new decision, not an extension of this one. The question-stem exception is
+documented in `docs/architecture/ai-context-providers.md` §4.1.
 
 ---
 
@@ -404,8 +409,9 @@ These would change the assessment and cannot be resolved from inside the codebas
    organisational cost is the whole question.
 3. **How much per-student setup is acceptable?** This is the axis on which Options 1, 3 and 8 differ
    most, and it is a judgement about the cohort rather than about the technology.
-4. **What are Gemini's current free-tier daily limits?** Reported figures range from 250 to 1,500
-   requests per day; the difference matters if Gemini is presented as a default.
+4. **What are Gemini's current free-tier daily limits?** A probe on 19 October 2026 returned a
+   20 request/day cap for `gemini-3.8-flash` (`generate_content_free_tier_requests`), with a
+   retry window of about 19 hours. That is far below earlier published 250–1,500/day figures.
 
 ---
 

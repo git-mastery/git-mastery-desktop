@@ -20,7 +20,7 @@ Every allowed type maps to at least a patch. A manual run with only `chore:` / `
 
 **Release** (`release.yml`) is `workflow_dispatch` only, and must be run with branch `main` selected:
 
-1. **Quality gate** — `eslint`, `prettier --check`, `tsc -b` on Ubuntu with `npm ci --ignore-scripts`.
+1. **Quality gate** — `eslint`, `prettier --check`, `tsc -b`, and the deterministic Vitest suite on Ubuntu with `npm ci --ignore-scripts`.
 2. **Version** — `semantic-release` bumps `package.json` / `package-lock.json`, prepends `CHANGELOG.md`, commits `chore(release): x.y.z [skip ci]` to `main`, and tags `vX.Y.Z`.
 3. **Build & publish** — calls the reusable workflow below with that tag.
 
@@ -40,7 +40,7 @@ Artifact names are `${name}-${version}-${os}-${arch}.${ext}`, for example `git-m
 
 PR workflows:
 
-- **CI** — same quality checks as the release gate, on every PR and every push to `main`.
+- **CI** — the same lint, formatting, type-check, and deterministic test checks as the release gate, on every PR and every push to `main`.
 - **PR lint** — conventional title (`feat` / `fix` / `docs` / `chore` / `refactor` / `perf` / `build` / `ci` / `style` / `test` / `revert`, lowercase subject, no trailing period) and a body with non-empty `## Overview`, `## Solution`, and `## Test cases` (at least one checkbox). Drafts are skipped. A failure comment is best-effort: fork PRs may not have write access, so that step is `continue-on-error`.
 
 ## Bootstrap (first release)

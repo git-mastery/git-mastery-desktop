@@ -5,8 +5,29 @@
 import { createContext, useContext } from "react";
 import type { Exercise } from "../../types/Exercise";
 
+export type ActivityFocusNotice =
+  | {
+      kind: "start";
+      exerciseIdentifier: string;
+      activityName: string;
+      activityKind: "exercise" | "hands-on";
+      status: "downloading" | "ready" | "failed";
+      message?: string;
+      open: boolean;
+    }
+  | {
+      kind: "verify";
+      exerciseIdentifier: string;
+      activityName: string;
+      result: "correct" | "incorrect" | "complete" | "failed";
+      message?: string;
+      open: boolean;
+    };
+
 export type ActivityState = {
   startExercise: (exercise: Exercise) => void;
+  focusNotice: ActivityFocusNotice | null;
+  dismissFocusNotice: () => void;
 };
 
 export const ActivityContext = createContext<ActivityState | null>(null);

@@ -42,14 +42,14 @@ House design language for Git-Mastery Desktop: semantic light/dark surfaces, one
 ## Design principles
 
 1. **Tool UI, not marketing.** Quiet chrome, hairline borders, flat opaque panels — not hero gradients, neon glow, or landing-page typography.
-2. **One brand accent.** Primary actions and focus rings use brand green (`#2d864e`). Status meaning uses the same green for success plus red / amber / sky — never as decorative page chrome.
+2. **One brand accent.** Primary actions and focus rings use brand green (`#1f8444`). Status meaning uses the same green for success plus red / amber / sky — never as decorative page chrome.
 3. **Solid surfaces by default.** Panes, cards, and modals are opaque with a hairline border. Light: white on bone canvas. Dark: `#212529` matching git-mastery.org.
 4. **Serif for titles, sans for everything else.** Noto Serif carries page and section titles; Inter carries all body, control, and chip text.
 5. **Density with air.** ~13–14px body, ~11px chips and field labels. Comfortable padding inside cards; tight toolbars above lists.
 6. **Semantic color is never the only signal.** Pair color with text, icons, or `aria-label` on status dots and pills.
 7. **One solid primary per action cluster.** Everything else is secondary, outline, or ghost.
 8. **The native view wins.** Anything painted by `WebContentsView` sits above all DOM — design around it rather than over it (see [`references/components-and-patterns.md`](references/components-and-patterns.md) § Native view constraints).
-9. **One theme preference.** Light / Dark / System applies to desktop chrome, the embedded lesson pages, and the xterm pane. Reach for semantic tokens (`bg-surface`, `text-fg`), not `dark:` class variants or one-off hex.
+9. **One theme preference.** Light or Dark from the header sun/moon toggle applies to desktop chrome, the embedded lesson pages, and the xterm pane. Reach for semantic tokens (`bg-surface`, `text-fg`), not `dark:` class variants or one-off hex.
 
 ## Shell modes
 
@@ -59,7 +59,7 @@ Two layouts. **Tokens and components are identical**; only chrome and title scal
 
 The normal running state of the app.
 
-- Fixed 64px header (Lessons / Exercises / Progress on the left, settings on the right), a main content pane, and a resizable aside holding the terminal. The lessons panel toggle lives in the content pane (slim bar above the native view when closed; panel header when open), not in the header.
+- Fixed 64px header (Lessons / Exercises / Progress on the left, help / theme / settings on the right), a main content pane, and a resizable aside holding the terminal. The lessons panel toggle lives in the content pane (slim bar above the native view when closed; panel header when open), not in the header.
 - **No page-level scroll.** The window is the viewport; each pane owns its own scroll container.
 - Content pane titles use the serif h1 scale; per-view toolbars sit inside the pane, not in the header.
 - The main pane may host the native web view, in which case it must stay an empty bounds placeholder.
@@ -87,7 +87,7 @@ Tailwind v4 matters: custom colors, fonts, and shadows are declared as CSS varia
 ## Always
 
 - Inter body / Noto Serif headings; semantic canvas / surface / `text-fg`.
-- Brand CTA `#2d864e` → hover `#236e3d` in both themes.
+- Brand CTA `#1f8444` → hover `#186d37` in both themes.
 - Surfaces: `bg-surface`, `border-border`, 12–16px radius; `shadow-card` only on elevated panels (modals, dropdowns).
 - Inputs: 12px radius, `border-border`, brand focus ring (`ring-focus-ring`).
 - Status pills: 11px, semantic fill / text / border, paired with text or `aria-label`.

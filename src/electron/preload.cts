@@ -24,7 +24,7 @@ contextBridge.exposeInMainWorld("electron", {
     ipcInvoke("wcv-set-site-prefs", prefs),
   setAppTheme: (payload: {
     preference: SitePageTheme;
-    resolved: "light" | "dark";
+    resolved: SitePageTheme;
   }) => ipcSend("set-app-theme", payload),
 
   // Config

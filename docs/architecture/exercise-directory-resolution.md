@@ -212,7 +212,7 @@ One shared `startExercise(mainWindow, exerciseIdentifier)` in the main process:
    fix for both the data loss on v7.8.2 and the spurious error on the newer CLI.
 4. `not-downloaded` → run `_download`; on success, re-resolve, `cd` if still latest, and return
    `{ ok: true, cwd, downloaded: true }`. On failure, return `{ ok: false }` and broadcast
-   `start-exercise-result` so the "Starting exercise..." toast can settle to a one-line failure.
+   `start-exercise-result` so the Start modal can settle to a one-line failure.
    CLI download errors are already in the terminal.
 5. `corrupt` / `incomplete` → do **not** download. Return
    `{ ok: false, error, needsRestart: true }`; the renderer tells the learner to clear the
@@ -226,9 +226,9 @@ A's completion steal the terminal.
 The outcome is broadcast on `start-exercise-result` as well as returned, because the embedded
 button dispatches through `wcv-start-exercise` and has no return value to inspect. A
 `start-exercise-started` event fires when the click is accepted (not already in flight) so the
-renderer can show "Starting exercise..." immediately. Success dismisses that toast — the `cd`
-is already in the terminal. Failures, including a failed download, settle the same toast to
-"Could not start exercise".
+renderer can show the Start modal immediately. Success enables Continue; failures, including a
+failed download, settle the same modal with an explanation. Dismissing the modal does not alter
+the in-flight map or child process.
 
 ### Entry points after the change
 
@@ -271,19 +271,19 @@ two when this is picked up.
 ## 9. The `verify` working directory
 
 Verify uses the same resolver as Start (`resolveExerciseCwd`) to know which directory the
-learner should be in. It then compares that to the terminal's tracked cwd (`getCwd()`). Only an
-exact match (case-insensitive on Windows) is accepted.
+learner should be in. It then compares that to the shell process cwd (`getCwd()` reads it
+from the pty via `lsof` / `/proc`; it does not parse typed `cd`). If the live cwd cannot
+be read, verify is blocked. Only an exact match (case-insensitive on Windows) is accepted.
 
 If the identifier is invalid, the exercise is not `ready`, or the terminal is somewhere else,
-`gitmastery verify` is **not** spawned. The renderer shows an info toast asking the learner to
-click Start Exercise, which is the path that downloads if needed and `cd`s. Spawning anyway
-from a synthetic cwd hid the fact that the learner was not in the exercise folder, and made
-Start look optional.
+`gitmastery verify` is **not** spawned. The renderer shows a small modal: the learner is not
+in the exercise folder and should click Start Exercise, which downloads if needed and `cd`s.
+Spawning anyway from a synthetic cwd hid the fact that the learner was not in the exercise
+folder, and made Start look optional.
 
 When the check passes, verify still spawns with `cwd` set to the resolved exercise directory —
-the same path Start would `cd` into — rather than trusting `getCwd()` as the subprocess cwd.
-`getCwd()` is regex-guessed (`updateCwdFromCdCommand` in `src/electron/ipc/terminal.ts`) and
-misses `pushd`, `cd -`, subshells, and chained commands; it is only used as the gate.
+the same path Start would `cd` into — rather than using `getCwd()` as the subprocess cwd.
+The gate is the live shell directory so a typed `cd` away from the exercise blocks verify.
 
 The CLI itself is tolerant of where inside the exercise it runs: `verify` is decorated
 `@in_exercise_root()` with `must=False` (`app/commands/verify.py`) and `find_root` walks
@@ -307,7 +307,7 @@ declares them in each lesson's `text.md` as `show_hop_prep('hp-…')`, with no `
 hook. The app therefore:
 
 - **Discovers** them by fetching those `text.md` files (cached like other remote catalogs) and
-  listing each unique `hp-*` identifier under the lesson in the left nav as `Hands-on:`.
+  listing each unique `hp-*` identifier in lesson source order in the left nav.
 - **Starts** them through the same `startExercise()` path as exercises: resolve, download only
   if the folder is missing, then `cd`. The in-page control is **Start Hands-on** only — it
   replaces the hop-prep "Create a fresh sandbox" / "Manually set up a sandbox" option panels

@@ -25,7 +25,7 @@ interface Window {
     ) => Promise<boolean>;
     setAppTheme: (payload: {
       preference: SitePageTheme;
-      resolved: "light" | "dark";
+      resolved: SitePageTheme;
     }) => void;
 
     // for configuration
@@ -114,10 +114,12 @@ type IpcHandlerChannelMapping = {
   "wcv-set-walkthrough-overlay": { mode: "off" | "block" | "dim" };
   "wcv-loading": { loading: boolean };
   "wcv-url-changed": { url: string };
-  "set-app-theme": {
-    preference: SitePageTheme;
-    resolved: "light" | "dark";
-  };
+  "set-app-theme":
+    | {
+        preference: SitePageTheme | "system";
+        resolved: SitePageTheme;
+      }
+    | { theme: SitePageTheme };
 
   "gitmastery-task-data": { originalCommand: string; data: GitMasteryTaskData };
   "start-exercise-started": StartExerciseStarted;
@@ -189,7 +191,8 @@ type IpcInvokeChannelMapping = {
   >;
 };
 
-type AiProviderId = "openrouter" | "openai" | "anthropic" | "google" | "custom";
+type AiProviderId =
+  "openrouter" | "openai" | "anthropic" | "google" | "groq" | "custom";
 
 /**
  * What the settings panel needs to render a provider. The client that talks to
@@ -199,6 +202,8 @@ type AiProviderInfo = {
   id: AiProviderId;
   label: string;
   description: string;
+  /** True for the provider the settings picker should mark as recommended. */
+  recommended?: boolean;
   /** Null when there is no sensible default and the learner must name one. */
   defaultModel: string | null;
   keyUrl: string | null;
@@ -322,13 +327,13 @@ type CustardUIState = {
 };
 
 /** Desktop-owned copy of CustardUI prefs applied into the embedded site. */
-type SitePageTheme = "light" | "dark" | "system";
+type SitePageTheme = "light" | "dark";
 
 type SiteViewPrefs = {
   state: CustardUIState;
   tabNavsVisible: boolean;
-  /** Shared Light / Dark / System preference for chrome and MarkBind. */
-  theme?: SitePageTheme;
+  /** CustardUI adaptation id (e.g. `cs2103`). Missing or empty is the standard site. */
+  adaptationId?: string;
 };
 
 /** Start was clicked; the renderer shows a loading toast until the result. */

@@ -135,6 +135,10 @@ const AiHintsConversation = ({
       id: session.conversationId,
       messages: session.messages,
       transport,
+      // Groq streams faster than React can re-render Markdown. Without this,
+      // each chunk can bounce through parent state and hit the nested-update
+      // limit ("Maximum update depth exceeded").
+      experimental_throttle: 50,
     });
   const [preview, setPreview] = useState<AiContextBlock[] | null>(
     session.source.kind === "lesson" ? [] : null,
@@ -150,6 +154,14 @@ const AiHintsConversation = ({
       session.conversationId,
       messages,
     );
+  }, [
+    messages,
+    onMessagesChange,
+    session.source.sourceKey,
+    session.conversationId,
+  ]);
+
+  useEffect(() => {
     if (busy) return;
     onPersistHistory(
       session.source.sourceKey,
@@ -159,7 +171,6 @@ const AiHintsConversation = ({
   }, [
     busy,
     messages,
-    onMessagesChange,
     onPersistHistory,
     session.source.sourceKey,
     session.conversationId,

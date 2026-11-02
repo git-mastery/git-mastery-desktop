@@ -4,6 +4,7 @@ import path from "path";
 import { promisify } from "util";
 import type { ContextProvider } from "../context.js";
 import { getCliEnvironment } from "../../utils/cli/getters.js";
+import { formatDerivedFacts } from "./gitDerivedFacts.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -132,34 +133,92 @@ function findRepoCandidates(root: string): string[] {
   return found;
 }
 
-async function describeInProgress(repo: string): Promise<string | null> {
+async function gitDirOf(repo: string): Promise<string | null> {
   try {
-    const gitDir = await runGit(repo, ["rev-parse", "--absolute-git-dir"]);
-    const active = IN_PROGRESS.filter(({ marker }) =>
-      fs.existsSync(path.join(gitDir, marker)),
-    ).map(({ label }) => label);
-    return active.length > 0
-      ? `Operation in progress: ${active.join(", ")} (paused, not yet finished or aborted)`
-      : null;
+    return await runGit(repo, ["rev-parse", "--absolute-git-dir"]);
   } catch {
     return null;
   }
 }
 
-async function describeRepo(repo: string, heading: string): Promise<string> {
-  const [inProgress, ...sections] = await Promise.all([
-    describeInProgress(repo),
-    ...COMMANDS.map(async ({ label, args }) => {
-      try {
-        const output = await runGit(repo, args);
-        return `$ ${label}\n${output || "(no output)"}`;
-      } catch (err) {
-        console.warn(`[ai] git-state: ${args.join(" ")} failed:`, err);
-        return null;
-      }
-    }),
+function inProgressLabels(gitDir: string | null): string[] {
+  if (!gitDir) return [];
+  return IN_PROGRESS.filter(({ marker }) =>
+    fs.existsSync(path.join(gitDir, marker)),
+  ).map(({ label }) => label);
+}
+
+/** Name the commit MERGE_HEAD points at, if Git can. */
+async function mergeIncomingName(
+  repo: string,
+  gitDir: string | null,
+): Promise<string | null> {
+  if (!gitDir || !fs.existsSync(path.join(gitDir, "MERGE_HEAD"))) return null;
+  try {
+    const named = await runGit(repo, [
+      "name-rev",
+      "--name-only",
+      "--no-undefined",
+      "MERGE_HEAD",
+    ]);
+    const ref = named
+      .replace(/[~^].*$/, "")
+      .replace(/^remotes\/[^/]+\//, "")
+      .trim();
+    return ref || null;
+  } catch {
+    return null;
+  }
+}
+
+async function headSubject(repo: string): Promise<string | null> {
+  try {
+    const subject = await runGit(repo, ["log", "-1", "--format=%s"]);
+    return subject || null;
+  } catch {
+    return null;
+  }
+}
+
+async function describeRepo(
+  repo: string,
+  heading: string,
+  cwd: string,
+  display: (target: string) => string,
+): Promise<string> {
+  const [gitDir, subject, commandParts] = await Promise.all([
+    gitDirOf(repo),
+    headSubject(repo),
+    Promise.all(
+      COMMANDS.map(async ({ label, args }) => {
+        try {
+          const output = await runGit(repo, args);
+          return { label, output: output || "" };
+        } catch (err) {
+          console.warn(`[ai] git-state: ${args.join(" ")} failed:`, err);
+          return { label, output: null as string | null };
+        }
+      }),
+    ),
   ]);
-  return [heading, inProgress, ...sections]
+  const incoming = await mergeIncomingName(repo, gitDir);
+  const status =
+    commandParts.find((part) => part.label.startsWith("git status"))?.output ??
+    null;
+  const facts = formatDerivedFacts({
+    repoDisplay: display(repo),
+    cwdDisplay: display(cwd),
+    repoAbs: repo,
+    cwdAbs: cwd,
+    status,
+    headSubject: subject,
+    inProgress: inProgressLabels(gitDir),
+    mergeIncoming: incoming,
+  });
+  const sections = commandParts.map(({ label, output }) =>
+    output === null ? null : `$ ${label}\n${output || "(no output)"}`,
+  );
+  return [heading, facts, ...sections]
     .filter((part): part is string => Boolean(part))
     .join("\n\n");
 }
@@ -186,12 +245,23 @@ export const gitStateProvider: ContextProvider = {
       .slice(0, MAX_REPOS);
 
     if (repos.length === 0) {
-      return `No Git repository exists in the exercise folder yet: neither the working folder (${display(location.cwd)}) nor any folder below ${display(location.exerciseRoot)} contains a .git directory.`;
+      return [
+        "Derived facts (read these first):",
+        `- Working folder: ${display(location.cwd)}`,
+        `- Repository: none under ${display(location.exerciseRoot)}`,
+        "",
+        `No Git repository exists in the exercise folder yet: neither the working folder (${display(location.cwd)}) nor any folder below ${display(location.exerciseRoot)} contains a .git directory.`,
+      ].join("\n");
     }
 
     const described = await Promise.all(
       repos.map((repo) =>
-        describeRepo(repo, `### Repository at ${display(repo)}`),
+        describeRepo(
+          repo,
+          `### Repository at ${display(repo)}`,
+          location.cwd,
+          display,
+        ),
       ),
     );
     return described.join("\n\n");

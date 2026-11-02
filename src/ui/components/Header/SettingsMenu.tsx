@@ -16,7 +16,7 @@ type SettingsPanel = "exercise-folder" | "site-view" | "ai";
 
 const PANEL_TITLES: Record<SettingsPanel, string> = {
   "exercise-folder": "Exercise folder",
-  "site-view": "Customise UI",
+  "site-view": "Customise",
   ai: "AI hints",
 };
 
