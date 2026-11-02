@@ -1,3 +1,13 @@
+## [1.7.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.6.0...v1.7.0) (2026-11-02)
+
+### Features
+
+* ask AI about selected lesson text ([#31](https://github.com/git-mastery/git-mastery-desktop/issues/31)) ([93b2c68](https://github.com/git-mastery/git-mastery-desktop/commit/93b2c68050c47593781505420d63c0091c1d25f9))
+
+### Bug Fixes
+
+* sync embedded lesson theme and CustardUI bootstrap ([#45](https://github.com/git-mastery/git-mastery-desktop/issues/45)) ([08eac0e](https://github.com/git-mastery/git-mastery-desktop/commit/08eac0eecbb44d787f3f42e0fb1eaa239b19b549))
+
 ## [1.6.0](https://github.com/git-mastery/git-mastery-desktop/compare/v1.5.0...v1.6.0) (2026-10-30)
 
 ### Features
