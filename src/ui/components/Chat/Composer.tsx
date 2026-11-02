@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { IconArrowUp, IconPlayerStopFilled } from "@tabler/icons-react";
 import { MAX_STORED_MESSAGE_CHARS } from "../../ai/history";
 import { cx } from "../../utils/cx";
@@ -10,8 +10,10 @@ type ComposerProps = {
   busy?: boolean;
   autoFocus?: boolean;
   placeholder?: string;
-  /** When `id` changes, replace the field with `text`. Local edits stay until then. */
-  seed?: { id: string; text: string };
+  value: string;
+  /** Changes when Ask AI or a ChatGPT link replaces the draft, even if the text is identical. */
+  revision?: string;
+  onChange: (text: string) => void;
   onSend: (text: string) => void;
   onStop: () => void;
 };
@@ -27,23 +29,18 @@ export const Composer = ({
   busy = false,
   autoFocus = false,
   placeholder = "Ask for a hint…",
-  seed,
+  value,
+  revision,
+  onChange,
   onSend,
   onStop,
 }: ComposerProps) => {
-  const [value, setValue] = useState("");
-  const [appliedSeedId, setAppliedSeedId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  if (seed && seed.id !== appliedSeedId) {
-    setAppliedSeedId(seed.id);
-    setValue(seed.text.slice(0, MAX_STORED_MESSAGE_CHARS));
-  }
-
   useEffect(() => {
-    if (!appliedSeedId) return;
+    if (!revision) return;
     textareaRef.current?.focus();
-  }, [appliedSeedId]);
+  }, [revision]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -55,7 +52,6 @@ export const Composer = ({
   const submit = () => {
     const text = value.trim();
     if (!text || busy || disabled) return;
-    setValue("");
     onSend(text);
   };
 
@@ -82,7 +78,7 @@ export const Composer = ({
         placeholder={placeholder}
         aria-label="Message"
         maxLength={MAX_STORED_MESSAGE_CHARS}
-        onChange={(event) => setValue(event.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         onKeyDown={(event) => {
           // Shift+Enter keeps the newline; plain Enter sends.
           if (

@@ -54,9 +54,8 @@ Every AI entry point returns an `AiSource` containing a namespaced `sourceKey`, 
 `lesson:gitPrep`. That key is the record key in `sessions`; loading validates that it matches
 `session.source.sourceKey`. The source title may be refreshed when the source is opened.
 
-Persisting selected lesson text as distinguishable message metadata is deferred with the lesson-text
-selection feature. It can later add an optional `selectedText` field through a schema migration. It
-remains part of the user message, never a context block.
+Ask AI and ChatGPT links put text in the composer as an ordinary unsent draft. That draft is not
+persisted. After Send it is a normal user message, with no separate `selectedText` field.
 
 ## What is not persisted
 

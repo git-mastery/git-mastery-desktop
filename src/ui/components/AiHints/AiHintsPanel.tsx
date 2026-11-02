@@ -44,8 +44,8 @@ const SUGGESTIONS = [
 ];
 
 const DISCLAIMER: Record<AiHintsKind, string> = {
-  lesson: "AI can make mistakes. Check important details against the lesson.",
-  exercise: "Hints only, never the full solution. AI can make mistakes.",
+  lesson: "AI can make mistakes.",
+  exercise: "AI can make mistakes.",
   "hands-on": "AI can make mistakes. Check important steps against the lesson.",
 };
 
@@ -57,7 +57,7 @@ function messageText(message: GitMasteryUIMessage) {
 }
 
 type PanelSession = AiSession & {
-  pendingPrompt?: { id: string; text: string };
+  draft?: { id: string; text: string };
 };
 
 /**
@@ -72,6 +72,7 @@ export const AiHintsPanel = ({
   onMessagesChange,
   onPersistHistory,
   onClearDraft,
+  onDraftChange,
 }: {
   session: PanelSession;
   onClose: () => void;
@@ -87,6 +88,7 @@ export const AiHintsPanel = ({
     messages: GitMasteryUIMessage[],
   ) => void;
   onClearDraft: (sourceKey: string) => void;
+  onDraftChange: (sourceKey: string, text: string) => void;
 }) => {
   return (
     <AiHintsConversation
@@ -97,6 +99,7 @@ export const AiHintsPanel = ({
       onMessagesChange={onMessagesChange}
       onPersistHistory={onPersistHistory}
       onClearDraft={onClearDraft}
+      onDraftChange={onDraftChange}
     />
   );
 };
@@ -108,6 +111,7 @@ const AiHintsConversation = ({
   onMessagesChange,
   onPersistHistory,
   onClearDraft,
+  onDraftChange,
 }: {
   session: PanelSession;
   onClose: () => void;
@@ -123,6 +127,7 @@ const AiHintsConversation = ({
     messages: GitMasteryUIMessage[],
   ) => void;
   onClearDraft: (sourceKey: string) => void;
+  onDraftChange: (sourceKey: string, text: string) => void;
 }) => {
   const [transport] = useState(() => new IpcChatTransport(session.source));
   const { messages, sendMessage, status, error, stop, regenerate } =
@@ -333,7 +338,9 @@ const AiHintsConversation = ({
           autoFocus
           busy={busy}
           placeholder={`Ask about this ${noun}…`}
-          seed={session.pendingPrompt}
+          value={session.draft?.text ?? ""}
+          revision={session.draft?.id}
+          onChange={(text) => onDraftChange(session.source.sourceKey, text)}
           onSend={send}
           onStop={() => void stop()}
         />

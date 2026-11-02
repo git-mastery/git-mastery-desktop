@@ -6,15 +6,19 @@ inference at all is assessed in `../llm-integration.md`.
 
 ## 1. Entry point
 
-Every exercise card and every hands-on practical on the embedded lesson site gets an **AI Hints**
-button, injected by `ipc/webContentsView.ts` next to the existing download controls. A click sends
-the exercise id over `wcv-ai-hints`. Main re-validates it (format, exercise on disk, AI configured),
-scrapes the title and instructions from the page, and announces an `AiSource` to the renderer
-with `ai-hints-open`.
+There are three ways into the pane. All of them announce an `AiSource` over `ai-hints-open`; none
+send until the student clicks Send. Source identity and routing are in `ai-chat-sources.md`.
 
-Lesson pages also contain ChatGPT `?q=` links. When AI is configured, those popups are denied and
-the same pane opens a `lesson:…` session with the decoded question in the composer. Send is the
-student's choice. See `ai-chat-sources.md`.
+| Entry                                          | How                                                                                                                                                         | Gate                                                                                                                                          |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AI Hints** button on an exercise or hands-on | Injected by `ipc/webContentsView.ts`. Click sends the id over `wcv-ai-hints`. Main re-validates it, scrapes the card, and opens that workspace session.     | AI configured **and** the folder is on disk (`resolveExerciseCwd` is `ready`).                                                                |
+| ChatGPT `?q=` link                             | Popup is denied; the decoded question is put in the composer of the current **lesson** session.                                                             | AI configured **and** the page is a lesson. Otherwise the ChatGPT window still opens.                                                         |
+| **Ask AI** on a highlight                      | Native context menu on the lesson `WebContentsView`. The box that contains the selection picks the source; the text replaces that session's composer draft. | AI configured **and** the page is a lesson. The workspace folder is **not** required — a missing folder just means no repository context yet. |
+
+A disabled **AI Hints** button carries a tooltip naming the missing step ("Click Start Exercise first…", "Set up
+AI hints in Settings first"). A hint without the student's repository could only paraphrase the
+instructions back at them, which is the failure `ai-context-providers.md` §1 describes. Ask AI
+does not have that requirement because the student is already pointing at page text.
 
 Hands-on practicals have no identifier on the page beyond the `hp-…` id in their download command,
 so the injected script tags the wrapper with `data-gm-hands-on-id` when it adds its buttons. The
@@ -23,14 +27,10 @@ model never sees "AI Hints" or "Start Exercise" as part of the task.
 
 ## 2. Enablement
 
-The button is only enabled when there is something to ground a hint in:
+The **AI Hints** button is only enabled when there is something to ground a hint in:
 
 1. **AI is configured**: the active provider has everything it needs (key, base URL, model).
 2. **The exercise is on disk**: `resolveExerciseCwd` returns `ready` for that id.
-
-A disabled button carries a tooltip naming the missing step ("Click Start Exercise first…", "Set up
-AI hints in Settings first"). A hint without the student's repository could only paraphrase the
-instructions back at them, which is the failure `ai-context-providers.md` §1 describes.
 
 Main pushes `{ configured, ready: string[] }` into the page (`__gmSetAiState`) on dom-ready, after a
 download or Start, after AI settings are saved, when the exercises root changes, and when the window
