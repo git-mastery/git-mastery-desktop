@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">AI-assisted development workflow</title>
+  <desc id="desc">A three-lane workflow shows the author's decisions, AI agent work, and checks. The author defines the outcome, approves the plan, and accepts the result. Agents investigate, implement, and independently review. Automated checks run before final human verification, with a revision loop when evidence is insufficient.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#26332d"/>
+    </marker>
+    <style>
+      text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17221d; }
+      .lane-label { font-size: 20px; font-weight: 700; }
+      .label { font-size: 17px; font-weight: 600; }
+      .small { font-size: 14px; fill: #526159; }
+      .human { fill: #fff7e9; stroke: #b77a22; stroke-width: 2; rx: 10; }
+      .agent { fill: #f4f7fb; stroke: #58738e; stroke-width: 2; rx: 10; }
+      .check { fill: #edf7f0; stroke: #2f8a57; stroke-width: 2; rx: 10; }
+      .line { fill: none; stroke: #26332d; stroke-width: 2.5; marker-end: url(#arrow); }
+      .loop { fill: none; stroke: #7a8580; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="620" fill="#ffffff"/>
+
+  <rect x="25" y="35" width="1150" height="150" rx="14" fill="#fffaf1"/>
+  <rect x="25" y="220" width="1150" height="150" rx="14" fill="#f7f9fc"/>
+  <rect x="25" y="405" width="1150" height="150" rx="14" fill="#f4faf6"/>
+
+  <text x="55" y="78" class="lane-label">My role</text>
+  <text x="55" y="103" class="small">Human decisions</text>
+  <text x="55" y="263" class="lane-label">AI agents</text>
+  <text x="55" y="288" class="small">Investigation and drafts</text>
+  <text x="55" y="448" class="lane-label">Checks</text>
+  <text x="55" y="473" class="small">Independent evidence</text>
+
+  <rect x="185" y="75" width="190" height="76" class="human"/>
+  <text x="280" y="106" text-anchor="middle" class="label">Define outcome</text>
+  <text x="280" y="130" text-anchor="middle" class="small">Constraints  /  evidence</text>
+
+  <rect x="320" y="260" width="190" height="76" class="agent"/>
+  <text x="415" y="291" text-anchor="middle" class="label">Investigate and plan</text>
+  <text x="415" y="315" text-anchor="middle" class="small">Trace  /  risks  /  alternatives</text>
+
+  <rect x="455" y="75" width="190" height="76" class="human"/>
+  <text x="550" y="106" text-anchor="middle" class="label">Challenge and approve</text>
+  <text x="550" y="130" text-anchor="middle" class="small">Choose the approach</text>
+
+  <rect x="580" y="250" width="210" height="96" class="agent"/>
+  <text text-anchor="middle" class="label">
+    <tspan x="685" y="282">Implement and</tspan>
+    <tspan x="685" y="304">document</tspan>
+  </text>
+  <text x="685" y="329" text-anchor="middle" class="small">Patch  /  tests  /  decisions</text>
+
+  <rect x="650" y="445" width="220" height="76" class="check"/>
+  <text x="760" y="476" text-anchor="middle" class="label">Run automated checks</text>
+  <text x="760" y="500" text-anchor="middle" class="small">Format  /  lint  /  types  /  tests</text>
+
+  <rect x="830" y="260" width="190" height="76" class="agent"/>
+  <text x="925" y="291" text-anchor="middle" class="label">Independent review</text>
+  <text x="925" y="315" text-anchor="middle" class="small">Fresh model and context</text>
+
+  <rect x="965" y="75" width="175" height="76" class="human"/>
+  <text x="1052" y="106" text-anchor="middle" class="label">Verify and accept</text>
+  <text x="1052" y="130" text-anchor="middle" class="small">Behaviour  /  diff  /  evidence</text>
+
+  <path d="M 340 151 C 340 195, 382 205, 400 260" class="line"/>
+  <path d="M 465 260 C 485 205, 530 195, 530 151" class="line"/>
+  <path d="M 600 151 C 600 198, 655 205, 670 250" class="line"/>
+  <path d="M 700 346 C 700 390, 745 400, 750 445" class="line"/>
+  <path d="M 870 483 C 915 483, 925 385, 925 336" class="line"/>
+  <path d="M 980 260 C 1000 205, 1040 195, 1040 151" class="line"/>
+
+  <path d="M 1052 151 C 1150 220, 1160 500, 1060 540 C 900 600, 650 585, 560 520 C 515 485, 520 355, 580 300" class="loop"/>
+  <text x="920" y="595" text-anchor="middle" class="small">If evidence is insufficient: revise and repeat</text>
+</svg>

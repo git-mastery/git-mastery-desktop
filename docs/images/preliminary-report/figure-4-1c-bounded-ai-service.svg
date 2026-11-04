@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">Bounded AI service internal flow</title>
+  <desc id="desc">The learner question becomes the user prompt. Filtered exercise context and the tutoring policy form the system prompt. The selected provider returns a model response to the AI Hints Chat interface.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#26332d"/>
+    </marker>
+    <style>
+      text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17221d; }
+      .label { font-size: 18px; font-weight: 600; }
+      .small { font-size: 14px; fill: #526159; }
+      .sub-label { font-size: 15px; font-weight: 600; }
+      .box { fill: #ffffff; stroke: #617168; stroke-width: 2; rx: 10; }
+      .ai { fill: #edf7f0; stroke: #2f8a57; stroke-width: 2.5; rx: 10; }
+      .line { fill: none; stroke: #26332d; stroke-width: 2.5; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="560" fill="#ffffff"/>
+
+  <rect x="10" y="75" width="160" height="72" class="box"/>
+  <text x="90" y="118" text-anchor="middle" class="label">Learner question</text>
+
+  <rect x="10" y="315" width="160" height="72" class="box"/>
+  <text x="90" y="348" text-anchor="middle" class="label">Lesson website</text>
+  <text x="90" y="371" text-anchor="middle" class="small">Instructions</text>
+
+  <rect x="10" y="425" width="160" height="72" class="box"/>
+  <text x="90" y="458" text-anchor="middle" class="label">Exercise folders</text>
+  <text x="90" y="481" text-anchor="middle" class="small">Git repositories</text>
+
+  <rect x="190" y="25" width="690" height="510" rx="18" fill="#f7faf8" stroke="#2f8a57" stroke-width="3"/>
+  <text x="220" y="75" class="label">Bounded AI service</text>
+
+  <rect x="220" y="325" width="170" height="160" class="ai"/>
+  <text x="305" y="363" text-anchor="middle" class="label">Collect context</text>
+  <text x="305" y="401" text-anchor="middle" class="small">Lesson contents /</text>
+  <text x="305" y="428" text-anchor="middle" class="small">exercise instructions</text>
+  <text x="305" y="461" text-anchor="middle" class="small">Git state</text>
+
+  <rect x="410" y="325" width="180" height="160" class="ai"/>
+  <text x="500" y="355" text-anchor="middle" class="label">Filter context</text>
+  <text x="500" y="390" text-anchor="middle" class="small">Exercise files only from</text>
+  <text x="500" y="413" text-anchor="middle" class="small">Git-Mastery folders</text>
+  <text x="500" y="447" text-anchor="middle" class="small">No student answers</text>
+  <text x="500" y="470" text-anchor="middle" class="small">or files outside them</text>
+
+  <rect x="610" y="70" width="240" height="350" class="ai"/>
+  <text x="730" y="108" text-anchor="middle" class="label">Build prompt</text>
+
+  <rect x="635" y="130" width="190" height="72" class="box"/>
+  <text x="730" y="173" text-anchor="middle" class="label">User prompt</text>
+
+  <rect x="625" y="235" width="210" height="155" class="box"/>
+  <text x="730" y="268" text-anchor="middle" class="label">System prompt</text>
+
+  <rect x="635" y="285" width="190" height="40" class="ai"/>
+  <text x="730" y="310" text-anchor="middle" class="sub-label">Tutoring policy</text>
+
+  <rect x="635" y="335" width="190" height="40" class="ai"/>
+  <text x="730" y="360" text-anchor="middle" class="sub-label">User-specific context</text>
+
+  <path d="M 170 111 C 340 111, 450 166, 635 166" class="line"/>
+  <path d="M 170 351 C 190 351, 195 365, 220 365" class="line"/>
+  <path d="M 170 461 C 190 461, 195 445, 220 445" class="line"/>
+  <path d="M 390 405 L 410 405" class="line"/>
+  <path d="M 590 405 C 615 405, 605 355, 635 355" class="line"/>
+
+  <rect x="930" y="105" width="220" height="80" class="box"/>
+  <text x="1040" y="153" text-anchor="middle" class="label">Selected provider</text>
+
+  <rect x="930" y="335" width="220" height="88" class="ai"/>
+  <text text-anchor="middle" class="label">
+    <tspan x="1040" y="372">AI Hints Chat</tspan>
+    <tspan x="1040" y="395">interface</tspan>
+  </text>
+
+  <path d="M 850 145 L 930 145" class="line"/>
+  <path d="M 1040 185 L 1040 335" class="line"/>
+  <text x="1058" y="265" class="small">Model response</text>
+</svg>

@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="570" viewBox="0 45 1200 570" role="img" aria-labelledby="title desc">
+  <title id="title">Git-Mastery Desktop architecture after adding AI features</title>
+  <desc id="desc">After AI features were added, the learner interface gained an AI Hints chat interface. A bounded AI service in the Electron main process collects approved context from the exercise folder and sends requests to the learner's selected AI provider.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#26332d"/>
+    </marker>
+    <style>
+      text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #17221d; }
+      .heading { font-size: 24px; font-weight: 700; }
+      .label { font-size: 18px; font-weight: 600; }
+      .interface-label { font-size: 16px; font-weight: 600; }
+      .small { font-size: 15px; fill: #526159; }
+      .box { fill: #ffffff; stroke: #617168; stroke-width: 2; rx: 10; }
+      .ai { fill: #edf7f0; stroke: #2f8a57; stroke-width: 3; rx: 10; }
+      .line { fill: none; stroke: #26332d; stroke-width: 2.5; marker-end: url(#arrow); }
+      .ai-line { fill: none; stroke: #2f8a57; stroke-width: 3; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="620" fill="#ffffff"/>
+  <rect x="140" y="60" width="820" height="500" rx="20" fill="#f7faf8" stroke="#415149" stroke-width="3"/>
+  <text x="175" y="100" class="label">Local machine</text>
+
+  <rect x="190" y="115" width="490" height="420" rx="18" fill="#ffffff" stroke="#2f8a57" stroke-width="3"/>
+  <text x="435" y="150" text-anchor="middle" class="label">Git-Mastery Desktop</text>
+
+  <rect x="215" y="165" width="440" height="125" rx="12" fill="#f7f9fc" stroke="#617168" stroke-width="2"/>
+  <text x="240" y="194" class="label">Learner interface</text>
+
+  <rect x="235" y="210" width="190" height="62" class="box"/>
+  <text x="330" y="247" text-anchor="middle" class="interface-label">Lessons and terminal</text>
+
+  <rect x="445" y="210" width="190" height="62" class="ai"/>
+  <text text-anchor="middle" class="interface-label">
+    <tspan x="540" y="237">AI Hints Chat</tspan>
+    <tspan x="540" y="258">interface</tspan>
+  </text>
+
+  <path d="M 330 272 L 330 315" class="line"/>
+  <path d="M 540 272 L 540 315" class="ai-line"/>
+  <rect x="250" y="315" width="370" height="55" class="box"/>
+  <text x="435" y="349" text-anchor="middle" class="label">Typed IPC boundary</text>
+
+  <path d="M 325 370 L 325 425" class="line"/>
+  <path d="M 545 370 L 545 420" class="ai-line"/>
+
+  <rect x="210" y="385" width="445" height="130" rx="12" fill="#f7f9fc" stroke="#617168" stroke-width="2"/>
+  <text x="235" y="414" class="label">Electron main process</text>
+
+  <rect x="225" y="425" width="200" height="70" class="box"/>
+  <text x="325" y="453" text-anchor="middle" class="label">Local operations</text>
+  <text x="325" y="478" text-anchor="middle" class="small">CLI and saved state</text>
+
+  <rect x="450" y="420" width="190" height="80" class="ai"/>
+  <text text-anchor="middle" class="label">
+    <tspan x="545" y="449">Bounded AI</tspan>
+    <tspan x="545" y="471">service</tspan>
+  </text>
+  <text x="545" y="491" text-anchor="middle" class="small">Context and requests</text>
+
+  <rect x="760" y="150" width="180" height="80" class="box"/>
+  <text x="850" y="184" text-anchor="middle" class="label">Git-Mastery CLI</text>
+  <text x="850" y="209" text-anchor="middle" class="small">Start and Verify</text>
+
+  <rect x="760" y="365" width="180" height="82" class="box"/>
+  <text x="850" y="399" text-anchor="middle" class="label">Exercise folders</text>
+  <text x="850" y="424" text-anchor="middle" class="small">Git repositories</text>
+
+  <path d="M 655 400 C 685 400, 700 370, 700 330 L 700 240 C 700 210, 730 190, 760 190" class="line"/>
+  <path d="M 850 230 L 850 365" class="line"/>
+  <path d="M 760 410 C 720 410, 690 460, 640 460" class="ai-line"/>
+
+  <rect x="20" y="240" width="105" height="70" class="box"/>
+  <text x="72" y="282" text-anchor="middle" class="label">Learner</text>
+  <path d="M 125 275 C 165 275, 175 225, 215 225" class="line"/>
+
+  <rect x="990" y="150" width="190" height="80" class="box"/>
+  <text x="1085" y="184" text-anchor="middle" class="label">Lesson website</text>
+  <text x="1085" y="209" text-anchor="middle" class="small">git-mastery.org</text>
+  <path d="M 960 190 L 990 190" class="line"/>
+
+  <rect x="990" y="365" width="190" height="88" class="ai"/>
+  <text x="1085" y="400" text-anchor="middle" class="label">AI provider</text>
+  <text x="1085" y="426" text-anchor="middle" class="small">Selected by learner</text>
+  <path d="M 545 500 C 620 590, 885 590, 990 409" class="ai-line"/>
+</svg>
