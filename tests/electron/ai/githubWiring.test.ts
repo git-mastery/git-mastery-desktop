@@ -38,10 +38,10 @@ vi.mock("../../../src/electron/ai/context/instructions.js", () => ({
     collect: async () => "Create a PR.",
   },
 }));
-vi.mock("../../../src/electron/ai/context/exerciseQuestions.js", () => ({
-  exerciseQuestionsProvider: {
-    id: "exercise-questions",
-    label: "Questions",
+vi.mock("../../../src/electron/ai/context/exerciseFiles.js", () => ({
+  exerciseFilesProvider: {
+    id: "exercise-files",
+    label: "Exercise file contents",
     collect: async () => null,
   },
 }));

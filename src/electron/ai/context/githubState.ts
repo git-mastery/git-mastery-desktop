@@ -25,9 +25,7 @@ export function githubTarget(value: string): string | null {
     : null;
 }
 
-export function createGithubStateProvider(
-  cli = createGithubCli(),
-): ContextProvider {
+export function createGithubStateProvider(cli = createGithubCli()) {
   return {
     id: "github-state",
     label: "GitHub state",
@@ -122,7 +120,7 @@ export function createGithubStateProvider(
         ? text.slice(0, MAX_CONTEXT_CHARS - suffix.length) + suffix
         : text;
     },
-  };
+  } satisfies ContextProvider;
 }
 
 export const githubStateProvider = createGithubStateProvider();

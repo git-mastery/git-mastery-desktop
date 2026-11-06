@@ -1,6 +1,6 @@
 import { locateExercise, type ExerciseLocation } from "./availability.js";
 import { exerciseFolderProvider } from "./context/exerciseFolder.js";
-import { exerciseQuestionsProvider } from "./context/exerciseQuestions.js";
+import { exerciseFilesProvider } from "./context/exerciseFiles.js";
 import { gitStateProvider } from "./context/gitState.js";
 import { githubStateProvider } from "./context/githubState.js";
 import { instructionsProvider } from "./context/instructions.js";
@@ -17,7 +17,7 @@ export type ContextCollectArgs = {
 export type ContextProvider = {
   id: string;
   label: string;
-  collect: (ctx: ContextCollectArgs) => Promise<string | null>;
+  collect: (ctx: ContextCollectArgs) => Promise<string | ContextBlock[] | null>;
 };
 
 const MAX_BLOCK_CHARS = 8000;
@@ -37,7 +37,7 @@ const PROVIDER_TIMEOUT_MS = 2500;
  */
 const PROVIDERS: ContextProvider[] = [
   instructionsProvider,
-  exerciseQuestionsProvider,
+  exerciseFilesProvider,
   exerciseFolderProvider,
   gitStateProvider,
   githubStateProvider,
@@ -67,8 +67,8 @@ function withTimeout<T>(
 
 /**
  * Collects every provider's block, dropping any that fails, times out, or is
- * empty. Never rejects, and never outlives `signal`: a partial context is
- * always preferable to a turn that will not start.
+ * empty. Cancellation reaches Git subprocesses and discards late results;
+ * other providers may still settle at their deadline.
  */
 export async function collectContext(
   exerciseId: string,
@@ -79,7 +79,7 @@ export async function collectContext(
     PROVIDERS.map(async (provider) => {
       if (signal?.aborted) return null;
       try {
-        const text = await withTimeout(
+        const result = await withTimeout(
           provider.collect({ exerciseId, location, signal }),
           PROVIDER_TIMEOUT_MS,
           () =>
@@ -87,17 +87,25 @@ export async function collectContext(
               `[ai] context provider ${provider.id} timed out after ${PROVIDER_TIMEOUT_MS}ms`,
             ),
         );
-        if (signal?.aborted || !text?.trim()) return null;
-        return {
-          id: provider.id,
-          label: provider.label,
-          text: text.trim().slice(0, MAX_BLOCK_CHARS),
-        };
+        if (!result || signal?.aborted) return [];
+        const blocks =
+          typeof result === "string"
+            ? [{ id: provider.id, label: provider.label, text: result }]
+            : result;
+        return blocks
+          .filter((block) => block.text.trim())
+          .map((block) => ({
+            ...block,
+            text:
+              block.text.length > MAX_BLOCK_CHARS
+                ? `${block.text.slice(0, MAX_BLOCK_CHARS - 100)}\n[Truncated: omitted evidence is unknown, not absent.]`
+                : block.text.trim(),
+          }));
       } catch (err) {
         console.warn(`[ai] context provider ${provider.id} failed:`, err);
         return null;
       }
     }),
   );
-  return results.filter((block): block is ContextBlock => block !== null);
+  return results.flatMap((blocks) => blocks ?? []);
 }
