@@ -1,0 +1,93 @@
+name: Desktop E2E
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "test/**"
+  workflow_dispatch:
+    inputs:
+      repeat:
+        description: Repetitions per test for runner qualification
+        type: choice
+        default: "1"
+        options:
+          - "1"
+          - "5"
+          - "10"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Desktop E2E (${{ matrix.platform }})
+    # Keep these individual checks out of required branch-protection checks
+    # during qualification. Failures stay visible; do not hide them with retries.
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macOS
+            os: macos-15
+          - platform: Linux
+            os: ubuntu-24.04
+          - platform: Windows
+            os: windows-2022
+    env:
+      E2E_REPEAT: ${{ inputs.repeat || '1' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Linux display and Electron libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgtk-3-0 libnss3 libasound2t64 libgbm1
+
+      - name: Install dependencies and rebuild node-pty for Electron
+        run: npm ci
+
+      - name: Build application
+        run: npm run transpile:electron && npm run build
+
+      - name: Run Linux journeys
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          GM_E2E_RESULTS: ${{ runner.temp }}/desktop-e2e-results
+        # Ubuntu's AppArmor policy restricts unprivileged user namespaces.
+        # This applies only to the ephemeral CI test process.
+        run: xvfb-run -a npx playwright test --config tests/e2e/playwright.config.ts --repeat-each="$E2E_REPEAT"
+
+      - name: Run macOS and Windows journeys
+        if: runner.os != 'Linux'
+        shell: bash
+        env:
+          GM_E2E_RESULTS: ${{ runner.temp }}/desktop-e2e-results
+        run: npx playwright test --config tests/e2e/playwright.config.ts --repeat-each="$E2E_REPEAT"
+
+      - name: Upload results and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-e2e-${{ matrix.platform }}
+          path: ${{ runner.temp }}/desktop-e2e-results
+          if-no-files-found: warn
+          retention-days: 14

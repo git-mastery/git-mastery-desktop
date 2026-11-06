@@ -238,6 +238,20 @@ a meaningful policy.
 
 ## Expansion triggers
 
+A separate Electron layer now exercises download/resume,
+successful verification, and manual lesson completion with real IPC, PTY, and
+storage. It runs the built application using website and CLI fixtures, without
+packaging or live services. `npm run test:e2e` builds and runs it;
+`npm test` remains the deterministic Vitest gate. The `*.e2e.ts` filenames keep
+these journeys outside Vitest's default test discovery. See the
+[Happy-Path E2E Tests](../development/happy-path-e2e-tests.md)
+for fixture boundaries, OS limitations, and local qualification results.
+The separate Desktop E2E workflow runs on macOS, Linux and Windows for PRs,
+main/test-branch pushes, and manual dispatch. Windows skips successful Verify
+and instead checks its current cwd-probe limitation. Keep these checks out of
+required branch-protection rules during hosted-runner qualification; failures
+remain visible. The existing release quality gate is unchanged.
+
 Additional layers should be added in response to demonstrated risk:
 
 - Add DOM or component tests when renderer interaction state repeatedly breaks

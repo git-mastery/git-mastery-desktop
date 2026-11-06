@@ -13,21 +13,20 @@ advance. The lessons introduce the CLI and `gitmastery setup` when they are
 needed. Running setup from an onboarding screen asked for that work before the
 lesson did, and it required the CLI to be installed first.
 
-The first time a learner clicks Start, the app walks through three steps. The
-introduction repeats on every Start until they check "Don't show this again".
-The other two are checked on every Start, from the main process, so the Start
-button in the app and the one in the lesson page behave the same.
+Start checks tools and the linked folder in the main process, so the Start
+button in the app and the one in the lesson page enforce the same prerequisites.
+There is no introduction dialog or opt-out checkbox in the current flow.
+App-side Start passes `skipIntro: true`. If an embedded Start receives the
+legacy `intro` prerequisite response, `ActivityProvider` calls
+`hideStartIntro()` and retries Start automatically with `skipIntro: true`.
 
-1. **Introduction.** A short description of an exercise: a folder of starting
-   files, work in the terminal, then Verify. Hands-on practicals are mentioned
-   because they have no Verify step. A checkbox opts out of seeing it again.
-2. **Tools.** `gitmastery` must be on PATH. On Windows, Git Bash must be
+1. **Tools.** `gitmastery` must be on PATH. On Windows, Git Bash must be
    installed too, because the in-app terminal uses it. Neither check runs the
    CLI. The step is a short dialog: title says the CLI was not found, and
    "here" opens T1L2 (`/lessons/gitPrep/#installing-the-git-mastery-app`) then
    closes so the lesson is visible. The next Start re-checks. On Windows, PATH
    is read at launch, so a newly installed CLI is invisible until restart.
-3. **Folder.** The learner picks the exercises folder. It is accepted when it
+2. **Folder.** The learner picks the exercises folder. It is accepted when it
    contains `.gitmastery.json`. If they pick the parent and exactly one
    subfolder is a root, that subfolder is used. The copy says this step does
    not run setup. "Setup Instructions" in that sentence opens T1L2
