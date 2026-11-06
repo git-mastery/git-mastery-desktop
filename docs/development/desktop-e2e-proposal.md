@@ -34,12 +34,12 @@ supports a smaller set of these journeys because the application has no Windows
 terminal cwd probe. That blocks successful Verify, not Playwright or Electron
 automation generally.
 
-| Journey                                                                  | macOS                            | Linux                                                   | Windows                                                 |
-| ------------------------------------------------------------------------ | -------------------------------- | ------------------------------------------------------- | ------------------------------------------------------- |
-| Download, enter the exercise, and resume without losing work             | Passed locally                   | Implemented; hosted run pending                         | Implemented with Git Bash; hosted run pending           |
-| Verify a terminal solution and restore exercise completion after restart | Passed locally using real `lsof` | Implemented using `/proc/<pid>/cwd`; hosted run pending | Explicitly skipped: production cwd probe returns `null` |
-| Manually complete a lesson and restore it after restart                  | Passed locally                   | Implemented; hosted run pending                         | Implemented; hosted run pending                         |
-| Assert Windows Verify is blocked and never invokes CLI verification      | Skipped: Windows only            | Skipped: Windows only                                   | Implemented; hosted run pending                         |
+| Journey                                                                  | macOS                                          | Linux                                    | Windows                                                 |
+| ------------------------------------------------------------------------ | ---------------------------------------------- | ---------------------------------------- | ------------------------------------------------------- |
+| Download, enter the exercise, and resume without losing work             | Passed locally and on GitHub                   | Passed on GitHub                         | Implemented with Git Bash; hosted run pending           |
+| Verify a terminal solution and restore exercise completion after restart | Passed locally and on GitHub using real `lsof` | Passed on GitHub using `/proc/<pid>/cwd` | Explicitly skipped: production cwd probe returns `null` |
+| Manually complete a lesson and restore it after restart                  | Passed locally and on GitHub                   | Passed on GitHub                         | Implemented; hosted run pending                         |
+| Assert Windows Verify is blocked and never invokes CLI verification      | Skipped: Windows only                          | Skipped: Windows only                    | Implemented; hosted run pending                         |
 
 Linux needs a graphical session such as Xvfb and working Electron/`node-pty`
 dependencies. Windows needs Git for Windows for shell journeys and a real
@@ -126,29 +126,29 @@ code; the direct Playwright command intentionally reuses `dist-electron` and
 
 The implementation lives in [`tests/e2e/`](../../tests/e2e/):
 
-| File                   | Responsibility                                                                                                                |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `playwright.config.ts` | Supported-platform guard, one worker, zero retries, bounded waits, results outside the repository                             |
-| `harness.ts`           | Fresh profile/root/home, executable and shell wrappers, Electron launch, UI helpers, restart, diagnostics, cleanup            |
-| `bootstrap.mjs`        | Load the real compiled main process, substitute CLI executable selection, install session protocol handlers before page loads |
-| `site.mjs`             | Fixed catalogs, minimal lesson DOM, Markdown, landing page and font response                                                  |
-| `cli.mjs`              | Strict argument/cwd checks, fixture download, `.git` check, output and persisted progress                                     |
-| `happy-paths.e2e.ts`   | Three happy paths plus the Windows Verify-blocked check                                                                       |
+| File                   | Responsibility                                                                                                                                                               |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `playwright.config.ts` | Supported-platform guard, one worker, zero retries, bounded waits, results outside the repository                                                                            |
+| `harness.ts`           | Fresh profile/root/home, executable and shell wrappers, Electron launch, UI helpers, restart, diagnostics, cleanup                                                           |
+| `bootstrap.mjs`        | Load the real compiled main process, substitute CLI executable selection, install session protocol handlers before page loads, close test-owned Windows PTYs before quitting |
+| `site.mjs`             | Fixed catalogs, minimal lesson DOM, Markdown, landing page and font response                                                                                                 |
+| `cli.mjs`              | Strict argument/cwd checks, fixture download, `.git` check, output and persisted progress                                                                                    |
+| `happy-paths.e2e.ts`   | Three happy paths plus the Windows Verify-blocked check                                                                                                                      |
 
 ### What is mocked and what is real?
 
-| Boundary                                                                                      | Treatment                                                                                                                                        | Scope of the evidence                                                                                                                  |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Website, catalogs, lesson source and font stylesheet                                          | **Mocked:** exact HTTP(S) URL map at the production origins; system fonts replace the remote stylesheet                                          | Real catalog consumption, navigation and button injection against a minimal site contract, not live site compatibility                 |
-| Git-Mastery CLI download and grading                                                          | **Mocked:** executable fixture creates the manifest/repository, checks `.git`, writes progress and emits the expected text                       | Desktop CLI contract, not real downloads, grader rules, release checks or remote progress                                              |
-| Effective CLI executable selection                                                            | **Overridden:** test bootstrap replaces only `gitmastery` calls at `child_process.spawn`, forwarding to the original spawn with the fixture path | Does not certify which installed CLI the app would execute; avoids macOS Homebrew paths taking precedence                              |
-| Tool-presence and exercises-root checks                                                       | **Real logic with prepared files:** fixture executable on PATH, root marker and config                                                           | Prerequisites are satisfied without setup or a folder-picker interaction; an installed CLI may satisfy presence but cannot be executed |
-| Electron window, React renderer and native `WebContentsView`                                  | **Real:** built application loaded from disk                                                                                                     | Actual desktop UI integration, not a packaged installer                                                                                |
-| Preloads, `window.electron`, IPC, Start/Verify handlers, manifest resolution and resume guard | **Real; no injected success messages or state changes**                                                                                          | Production orchestration and cross-process wiring                                                                                      |
-| Child process, streams, exit handling and CLI output parsing                                  | **Real after executable substitution**                                                                                                           | Actual process termination and output interpretation                                                                                   |
-| xterm, `node-pty`, Bash, terminal `cd`, Git and OS cwd probe                                  | **Real:** Bash/Git Bash, installed `git init`, and `lsof` or `/proc`; Windows still returns null                                                 | Typed commands reach the selected directory; Verify's production gate remains active                                                   |
-| Config, manifests, exercise progress and filesystem                                           | **Real storage:** harness prepares initial root/config; CLI fixture writes exercise files and progress                                           | Desktop reads and restores disk state; real CLI persistence implementation is outside scope                                            |
-| Manual lesson toggle, localStorage, tour count and restart                                    | **Real:** click the UI, fully close and relaunch Electron                                                                                        | Manual completion survives independently of exercise completion                                                                        |
+| Boundary                                                                                      | Treatment                                                                                                                                             | Scope of the evidence                                                                                                                      |
+| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Website, catalogs, lesson source and font stylesheet                                          | **Mocked:** exact HTTP(S) URL map at the production origins; system fonts replace the remote stylesheet                                               | Real catalog consumption, navigation and button injection against a minimal site contract, not live site compatibility                     |
+| Git-Mastery CLI download and grading                                                          | **Mocked:** executable fixture creates the manifest/repository, checks `.git`, writes progress and emits the expected text                            | Desktop CLI contract, not real downloads, grader rules, release checks or remote progress                                                  |
+| Effective CLI executable selection                                                            | **Overridden:** test bootstrap replaces only `gitmastery` calls at `child_process.spawn`, forwarding to the original spawn with the fixture path      | Does not certify which installed CLI the app would execute; avoids macOS Homebrew paths taking precedence                                  |
+| Tool-presence and exercises-root checks                                                       | **Real logic with prepared files:** fixture executable on PATH, root marker and config                                                                | Prerequisites are satisfied without setup or a folder-picker interaction; an installed CLI may satisfy presence but cannot be executed     |
+| Electron window, React renderer and native `WebContentsView`                                  | **Real:** built application loaded from disk                                                                                                          | Actual desktop UI integration, not a packaged installer                                                                                    |
+| Preloads, `window.electron`, IPC, Start/Verify handlers, manifest resolution and resume guard | **Real; no injected success messages or state changes**                                                                                               | Production orchestration and cross-process wiring                                                                                          |
+| Child process, streams, exit handling and CLI output parsing                                  | **Real after executable substitution**                                                                                                                | Actual process termination and output interpretation                                                                                       |
+| xterm, `node-pty`, Bash, terminal `cd`, Git and OS cwd probe                                  | **Real:** Bash/Git Bash, installed `git init`, and `lsof` or `/proc`; Windows still returns null; bootstrap kills test-owned Windows PTYs before quit | Typed commands reach the selected directory; Verify's production gate remains active; normal Windows application shutdown is not qualified |
+| Config, manifests, exercise progress and filesystem                                           | **Real storage:** harness prepares initial root/config; CLI fixture writes exercise files and progress                                                | Desktop reads and restores disk state; real CLI persistence implementation is outside scope                                                |
+| Manual lesson toggle, localStorage, tour count and restart                                    | **Real:** click the UI, fully close and relaunch Electron                                                                                             | Manual completion survives independently of exercise completion                                                                            |
 
 The test bootstrap wraps one external process boundary without adding a
 production flag or modifying application sources. Merely prepending the fixture
@@ -167,6 +167,15 @@ environment variables and PATH are preserved for OS and Git discovery. Linux
 display variables are preserved so Electron can connect to Xvfb. Linux CI
 launches test Electron with `--no-sandbox` for Ubuntu's user-namespace policy;
 this suite therefore does not qualify Chromium sandbox behavior.
+
+Windows bootstrap tracks the real PTYs returned by `node-pty` and kills them
+on Electron's `before-quit` event. The first hosted run reached the download,
+resume, and blocked-Verify assertions but hung when quitting with ConPTY still
+alive; its exercise directories remained locked. This cleanup belongs to the
+test harness and makes restarts possible without changing production code.
+Consequently the suite does not qualify the application's normal Windows
+shutdown while a terminal is open. Temporary-directory removal permits a
+bounded retry for Windows handles to be released; tests still have zero retries.
 
 The harness prepares `.gitmastery.json`, empty `progress/progress.json`, and
 `config.json` with `exercisesRoot`. It deliberately leaves `hideStartIntro`
@@ -220,6 +229,11 @@ workflow exists on the default branch: commit and push this branch, then open
 the repository's **Actions → Desktop E2E** run. No PR is necessary for that
 first branch push. Subsequent pushes to a branch with an open PR may emit both
 push and PR runs.
+
+The existing **CI → Quality checks** job runs Vitest automatically on pull
+requests and pushes to `main`. A `test/**` push without an open PR starts only
+Desktop E2E. **Release** remains manually triggered and runs Vitest again in
+its quality gate before versioning and publishing.
 
 After the workflow is present on `main`, open **Actions → Desktop E2E → Run
 workflow**, choose the branch, select **1**, **5**, or **10** repetitions, and

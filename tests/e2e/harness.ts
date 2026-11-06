@@ -253,7 +253,12 @@ export const test = base.extend<{ desktop: Desktop }>({
           "No unplanned network requests",
         ).toEqual([]);
       } finally {
-        fs.rmSync(desktop.directory, { recursive: true, force: true });
+        fs.rmSync(desktop.directory, {
+          recursive: true,
+          force: true,
+          maxRetries: windows ? 5 : 0,
+          retryDelay: 100,
+        });
       }
     }
   },
