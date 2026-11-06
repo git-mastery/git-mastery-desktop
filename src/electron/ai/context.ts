@@ -2,6 +2,7 @@ import { locateExercise, type ExerciseLocation } from "./availability.js";
 import { exerciseFolderProvider } from "./context/exerciseFolder.js";
 import { exerciseQuestionsProvider } from "./context/exerciseQuestions.js";
 import { gitStateProvider } from "./context/gitState.js";
+import { githubStateProvider } from "./context/githubState.js";
 import { instructionsProvider } from "./context/instructions.js";
 
 export type ContextBlock = AiContextBlock;
@@ -10,6 +11,7 @@ export type ContextCollectArgs = {
   exerciseId: string;
   /** Null when the exercise is not on disk; workspace providers then skip. */
   location: ExerciseLocation | null;
+  signal?: AbortSignal;
 };
 
 export type ContextProvider = {
@@ -38,6 +40,7 @@ const PROVIDERS: ContextProvider[] = [
   exerciseQuestionsProvider,
   exerciseFolderProvider,
   gitStateProvider,
+  githubStateProvider,
 ];
 
 function withTimeout<T>(
@@ -77,14 +80,14 @@ export async function collectContext(
       if (signal?.aborted) return null;
       try {
         const text = await withTimeout(
-          provider.collect({ exerciseId, location }),
+          provider.collect({ exerciseId, location, signal }),
           PROVIDER_TIMEOUT_MS,
           () =>
             console.warn(
               `[ai] context provider ${provider.id} timed out after ${PROVIDER_TIMEOUT_MS}ms`,
             ),
         );
-        if (!text?.trim()) return null;
+        if (signal?.aborted || !text?.trim()) return null;
         return {
           id: provider.id,
           label: provider.label,

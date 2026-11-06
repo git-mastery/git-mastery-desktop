@@ -24,6 +24,7 @@ type ContextProvider = {
   collect: (ctx: {
     exerciseId: string;
     location: ExerciseLocation | null;
+    signal?: AbortSignal;
   }) => Promise<string | null>;
 };
 ```
@@ -37,9 +38,11 @@ parallel, drops anything that fails, times out or is empty, and truncates each t
 | `exercise-questions` | Exercise questions (answers omitted) | `Q:` stems from files named in the exercise manifest's `base_files`; answer lines are discarded |
 | `exercise-folder`    | Exercise folder                      | exercise manifest, progress store, names-only directory tree                                    |
 | `git-state`          | Repository state                     | derived structural facts, then the read-only `git` output they were computed from               |
+| `github-state`       | GitHub state                         | fresh account, repository/fork and open PR metadata for four explicitly supported exercises     |
 
 Adding a signal is one file under `ai/context/` plus one array entry. The system prompt, IPC and the
-panel's context disclosure need no changes.
+panel's context disclosure need no structural changes. Providers with new evidence semantics also
+update the prompt's interpretation rules.
 
 ### Why separate blocks rather than one
 
@@ -82,12 +85,16 @@ rather than assuming (§5), because some practicals create the repository later.
 
 - **Arbitrary file contents.** The folder provider lists names only; `.git` is summarised, not
   walked. The one exception is §4.1.
-- **Anything outside the exercise folder.** The tree walk, repository search, and question-file
+- **Local files outside the exercise folder.** The tree walk, repository search, and question-file
   reads do not follow file symlinks, and every repository is containment-checked (§5).
-- **The student's home path or username.** Paths are rendered relative to the folder above
+- **The student's home path or OS username.** Paths are rendered relative to the folder above
   `gitmastery-exercises`, e.g. `gitmastery-exercises/under-control`.
 - **Terminal output and scrollback.** Output can echo anything the student ran, including
   credentials, and its size is unbounded.
+
+The GitHub provider separately sends the current GitHub account login and narrowly scoped task
+metadata. Its authenticated remote-data boundary, unknown outcomes and unchecked requirements are
+defined in [GitHub context for AI hints](../ai-github-context.md).
 
 Adding `git diff`, other file bodies, or terminal output would cross the boundary stated in
 `../llm-integration.md` and needs a new decision, not an extension of this one.
@@ -176,6 +183,8 @@ by `convertToModelMessages`, so context does not accumulate across turns. Cost i
 not quadratic, and the model never sees earlier turns' repository state. History sent to the model is
 capped at the last 20 messages.
 
-Added latency per send is a directory walk, one `rev-parse` per candidate, six parallel git commands
+Local collection adds a directory walk, one `rev-parse` per candidate, six parallel git commands
 per repository and one `executeJavaScript`. That is typically well under 200 ms, bounded at 2500 ms,
-against free-tier first-token latency.
+against free-tier first-token latency. Supported GitHub exercises also run two sequential `gh`
+commands within a 2,100 ms collection deadline, independently of the local providers. Those facts
+are recollected each turn; only rate-limit retry timing is retained.

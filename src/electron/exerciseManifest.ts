@@ -18,6 +18,7 @@ export type ExerciseManifest = {
     repo_type: "local" | "local-ignore" | "remote" | "ignore";
     repo_name: string;
     repo_title?: string | null;
+    pr_repo_full_name?: string | null;
     init?: boolean | null;
   };
   downloaded_at?: number;
