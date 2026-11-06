@@ -10,17 +10,37 @@ The left tours panel is built from three catalogs plus each lesson's
 | `https://git-mastery.org/lessons/detours.json`               | Detours, keyed to a parent lesson                           |
 | Each lesson's `text.md`                                      | Row order (`show_hop_prep`, `show_exercise`, `show_detour`) |
 
-`custardui.config.json` has view toggles and label names, not a compulsory
-flag. It is not fetched for the sidebar.
+`custardui.config.json` supplies section visibility defaults, not a compulsory
+flag. The sidebar shares its cached fetch with Customise.
+
+## Section visibility
+
+Sidebar navigation follows the saved Customise choices for hands-on practicals,
+exercises, and detours. Hidden rows remain in the outline but are greyed out and
+disabled, including keyboard activation. Show and Peek remain navigable.
+Exercises nested under a hidden detour are disabled even when Exercises is Show
+or Peek, because their containing section is unavailable.
+
+Visibility resolves per toggle: an explicit saved Show, Peek, or Hide choice wins,
+then the course edition's `preset.toggles`, then the site's configured default.
+A configured toggle with no default means Show, matching CustardUI. While a
+fallback source is unavailable, rows stay enabled unless another available source
+marks them hidden. Older page-only preferences are read through the existing
+`getSitePrefs` bridge when there is no desktop copy.
+
+Saving Customise emits `gm-site-view-prefs`; the sidebar subscribes and updates
+without being reopened. Disabled rows do not receive active or hover styling.
 
 ## Course edition overlay
 
 When Settings → Customise has a course edition id (e.g. `cs2103`), the sidebar
-fetches `https://git-mastery.org/versions/<id>/<id>.json` and reads
-`preset.labels` only. Theme, toggles, and unknown keys are ignored. Any
+fetches `https://git-mastery.org/versions/<id>/<id>.json`. The label overlay reads
+`preset.labels`; section visibility reads `preset.toggles` from the same cached
+response. Theme and unknown keys are ignored. Any
 edition that publishes a file at that path works; there is no allowlist.
 
-This overlay is strictly additive. It never hides, reorders, or filters rows.
+The label overlay is strictly additive. It never hides, reorders, or filters rows.
+Visibility changes whether a row can be activated, not its place in the outline.
 
 | Fetch / parse result                           | Sidebar                                                                                                                       |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |

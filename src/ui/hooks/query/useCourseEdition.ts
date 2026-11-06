@@ -1,11 +1,8 @@
-import { useEffect, useState } from "react";
 import { SITE_ORIGIN } from "../../contexts/WebContentsViewContext";
-import {
-  buildAdaptationJsonUrl,
-  readDesktopSiteViewPrefs,
-  SITE_VIEW_PREFS_CHANGED_EVENT,
-} from "../../utils/siteViewPrefs";
+import { buildAdaptationJsonUrl } from "../../utils/siteViewPrefs";
+import { useSiteViewPrefs } from "../useSiteViewPrefs";
 import { useCustomQuery } from "./useCustomQuery";
+import type { ToggleMode } from "./useCustardUIConfig";
 
 export type RequirementTone = "danger" | "info" | "muted";
 
@@ -17,19 +14,7 @@ export type RequirementLabel = {
 const LABEL_MAX_CHARS = 24;
 
 export function useAdaptationId(): string | undefined {
-  const [id, setId] = useState(() => readDesktopSiteViewPrefs()?.adaptationId);
-
-  useEffect(() => {
-    const sync = () => setId(readDesktopSiteViewPrefs()?.adaptationId);
-    window.addEventListener(SITE_VIEW_PREFS_CHANGED_EVENT, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener(SITE_VIEW_PREFS_CHANGED_EVENT, sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-
-  return id;
+  return useSiteViewPrefs()?.adaptationId;
 }
 
 function toneFromColor(color: unknown): RequirementTone {
@@ -74,7 +59,23 @@ export function parseEditionLabels(
  */
 export function useCourseEditionLabels() {
   const adaptationId = useAdaptationId();
-  return useCustomQuery<Map<string, RequirementLabel> | null>({
+  const query = useCourseEdition(adaptationId);
+  return {
+    ...query,
+    data: adaptationId ? parseEditionLabels(query.data, adaptationId) : null,
+  };
+}
+
+type CourseEdition = {
+  id: string;
+  preset?: {
+    toggles?: Record<string, ToggleMode>;
+  };
+};
+
+/** Share the edition fetch between requirement labels and section visibility. */
+export function useCourseEdition(adaptationId: string | undefined) {
+  return useCustomQuery<CourseEdition | null>({
     queryKey: ["course-edition", adaptationId ?? ""],
     queryFn: async () => {
       if (!adaptationId) return null;
@@ -84,7 +85,15 @@ export function useCourseEditionLabels() {
         );
         if (!response.ok) return null;
         const body: unknown = await response.json();
-        return parseEditionLabels(body, adaptationId);
+        if (
+          !body ||
+          typeof body !== "object" ||
+          !("id" in body) ||
+          body.id !== adaptationId
+        ) {
+          return null;
+        }
+        return body as CourseEdition;
       } catch {
         return null;
       }
