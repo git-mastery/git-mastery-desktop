@@ -369,9 +369,11 @@ conversation has a concrete artifact to point at rather than a question.
   HEAD, working-tree cleanliness, paused operation, merge direction when known), then the raw
   read-only git output — current branch, recent commit subjects, branch, tag, remote and stash
   names, and the **names and staged/unstaged status** of changed files;
-- for four supported GitHub exercises: the authenticated GitHub login, exact task repository
-  identity/visibility/fork ancestry, or a bounded authored-open-PR selection with head/base metadata.
-  The scope and unknown-result rules are in [GitHub context for AI hints](ai-github-context.md).
+- for four supported GitHub exercises: the signed-in GitHub username and the task repository's
+  name, visibility, fork status and parent, or the selected open PR's number, URL, state,
+  draft flag, source repository, source/destination branches and head commit ID. The block also
+  reports query limits and unavailable information. See the
+  [complete field list](architecture/ai-github-context.md#exactly-what-the-ai-receives).
 
 Paths are relative to the folder containing `gitmastery-exercises`, so no home directory or
 OS username is sent. GitHub account logins are included where needed to identify task resources.

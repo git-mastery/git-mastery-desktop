@@ -92,9 +92,11 @@ rather than assuming (§5), because some practicals create the repository later.
 - **Terminal output and scrollback.** Output can echo anything the student ran, including
   credentials, and its size is unbounded.
 
-The GitHub provider separately sends the current GitHub account login and narrowly scoped task
-metadata. Its authenticated remote-data boundary, unknown outcomes and unchecked requirements are
-defined in [GitHub context for AI hints](../ai-github-context.md).
+For four GitHub exercises, the GitHub provider adds the signed-in account and either repository
+details (name, visibility, fork and parent) or one selected open PR's details. It sends no remote
+file contents or PR descriptions. See the
+[explicit list of fields sent to the AI](ai-github-context.md#exactly-what-the-ai-receives)
+and the exercise-specific checks that remain outside this provider.
 
 Adding `git diff`, other file bodies, or terminal output would cross the boundary stated in
 `../llm-integration.md` and needs a new decision, not an extension of this one.
