@@ -1,6 +1,6 @@
 # Desktop happy-path E2E proposal and implementation
 
-**Status: cross-platform harness and GitHub workflow implemented; hosted-runner qualification pending.**
+**Status: cross-platform harness and optional GitHub workflow implemented; smoke passed on all three hosted runners.**
 Three small Electron journeys check that a learner can download and resume an
 exercise, verify terminal work, and manually complete a lesson. A separate
 Windows test covers its current Verify limitation. The E2E workflow is separate
@@ -36,10 +36,10 @@ automation generally.
 
 | Journey                                                                  | macOS                                          | Linux                                    | Windows                                                 |
 | ------------------------------------------------------------------------ | ---------------------------------------------- | ---------------------------------------- | ------------------------------------------------------- |
-| Download, enter the exercise, and resume without losing work             | Passed locally and on GitHub                   | Passed on GitHub                         | Implemented with Git Bash; hosted run pending           |
+| Download, enter the exercise, and resume without losing work             | Passed locally and on GitHub                   | Passed on GitHub                         | Passed on GitHub with Git Bash                          |
 | Verify a terminal solution and restore exercise completion after restart | Passed locally and on GitHub using real `lsof` | Passed on GitHub using `/proc/<pid>/cwd` | Explicitly skipped: production cwd probe returns `null` |
-| Manually complete a lesson and restore it after restart                  | Passed locally and on GitHub                   | Passed on GitHub                         | Implemented; hosted run pending                         |
-| Assert Windows Verify is blocked and never invokes CLI verification      | Skipped: Windows only                          | Skipped: Windows only                    | Implemented; hosted run pending                         |
+| Manually complete a lesson and restore it after restart                  | Passed locally and on GitHub                   | Passed on GitHub                         | Passed on GitHub                                        |
+| Assert Windows Verify is blocked and never invokes CLI verification      | Skipped: Windows only                          | Skipped: Windows only                    | Passed on GitHub                                        |
 
 Linux needs a graphical session such as Xvfb and working Electron/`node-pty`
 dependencies. Windows needs Git for Windows for shell journeys and a real
@@ -171,9 +171,9 @@ this suite therefore does not qualify Chromium sandbox behavior.
 Windows bootstrap tracks the real PTYs returned by `node-pty`. Before asking
 Electron to quit, the harness kills them and waits for their exit events so
 ConPTY can dispose its workers while Electron's event loop is running. The
-first hosted run reached the download,
-resume, and blocked-Verify assertions but hung when quitting with ConPTY still
-alive; its exercise directories remained locked. This cleanup belongs to the
+first hosted run reached the download, resume, and blocked-Verify assertions
+but hung when quitting with ConPTY still alive; its exercise directories
+remained locked. This cleanup belongs to the
 test harness and makes restarts possible without changing production code.
 Consequently the suite does not qualify the application's normal Windows
 shutdown while a terminal is open. Temporary-directory removal permits a
@@ -262,9 +262,9 @@ Do not interpret a skipped Windows success test as Verify support. Successful
 Windows Verify still needs a production cwd probe. Keep real-CLI/live-site
 smoke results separately reported.
 
-## 4. macOS smoke and repeatability evidence
+## 4. Smoke and repeatability evidence
 
-Evaluation date: **2026-11-06**. Runs used macOS **26.3.2 arm64**, Node
+Evaluation date: **2026-11-06**. Local runs used macOS **26.3.2 arm64**, Node
 **20.20.2**, Electron **41.10.5**, and Playwright **1.65.0**. This records the
 observed environment, not a supported-version matrix; newer Node requirements
 in some dependencies remain a separate environment concern.
@@ -307,10 +307,27 @@ Those responses are now explicit fixtures; there is still no live fallback.
 No flakiness was observed in those 30 executions. This is finite evidence from
 one local macOS environment, not a guarantee across machines or CI. Every
 repetition launched from fresh state; Verify and manual completion each also
-restarted Electron. Linux and Windows were not run.
+restarted Electron. These repetitions covered local macOS only.
 
 After adapting the harness for all three OSes, `npm run test:e2e` built the
 application and passed locally on macOS with **3 passed, 1 Windows-only skip in
-9.9 seconds** of test-run time. Workflow YAML and the
-three-platform matrix were checked locally; hosted Linux/Windows results remain
-pending until the branch is committed and pushed.
+9.9 seconds** of test-run time.
+
+### GitHub-hosted runner smoke
+
+The [hosted smoke run](https://github.com/git-mastery/git-mastery-desktop/actions/runs/42172558985)
+tests desktop revision **`e2b320c`** on all three runners with Node 22, one
+worker, one repetition, and zero test retries.
+
+| Runner         | Passed | Skipped | Test-run time |
+| -------------- | ------ | ------- | ------------- |
+| `macos-15`     | 3      | 1       | 15.3 seconds  |
+| `ubuntu-24.04` | 3      | 1       | 9.9 seconds   |
+| `windows-2022` | 3      | 1       | 12.3 seconds  |
+
+macOS/Linux skip the Windows-only blocked-Verify test. Windows skips successful
+Verify because the production cwd probe is absent; it checks the blocked
+outcome instead. Windows also uses the explicit PTY shutdown described in §3.
+These smoke runs qualify the fixture journeys once per hosted runner.
+Ten-repeat hosted qualification remains a follow-up, available through manual
+dispatch after the workflow reaches the default branch.
