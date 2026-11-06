@@ -368,16 +368,20 @@ conversation has a concrete artifact to point at rather than a question.
 - for each repository inside the exercise folder: a short derived summary (branch or detached
   HEAD, working-tree cleanliness, paused operation, merge direction when known), then the raw
   read-only git output — current branch, recent commit subjects, branch, tag, remote and stash
-  names, and the **names and staged/unstaged status** of changed files.
+  names, and the **names and staged/unstaged status** of changed files;
+- the signed-in GitHub username, plus repository name, visibility, fork status, parent and
+  authored open PR metadata for targets discovered from exercise remotes and the manifest.
+  Every exercise uses the same collection logic. The block reports query limits and
+  unavailable information. See the [field and source list](architecture/ai-context-providers.md#github-state).
 
 Paths are relative to the folder containing `gitmastery-exercises`, so no home directory or
-username is sent.
+OS username is sent. GitHub account logins are included where needed to identify task resources.
 
 **Never sent:**
 
 - the contents of files other than those allowlisted question stems;
 - student answers from question files;
-- anything outside the exercise folder;
+- local file data outside the exercise folder;
 - terminal scrollback;
 - any credential.
 

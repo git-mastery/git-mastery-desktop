@@ -24,6 +24,7 @@ type ContextProvider = {
   collect: (ctx: {
     exerciseId: string;
     location: ExerciseLocation | null;
+    signal?: AbortSignal;
   }) => Promise<string | null>;
 };
 ```
@@ -31,15 +32,39 @@ type ContextProvider = {
 `collectContext` resolves the exercise location once (`locateExercise`), runs every provider in
 parallel, drops anything that fails, times out or is empty, and truncates each to `MAX_BLOCK_CHARS`.
 
-| Provider             | Block label                          | Source                                                                                          |
-| -------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `instructions`       | Instructions                         | live scrape of the lesson page, else the copy cached on open                                    |
-| `exercise-questions` | Exercise questions (answers omitted) | `Q:` stems from files named in the exercise manifest's `base_files`; answer lines are discarded |
-| `exercise-folder`    | Exercise folder                      | exercise manifest, progress store, names-only directory tree                                    |
-| `git-state`          | Repository state                     | derived structural facts, then the read-only `git` output they were computed from               |
+| Provider             | Block label                          | Source                                                                                                                 |
+| -------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `instructions`       | Instructions                         | live scrape of the lesson page, else the copy cached on open                                                           |
+| `exercise-questions` | Exercise questions (answers omitted) | `Q:` stems from files named in the exercise manifest's `base_files`; answer lines are discarded                        |
+| `exercise-folder`    | Exercise folder                      | exercise manifest, progress store, names-only directory tree                                                           |
+| `git-state`          | Repository state                     | derived structural facts, then the read-only `git` output they were computed from                                      |
+| `github-state`       | GitHub state                         | fresh account, repository/fork and authored open PR metadata for targets discovered from exercise remotes and manifest |
 
 Adding a signal is one file under `ai/context/` plus one array entry. The system prompt, IPC and the
-panel's context disclosure need no changes.
+panel's context disclosure need no structural changes. Providers with new evidence semantics also
+update the prompt's interpretation rules.
+
+### GitHub state
+
+Every exercise and hands-on chat collects the same compact **GitHub state** block on each message,
+using the learner's existing `gh` login. Targets come from local GitHub remotes and the manifest's
+`exercise_repo.pr_repo_full_name`; there are no exercise-specific rules.
+
+The AI receives:
+
+1. **Account:** signed-in `login` from `gh api user`.
+2. **Repository:** identity, visibility, fork flag and parent (for forks) from
+   `gh api repos/<owner>/<name>` (`full_name`, `visibility`, `fork`, `parent.full_name`).
+   A changed identity is shown when GitHub redirects a renamed repository.
+3. **The account's open PRs:** number, draft status, head repository and head/base branches from
+   `gh pr list --repo <owner/name> --author <login> --state open`
+   (`number`, `isDraft`, `headRepository`, `headRepositoryOwner`, `headRefName`, `baseRefName`).
+4. **Unknown or omitted data:** short failure reasons and warnings only when a limit is reached.
+
+The block is capped at 2,000 characters, three repositories and five open PRs per repository.
+Collection remains read-only with a 2.1-second deadline. It sends no timestamps, source traces,
+PR URLs, commit hashes or repeated guidance. The prompt has one GitHub interpretation rule:
+prefer current facts; unknown or omitted evidence is inconclusive; metadata is not verification.
 
 ### Why separate blocks rather than one
 
@@ -82,12 +107,13 @@ rather than assuming (§5), because some practicals create the repository later.
 
 - **Arbitrary file contents.** The folder provider lists names only; `.git` is summarised, not
   walked. The one exception is §4.1.
-- **Anything outside the exercise folder.** The tree walk, repository search, and question-file
+- **Local files outside the exercise folder.** The tree walk, repository search, and question-file
   reads do not follow file symlinks, and every repository is containment-checked (§5).
-- **The student's home path or username.** Paths are rendered relative to the folder above
+- **The student's home path or OS username.** Paths are rendered relative to the folder above
   `gitmastery-exercises`, e.g. `gitmastery-exercises/under-control`.
 - **Terminal output and scrollback.** Output can echo anything the student ran, including
   credentials, and its size is unbounded.
+- **Remote file contents and PR descriptions.** The GitHub provider sends metadata only.
 
 Adding `git diff`, other file bodies, or terminal output would cross the boundary stated in
 `../llm-integration.md` and needs a new decision, not an extension of this one.
@@ -176,6 +202,8 @@ by `convertToModelMessages`, so context does not accumulate across turns. Cost i
 not quadratic, and the model never sees earlier turns' repository state. History sent to the model is
 capped at the last 20 messages.
 
-Added latency per send is a directory walk, one `rev-parse` per candidate, six parallel git commands
+Local collection adds a directory walk, one `rev-parse` per candidate, six parallel git commands
 per repository and one `executeJavaScript`. That is typically well under 200 ms, bounded at 2500 ms,
-against free-tier first-token latency.
+against free-tier first-token latency. GitHub collection reads the account and discovers targets,
+then queries repository and PR metadata in parallel within a 2,100 ms deadline. Those facts
+are recollected each turn; only rate-limit retry timing is retained.
