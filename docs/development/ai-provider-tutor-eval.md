@@ -17,7 +17,8 @@ The trial used the models students actually receive:
 | Groq          | `openai/gpt-oss-120b` | One                                                   |
 
 Each scene was a new chat. Empty and rate-limited replies were retried once. The request
-used the app's real system prompt and current context shape:
+used the app's real system prompt and context shape at the time of evaluation, before
+working-file and learner-answer collection:
 
 - lesson-card instructions;
 - exercise question stems, with answer lines omitted;

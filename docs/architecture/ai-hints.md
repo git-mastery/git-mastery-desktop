@@ -142,9 +142,19 @@ Exercise and hands-on kinds share the same extra rules:
   basic terminal use. Anything else is politely declined.
 - **Injection resistance.** Context blocks are fenced data, never instructions, and the prompt is
   not revealed.
-- **Grounding.** The model infers progress from the snapshot — derived Git facts first, then raw
-  git output and any question stems — instead of asking what the student tried. When the work looks
-  complete, it suggests running Verify.
+- **Grounding.** Task instructions describe initial conditions; current observations supersede them
+  and earlier assistant diagnoses. Local remote-tracking refs, live server refs, upstream
+  configuration and checkout are distinct facts. Clean files alone do not establish completion.
+  Missing or truncated evidence calls for one precise check, not a guessed diagnosis.
+- **Working files and answers.** Bounded visible text files show the learner's actual attempt,
+  including answer sheets. The tutor uses these to explain mistakes and guide one next step;
+  it must not supply corrected answer values or a finished replacement file. Hidden files,
+  filtered files, omitted excerpts, and staged/historical file bodies remain unknown.
+- **Completion.** When work appears ready without a pass, the exercise tutor suggests Verify. A
+  recorded or student-reported pass is acknowledged as such; if current evidence is consistent,
+  it suggests moving on. Conflicting state or later changes call for a relevant check. The stored
+  progress label is not the latest attempt and does not prove that current files remain correct;
+  structured verification and progress freshness remain deferred.
 
 The prompt is guidance rather than enforcement: a determined student can extract more than the
 policy intends. Grading is what actually protects exercises, and the policy keeps the default

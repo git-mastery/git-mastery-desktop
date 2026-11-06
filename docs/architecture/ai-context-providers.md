@@ -10,8 +10,10 @@ student's work, falls back on asking what they already tried. The student came h
 are stuck; being questioned about their own history is the wrong response when that history is on
 disk.
 
-So each turn carries a fresh snapshot of the exercise, and the system prompt tells the model to
-infer progress from it rather than ask.
+Each turn recollects workspace evidence. The prompt distinguishes this evidence from task setup,
+stored achievement, student reports, and previous advice. Initial conditions such as “this branch
+has not been pushed” must not override current refs. The collection spans a short time window;
+it is not an atomic snapshot or a complete record of the student's actions.
 
 ## 2. Shape
 
@@ -25,20 +27,21 @@ type ContextProvider = {
     exerciseId: string;
     location: ExerciseLocation | null;
     signal?: AbortSignal;
-  }) => Promise<string | null>;
+  }) => Promise<string | AiContextBlock[] | null>;
 };
 ```
 
 `collectContext` resolves the exercise location once (`locateExercise`), runs every provider in
-parallel, drops anything that fails, times out or is empty, and truncates each to `MAX_BLOCK_CHARS`.
+parallel, drops anything that fails, times out or is empty, and caps each block at 8,000 characters
+with an explicit truncation marker. A provider may return multiple blocks without changing IPC.
 
-| Provider             | Block label                          | Source                                                                                                                 |
-| -------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| `instructions`       | Instructions                         | live scrape of the lesson page, else the copy cached on open                                                           |
-| `exercise-questions` | Exercise questions (answers omitted) | `Q:` stems from files named in the exercise manifest's `base_files`; answer lines are discarded                        |
-| `exercise-folder`    | Exercise folder                      | exercise manifest, progress store, names-only directory tree                                                           |
-| `git-state`          | Repository state                     | derived structural facts, then the read-only `git` output they were computed from                                      |
-| `github-state`       | GitHub state                         | fresh account, repository/fork and authored open PR metadata for targets discovered from exercise remotes and manifest |
+| Provider          | Block label                                                                                                                                                    | Source                                                                                                                 |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `instructions`    | Instructions                                                                                                                                                   | live scrape of the lesson page, else the copy cached on open                                                           |
+| `exercise-files`  | Exercise file contents; File contents · relative path                                                                                                          | bounded visible UTF-8 working files, including questions and learner answers                                           |
+| `exercise-folder` | Exercise folder                                                                                                                                                | exercise manifest, progress store, names-only directory tree                                                           |
+| `git-state`       | Repository state; Local branch relationships; Branch ancestry and counts; Branch commit history; Branch operation history; Local tag details; Live remote refs | separate blocks per repository, from read-only Git observations                                                        |
+| `github-state`    | GitHub state                                                                                                                                                   | fresh account, repository/fork and authored open PR metadata for targets discovered from exercise remotes and manifest |
 
 Adding a signal is one file under `ai/context/` plus one array entry. The system prompt, IPC and the
 panel's context disclosure need no structural changes. Providers with new evidence semantics also
@@ -68,9 +71,10 @@ prefer current facts; unknown or omitted evidence is inconclusive; metadata is n
 
 ### Why separate blocks rather than one
 
-Truncation at `MAX_BLOCK_CHARS` is per-block and silent. Concatenating sources means whichever lands
-last is cut mid-line, in an order-dependent way. Separate blocks make the cap a per-source guarantee,
-let a dead WebContentsView cost only the instructions, and keep the disclosure's labels granular.
+Truncation at `MAX_BLOCK_CHARS` is per-block and marked. Concatenating repositories or putting tag
+details after a long log can discard the decisive evidence. Separate blocks protect those sources,
+and ancestry summaries are separate from detailed histories and reflogs. Omitted entries remain
+unknown; a truncated list never establishes absence. The disclosure's labels include the repository.
 Those labels are the student-facing record of what was sent, so they must name the actual sources.
 
 Block text is fenced in `buildSystemPrompt` with a backtick run longer than any inside it. Porcelain
@@ -81,8 +85,11 @@ Without the fence, both would be read as structure of the surrounding prompt.
 
 Collection gates the turn, and every provider reaches something that can stall: a WebContentsView
 mid-navigation, or a git subprocess. Each provider races `PROVIDER_TIMEOUT_MS` (2500 ms), and
-`collectContext` takes the turn's abort signal. A partial context always beats a turn that will not
-start.
+`collectContext` takes the turn's abort signal. Git work has an inner 2,100 ms deadline, passed to
+child processes, leaving time to return partial results before the outer deadline. Its per-send
+reader deduplicates commands and limits concurrency to eight subprocesses. Failed commands return
+unknown, with no raw error logging that could disclose URLs. Other provider failures still omit
+their blocks; broader structured failure reporting remains deferred.
 
 ### Instructions survive navigation
 
@@ -103,51 +110,69 @@ should still see the exercise folder even if the learner `cd`'d elsewhere. Verif
 (`hp-init-repo/things`); otherwise it stays at the exercise root. The git provider still searches
 rather than assuming (§5), because some practicals create the repository later.
 
-## 4. What is never sent
+## 4. File contents and exclusions
 
-- **Arbitrary file contents.** The folder provider lists names only; `.git` is summarised, not
-  walked. The one exception is §4.1.
-- **Local files outside the exercise folder.** The tree walk, repository search, and question-file
-  reads do not follow file symlinks, and every repository is containment-checked (§5).
-- **The student's home path or OS username.** Paths are rendered relative to the folder above
-  `gitmastery-exercises`, e.g. `gitmastery-exercises/under-control`.
+- **Staged and historical file bodies are not collected.** Working text comes from the file
+  provider (§4.1); Git supplies separate metadata, subjects, reflogs and tag annotations.
+- **Unrelated repositories.** The Git collector rejects working folders, gitdirs and worktree
+  common directories outside the canonical exercise boundary (§5). Local file remotes are also
+  confined to that boundary. Broader workspace-generation and all-provider containment work
+  remains deferred.
+- **Absolute workspace paths in generated labels.** Paths are rendered relative to the folder above
+  `gitmastery-exercises`, e.g. `gitmastery-exercises/under-control`. Remote displays omit login
+  usernames; URLs containing credentials or query strings are skipped. Git commit/tag text is
+  learner-authored metadata, not a general-purpose secret-redaction guarantee.
 - **Terminal output and scrollback.** Output can echo anything the student ran, including
   credentials, and its size is unbounded.
 - **Remote file contents and PR descriptions.** The GitHub provider sends metadata only.
 
-Adding `git diff`, other file bodies, or terminal output would cross the boundary stated in
-`../llm-integration.md` and needs a new decision, not an extension of this one.
+### 4.1 Bounded working text, including learner answers
 
-### 4.1 Question stems from allowlisted files
+`exerciseFiles.ts` reads visible UTF-8 text inside the current exercise folder, including files
+outside its Git repository, untracked files, and answer sheets. The same provider serves exercises
+and hands-on practicals. It does not depend on a manifest allowlist or parse question/answer formats.
 
-Some exercises place a question sheet in the exercise folder (typically `answers.txt` beside the
-repository). The lesson scrape does not include those questions, and a names-only tree only proves
-the file exists. Without the stems, the model cannot tell which commit or file a halfway student is
-standing on.
+The reason to include answers is diagnostic: an untouched answer sheet and a completed one used to
+look identical, and filenames could not reveal incorrect edits or conflict markers. Reading the
+actual attempt provides useful evidence with less code than per-exercise answer-progress and
+file-state classifiers. The tutoring policy still withholds corrected answers and finished
+solutions; collecting an attempt does not certify it or authorize completing it for the learner.
 
-`exercise-questions` therefore reads **only** destination paths listed in
-`.gitmastery-exercise.json` → `base_files`. That map is authored by the CLI at download; the
-desktop app does not invent filenames. Each path must be a relative file under the exercise root,
-not a symlink, and not larger than 32 KiB. From that file the provider keeps single-line `Q:`
-stems and discards every other line, including all `A:` content and anything the student typed.
+The collector uses a breadth-first walk with these fixed rules:
 
-The block is omitted when the manifest has no `base_files`, the files are missing, or no `Q:`
-lines survive. Hands-on practicals have no manifest, so they never send this block.
+- Skip every dot-prefixed file and directory, including `.git`, `.env`, and `.gitignore`.
+- Skip `node_modules`, `vendor`, `venv`, and `__pycache__`; they can be visible directories.
+- Skip common key filenames/extensions and credential filenames, and text containing a PEM
+  private-key header. Skipping hidden files alone would miss visible keys.
+- Accept only regular UTF-8 text without binary control bytes; never follow symlinks. Canonical
+  paths must remain inside the exercise, whose root must remain inside the linked exercises folder.
+- Inspect at most 200 directory entries to depth five, include at most 20 files, skip files larger
+  than 32 KiB, and send at most 6,000 content characters per file and 24,000 in total.
 
-This is a redacted exception to "no file contents", not a general file reader. Student answers are
-not a tutoring input; question wording is.
+Each included file has a relative path and JSON-quoted text preserving whitespace, in its own
+context block. A summary records exclusions and traversal limits. Per-file excerpts and the
+outer 8,000-character block cap mark truncation explicitly. Missing, unreadable, excluded and
+truncated contents remain unknown.
+
+This intentionally excludes `.gitignore` contents even in ignore exercises. It also does not
+inspect staged/historical versions or execute student code. Those limitations call for a precise
+check when needed, rather than a more elaborate collector. The names-only folder tree and Git
+status can still mention hidden filenames; the exclusion applies to file-body collection.
+
+These filters reduce accidental disclosure; they are not a universal secret detector. Visible
+exercise text and learner answers are sent to the selected AI provider as written, unless filtered
+or truncated. Verifying the exercise folder establishes location, not the sensitivity of every
+file a learner might add. The existing context disclosure shows the text attached to each turn.
 
 ## 5. The git provider
 
 ### Repository discovery
 
-Candidates are the working folder plus every directory within `SEARCH_DEPTH` (2) of the exercise
-root that contains `.git`, nearest first. Hidden directories are skipped and symlinks are not
-followed. Each candidate must pass the containment check. At most `MAX_REPOS` (3) are described,
-each under its own `### Repository at …` heading, so exercises that set up more than one
-repository are all visible. If none pass, the block says so explicitly, as derived facts plus the same sentence. For
-`under-control`, where `git init` _is_ the task, "no repository yet" is the most useful fact the
-model can hold.
+Candidates are the working folder plus directories within depth two of the exercise root that
+contain `.git`, nearest first. The walk examines at most 200 directories and 12 candidates, skips
+hidden directories and symlinks, and stops descending when it finds a repository. At most three
+repositories are described in separate blocks. An empty result means no inspectable repository was
+found within these limits, not proof that no repository exists anywhere below the exercise.
 
 ### Derived facts
 
@@ -172,15 +197,17 @@ succeeds against whatever repository sits above the exercises folder. A student 
 coursework directory is a repository would have unrelated branch names and filenames sent to a
 third-party free tier.
 
-So each candidate runs `git rev-parse --show-toplevel` first, and `fs.realpathSync` of the result
-must equal the candidate exactly. Anything else means "not a repository here", and nothing more
-runs. `GIT_CEILING_DIRECTORIES` is set to the candidate's parent as a second line of defence.
+Before Git runs, canonical paths for the exercise, working folder, candidate, `.git` pointer and
+worktree `commondir` must stay within the exercise boundary. External gitdirs and repositories
+using alternate object stores are unsupported. Then `rev-parse --show-toplevel` must resolve to
+the candidate exactly. `GIT_CEILING_DIRECTORIES` is set to the candidate's parent, inherited
+`GIT_*` overrides are removed, optional locks and fsmonitor are disabled, and lazy fetching is
+disabled so missing objects do not trigger an implicit fetch.
 
 ### Commands
 
-`status --porcelain=v1 -b`, `log --oneline --decorate --all -n 15`, `branch -vv`, `remote -v`,
-`tag --list` and `stash list` run in parallel via `execFile` with an args array (no shell, matching
-the rest of the codebase).
+Commands use `execFile` with argument arrays, a 1,500 ms subprocess timeout and a 1 MiB buffer.
+No fetch, prune, checkout or verifier runs during collection.
 
 - **Porcelain, not plain `git status`.** Plain status advertises commands in its hint lines
   (`use "git restore --staged <file>..."`), which works against a model meant to stay inside the
@@ -188,12 +215,40 @@ the rest of the codebase).
   what a small model misreads.
 - **`--no-optional-locks`.** Status runs on every send, exactly when the student may be part-way
   through their own `git add`. Without the flag, status rewrites the index and can race `index.lock`.
-- **No `--graph`.** The ASCII art is noise to a small model; `--decorate --all` plus `branch -vv`
-  carries the same topology more legibly.
+- **Local refs.** `for-each-ref` collects up to 60 local branches and 60 remote-tracking refs,
+  including full object IDs, upstreams and symbolic targets. Relationships for the first eight
+  local branches compare configured upstreams and same-name tracking refs with
+  `rev-list --left-right --count`. A missing upstream is explicitly independent of push status.
+- **Topology.** For HEAD and the first eight local branches, logs carry commit IDs and parent IDs
+  (12 commits per ref), alongside reachable commit/merge counts and pairwise ancestry. A shallow
+  repository is labeled; its available history does not prove full ancestry.
+- **Operation history.** Up to eight reflog events per inspected ref expose rename, reset and
+  merge events with time and without author/email fields. Clone/fetch/pull/push command text is
+  redacted. Missing or expired reflogs mean unknown. `SQUASH_MSG` is reported only as a preparation
+  marker that may remain after a commit, not proof of correctness.
+- **Tags.** Up to 20 local tags carry object type/ID, lightweight versus annotated kind, fully
+  peeled target, and at most 1,200 characters of annotation. Tagger identity is excluded.
 - **Paused operations.** A paused merge, rebase, cherry-pick, revert or bisect is reported from
-  marker files in `rev-parse --absolute-git-dir`. Porcelain status alone does not say which
+  marker files in the validated Git directory. Porcelain status alone does not say which
   operation is in progress, and "you are mid-rebase" is often the whole answer.
-- `GIT_TERMINAL_PROMPT=0`, a 1500 ms timeout and a 1 MB buffer.
+
+### Remote observations are separate
+
+`remote get-url --all` resolves fetch and push destinations separately. For at most three configured
+remotes and four destinations per remote, `ls-remote --heads --tags` reads server advertisements.
+Shared fetch/push URLs are queried once. Tag `^{}` rows are normalized into the tag's peeled target.
+Same-name branches are explicitly reported as matching, different, or not advertised at the checked
+target. Remote ancestry is not inferred from different IDs.
+
+Only HTTPS, SSH, and local file targets inside this exercise are supported. Network queries use an
+empty Git configuration, with protocol restrictions, credential helpers disabled, and SSH in batch
+mode with existing trusted host keys. This deliberately trades private/custom-auth remote coverage
+for bounded, noninteractive observations without credential helper side effects. Failed
+authentication, network errors, skipped URLs and timeouts all produce **unknown**, never “absent.”
+Displayed remote lists are also bounded. No observation updates local remote-tracking refs.
+
+Remote identity is not proof of fork ownership, repository visibility, or PR state. GitHub API
+context is a separate feature.
 
 ## 6. Cost
 
@@ -202,8 +257,12 @@ by `convertToModelMessages`, so context does not accumulate across turns. Cost i
 not quadratic, and the model never sees earlier turns' repository state. History sent to the model is
 capped at the last 20 messages.
 
-Local collection adds a directory walk, one `rev-parse` per candidate, six parallel git commands
-per repository and one `executeJavaScript`. That is typically well under 200 ms, bounded at 2500 ms,
-against free-tier first-token latency. GitHub collection reads the account and discovers targets,
-then queries repository and PR metadata in parallel within a 2,100 ms deadline. Those facts
-are recollected each turn; only rate-limit retry timing is retained.
+Git evidence adds bounded local commands and optional network latency on each send. One reader
+shares a deadline and command cache for that collection only. The overall provider ceiling remains
+2,500 ms; large repositories or slow remotes yield explicitly partial evidence. Independent blocks
+increase the maximum payload compared with the former single Git block, while preserving decisive
+refs, counts and tags when detailed history is truncated.
+
+GitHub collection reads the account and discovers targets, then queries repository and PR metadata
+in parallel within a 2,100 ms deadline. Those facts are recollected each turn; only rate-limit retry
+timing is retained.

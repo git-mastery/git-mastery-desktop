@@ -363,27 +363,30 @@ conversation has a concrete artifact to point at rather than a question.
 - the exercise or hands-on instructions, as rendered on the lesson page;
 - the exercise id, its manifest metadata (repository setup, topics), whether it has been verified,
   and the **names** of files and folders inside the exercise folder;
-- **question stems** (`Q:` lines only) from files the exercise manifest lists in `base_files`,
-  with answer lines omitted;
+- bounded **visible working-file contents**, including question sheets and the student's answers,
+  whether tracked by Git or not;
 - for each repository inside the exercise folder: a short derived summary (branch or detached
-  HEAD, working-tree cleanliness, paused operation, merge direction when known), then the raw
-  read-only git output — current branch, recent commit subjects, branch, tag, remote and stash
-  names, and the **names and staged/unstaged status** of changed files;
+  HEAD, working-tree cleanliness, paused operation, merge direction when known), plus read-only
+  Git evidence: local branches and upstream relationships, commit parents and histories,
+  reachability counts, reflog events, local tag details, live remote branch/tag advertisements,
+  stashes, and the **names and staged/unstaged status** of changed files;
 - the signed-in GitHub username, plus repository name, visibility, fork status, parent and
   authored open PR metadata for targets discovered from exercise remotes and the manifest.
   Every exercise uses the same collection logic. The block reports query limits and
   unavailable information. See the [field and source list](architecture/ai-context-providers.md#github-state).
 
-Paths are relative to the folder containing `gitmastery-exercises`, so no home directory or
-OS username is sent. GitHub account logins are included where needed to identify task resources.
+Generated paths are relative to the exercise or the folder containing `gitmastery-exercises`.
+GitHub account logins are included where needed to identify task resources.
+File text is sent as written; filters do not guarantee removal of personal information or secrets
+embedded in otherwise ordinary exercise text.
 
 **Never sent:**
 
-- the contents of files other than those allowlisted question stems;
-- student answers from question files;
-- local file data outside the exercise folder;
-- terminal scrollback;
-- any credential.
+- file bodies outside the exercise folder, or reached through symlinks;
+- hidden file/directory contents (including `.git`, `.env` and `.gitignore`), common dependency
+  folders, binary/non-UTF-8 files, and recognized credential/key files;
+- staged and historical file bodies;
+- terminal scrollback.
 
 Two properties make that boundary real rather than aspirational:
 
@@ -397,9 +400,10 @@ Two properties make that boundary real rather than aspirational:
 2. **Disclosure is by construction.** Every block sent is rendered in the AI Hints pane's expandable
    "AI can see" row, so a student can read exactly what left their machine, per answer.
 
-Adding `git diff`, other file bodies, or terminal output would cross this boundary and needs to
-be treated as a new decision, not an extension of this one. The question-stem exception is
-documented in `docs/architecture/ai-context-providers.md` §4.1.
+Working text is included because filenames and question stems cannot explain an incorrect edit or
+answer. One bounded file reader is simpler than per-exercise answer-progress classifiers. The
+tutoring policy still prohibits providing completed solutions. Limits, filters and the deliberate
+exclusion of hidden files are documented in `architecture/ai-context-providers.md` §4.1.
 
 ---
 

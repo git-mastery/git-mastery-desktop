@@ -8,14 +8,14 @@ Ask AI on a highlight — chooses that source. The question is never sent until 
 
 ## Model
 
-| Concept            | Role                                                                                                                        |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| **Pane**           | The single visible chat above the terminal.                                                                                 |
-| **Session**        | One conversation for one source. Switching sources does not delete others.                                                  |
-| **Source**         | What the conversation is about: a lesson, an exercise, or a hands-on.                                                       |
-| **Composer draft** | Text sitting in the input, not yet a message. ChatGPT links and Ask AI both set this.                                       |
-| **Message**        | What they actually sent. The draft becomes a user message only on Send.                                                     |
-| **Context**        | Data the app attaches on send: instructions, allowlisted question stems, folder names, and repository state. Not the draft. |
+| Concept            | Role                                                                                                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Pane**           | The single visible chat above the terminal.                                                                                                                        |
+| **Session**        | One conversation for one source. Switching sources does not delete others.                                                                                         |
+| **Source**         | What the conversation is about: a lesson, an exercise, or a hands-on.                                                                                              |
+| **Composer draft** | Text sitting in the input, not yet a message. ChatGPT links and Ask AI both set this.                                                                              |
+| **Message**        | What they actually sent. The draft becomes a user message only on Send.                                                                                            |
+| **Context**        | Data the app attaches on send: instructions, bounded visible working-file contents (including learner answers), folder names, and repository state. Not the draft. |
 
 ```mermaid
 flowchart LR
