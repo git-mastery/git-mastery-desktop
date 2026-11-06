@@ -6,7 +6,7 @@ import { Modal } from "../ui/Modal";
 const verifyCopy = {
   correct: {
     title: "Exercise answer correct",
-    body: "Your solution passed verification.",
+    body: "This exercise will be marked as completed.",
   },
   incorrect: {
     title: "Exercise answer incorrect",

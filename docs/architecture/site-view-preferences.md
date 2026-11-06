@@ -63,6 +63,12 @@ The header Progress item opens `/progress-dashboard/#/dashboard/{username}` when
 
 The panel schema is fetched live from `https://git-mastery.org/custardui.config.json` so toggle IDs do not drift. On first open with no desktop copy, the panel seeds from the page’s existing `localStorage` so a previous in-page modal session is not clobbered.
 
+The tours sidebar subscribes to the renderer's `gm-site-view-prefs` event.
+Saved Hide choices disable the corresponding hands-on, exercise, and detour
+links immediately; Show and Peek keep them navigable. Missing choices fall back
+to course preset toggles and then config defaults. The sidebar shares the config
+and course edition query caches; see [Tours sidebar outline](tours-sidebar.md).
+
 ## Course edition
 
 A link such as `https://git-mastery.org/#/cs2103` is a [CustardUI adaptation](https://custardui.js.org/authorGuide/adaptations/adaptations.html), not a different origin. CustardUI loads `/versions/<id>/<id>.json` and keeps the id in `git-mastery-cv-adaptation`. Lesson, exercise, and tour URLs stay on the standard paths. The lessons menu still lists the full catalog; the adaptation changes labels, theme variables, and insertions on those pages.

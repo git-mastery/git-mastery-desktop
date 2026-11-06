@@ -30,6 +30,10 @@ import {
 import { useDetours } from "../../hooks/query/useDetours";
 import { useExercises } from "../../hooks/query/useExercises";
 import { useLessonSource } from "../../hooks/query/useLessonSource";
+import {
+  useHiddenSections,
+  type HiddenSections,
+} from "../../hooks/query/useHiddenSections";
 import { StatusPill } from "../ui/StatusPill";
 import { formatExerciseIdentifier } from "../../utils/format";
 import {
@@ -165,6 +169,7 @@ export const ToursPanel = ({ onClose }: { onClose: () => void }) => {
   const { query: exercisesQuery } = useExercises();
   const { data: detours } = useDetours();
   const { data: editionLabels } = useCourseEditionLabels();
+  const hiddenSections = useHiddenSections();
   const { downloadedExerciseData } = useLocalExercises();
   const { navigate, currentUrl } = useWebContentsView();
 
@@ -225,6 +230,7 @@ export const ToursPanel = ({ onClose }: { onClose: () => void }) => {
               tour={tour}
               currentUrl={currentUrl}
               outlinesByLesson={outlinesByLesson}
+              hiddenSections={hiddenSections}
               editionLabels={editionLabels}
               downloadedExerciseData={downloadedExerciseData}
               onNavigate={navigate}
@@ -237,12 +243,12 @@ export const ToursPanel = ({ onClose }: { onClose: () => void }) => {
 };
 
 const listItemClasses =
-  "flex w-full items-stretch overflow-hidden rounded-lg text-left text-sm font-semibold leading-normal text-fg hover:cursor-pointer focus-visible:outline-none";
+  "flex w-full items-stretch overflow-hidden rounded-lg text-left text-sm font-semibold leading-normal text-fg enabled:hover:cursor-pointer disabled:cursor-default disabled:text-muted disabled:opacity-50 focus-visible:outline-none";
 
 const listItemBody =
   "flex min-w-0 flex-1 items-start justify-between gap-2 px-2 py-2";
 
-const listItemHover = "hover:bg-hover focus-visible:bg-hover";
+const listItemHover = "enabled:hover:bg-hover focus-visible:bg-hover";
 
 const activeItemClasses = "bg-accent-soft text-accent";
 
@@ -293,6 +299,7 @@ const TourItem = ({
   tour,
   currentUrl,
   outlinesByLesson,
+  hiddenSections,
   editionLabels,
   downloadedExerciseData,
   onNavigate,
@@ -300,6 +307,7 @@ const TourItem = ({
   tour: Tour;
   currentUrl: string | null;
   outlinesByLesson: Map<string, LessonOutlineItem[]>;
+  hiddenSections: HiddenSections;
   editionLabels: EditionLabels;
   downloadedExerciseData: ProgressData | undefined;
   onNavigate: (url: string) => void;
@@ -378,6 +386,7 @@ const TourItem = ({
               labelKey={`${tour.folder}.${lesson.lesson_name}`}
               currentUrl={currentUrl}
               outline={outlinesByLesson.get(lesson.lesson_name) ?? []}
+              hiddenSections={hiddenSections}
               editionLabels={editionLabels}
               downloadedExerciseData={downloadedExerciseData}
               onNavigate={onNavigate}
@@ -408,6 +417,7 @@ const LessonItem = ({
   labelKey,
   currentUrl,
   outline,
+  hiddenSections,
   editionLabels,
   downloadedExerciseData,
   onNavigate,
@@ -416,6 +426,7 @@ const LessonItem = ({
   labelKey: string;
   currentUrl: string | null;
   outline: LessonOutlineItem[];
+  hiddenSections: HiddenSections;
   editionLabels: EditionLabels;
   downloadedExerciseData: ProgressData | undefined;
   onNavigate: (url: string) => void;
@@ -479,6 +490,7 @@ const LessonItem = ({
                       : item.identifier
                 }
                 item={item}
+                hiddenSections={hiddenSections}
                 lesson={lesson}
                 currentUrl={currentUrl}
                 editionLabels={editionLabels}
@@ -499,6 +511,7 @@ const LessonItem = ({
 
 const OutlineRow = ({
   item,
+  hiddenSections,
   lesson,
   currentUrl,
   editionLabels,
@@ -506,22 +519,25 @@ const OutlineRow = ({
   onNavigate,
 }: {
   item: LessonOutlineItem;
+  hiddenSections: HiddenSections;
   lesson: Lesson;
   currentUrl: string | null;
   editionLabels: EditionLabels;
   downloadedExerciseData: ProgressData | undefined;
   onNavigate: (url: string) => void;
 }) => {
+  const hidden = hiddenSections.has(item.kind);
   if (item.kind === "hands-on") {
     const status = downloadedExerciseData?.[item.identifier]?.status;
     const isActive = isUrlHashActive(item.panelId, currentUrl);
     return (
       <button
         type="button"
+        disabled={hidden}
         className={cx(
           listItemClasses,
           listItemHover,
-          isActive && activeItemClasses,
+          !hidden && isActive && activeItemClasses,
         )}
         onClick={() => onNavigate(buildHandsOnUrl(lesson, item.panelId))}
       >
@@ -539,6 +555,7 @@ const OutlineRow = ({
       <ExerciseRow
         catalogKey={item.catalogKey}
         exercise={item.exercise}
+        disabled={hidden}
         currentUrl={currentUrl}
         editionLabels={editionLabels}
         downloadedExerciseData={downloadedExerciseData}
@@ -553,10 +570,11 @@ const OutlineRow = ({
     <div className="flex flex-col">
       <button
         type="button"
+        disabled={hidden}
         className={cx(
           listItemClasses,
           listItemHover,
-          isActive && activeItemClasses,
+          !hidden && isActive && activeItemClasses,
         )}
         onClick={() => onNavigate(buildDetourUrl(lesson, item.detourKey))}
       >
@@ -572,6 +590,7 @@ const OutlineRow = ({
               key={exercise.identifier}
               catalogKey={catalogKey}
               exercise={exercise}
+              disabled={hidden || hiddenSections.has("exercise")}
               currentUrl={currentUrl}
               editionLabels={editionLabels}
               downloadedExerciseData={downloadedExerciseData}
@@ -593,6 +612,7 @@ const ExerciseRow = ({
   downloadedExerciseData,
   onNavigate,
   heuristicOptional = false,
+  disabled = false,
 }: {
   catalogKey: string;
   exercise: Exercise;
@@ -601,6 +621,7 @@ const ExerciseRow = ({
   downloadedExerciseData: ProgressData | undefined;
   onNavigate: (url: string) => void;
   heuristicOptional?: boolean;
+  disabled?: boolean;
 }) => {
   const status = downloadedExerciseData?.[exercise.identifier]?.status;
   const isActive = isUrlHashActive(
@@ -612,10 +633,11 @@ const ExerciseRow = ({
   return (
     <button
       type="button"
+      disabled={disabled}
       className={cx(
         listItemClasses,
         listItemHover,
-        isActive && activeItemClasses,
+        !disabled && isActive && activeItemClasses,
       )}
       onClick={() => onNavigate(buildExerciseUrl(exercise))}
     >
