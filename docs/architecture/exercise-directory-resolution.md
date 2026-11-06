@@ -9,11 +9,11 @@ Verification runs in whatever directory the terminal is sitting in, so getting t
 the right directory is load-bearing rather than cosmetic. A wrong `cd` does not fail visibly —
 it surfaces later as a confusing `gitmastery verify` failure that appears to blame the learner.
 
-Two defects sit behind this:
+The shared Start flow addresses two defects in the former implementation:
 
-1. **The app guesses the working directory** from the shape of the folder on disk, even though
+1. **The app guessed the working directory** from the shape of the folder on disk, even though
    the CLI writes the answer to a manifest at download time.
-2. **"Start Exercise" always downloads**, with no check for an existing folder. On the shipped
+2. **Embedded "Start Exercise" always downloaded**, with no check for an existing folder. On the evaluated
    CLI that deletes the learner's work.
 
 Both are fixed by the same change: resolve the working directory from the manifest, and have
@@ -53,57 +53,39 @@ keyed on the presence of `.git` is structurally wrong for that class of exercise
 
 ## 3. Current behaviour
 
-### Resolver
+Embedded Start, app-side Start, and the legacy download IPC command all call
+`startExercise()` in `src/electron/ipc/gitmastery.ts`. After the
+[Start prerequisites](exercises-root.md) pass, it resolves the exercise with
+`resolveExerciseCwd()` in `src/electron/exerciseManifest.ts`.
 
-`resolveExerciseCwd()` in `src/electron/ipc/gitmastery.ts` is an ordered rule list over the
-folder's shape:
+A ready exercise is resumed with a terminal `cd` and no CLI invocation. An absent
+exercise is downloaded, resolved again, and then entered. An existing corrupt or
+incomplete folder produces an error without overwriting work. Section 6 defines
+the manifest rules and shared flow in detail.
 
-1. Root missing → `null`
-2. Root contains `.git` → root
-3. List non-dot subdirectories
-4. Zero subdirectories → root
-5. Exactly one subdirectory → that subdirectory, unconditionally
-6. Two or more → the first containing `.git`, else one named `<identifier>-repo`, else root
+## 4. Why folder-shape heuristics were removed
 
-### Entry points
+The old resolver chose a sole subdirectory, or guessed from `.git` and an
+`<identifier>-repo` naming convention when several directories existed.
+Real exercises use unrelated names such as `webapp`, `shopping-list`, and
+`control-me`. An exercise can intentionally have no `.git`, and a learner's
+extra `scratch` directory can change the apparent layout.
 
-| Trigger                                           | Path today                                                                                                                          |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Embedded lesson page "Start Exercise"             | `wcv-start-exercise` → `_download` directly (`src/electron/ipc/webContentsView.ts`). Never resolves, never `cd`s, always downloads. |
-| App-side Start (`ActivityProvider.startExercise`) | `gitmastery-start-exercise` → resolve → `cd`. Never downloads.                                                                      |
-| Download completion                               | Terminal stays put. Commented-out stdout scraping in `_download` was an earlier attempt at this.                                    |
-
-The two Start paths do opposite things, and neither does both.
-
-## 4. Why the resolver is wrong
-
-- **Rule 6's `<identifier>-repo` convention matches nothing.** The real names are `webapp`,
-  `conflict`, `gm-shapes`, `shopping-list`, `attendance`, `intervention`, `control-me`,
-  `my-notes`, `duty-roster`.
-- **Rule 5 carries the whole system.** Nine of eleven exercises resolve correctly only because
-  they happen to have exactly one subdirectory. `under-control` survives only because rule 5
-  does not check for `.git`.
-- **Two more are right by accident.** `fork-repo` and `remote-control` are `ignore` and land on
-  rule 4 (zero subdirectories → root) — the correct answer, reached without knowing why.
-- **It degrades silently.** An exercise whose `base_files` create a directory alongside a
-  not-yet-`init`-ed repo hits rule 6 with no `.git` and no `-repo` name, and falls back to the
-  exercise root. No error is raised — the learner just gets a verify failure later.
-- **A stray folder breaks it.** A learner running `mkdir scratch` flips a rule-5 exercise into
-  rule 6.
-- **It re-derives an answer that is already written to disk**, so it can drift from the CLI's
-  own rule whenever an exercise author changes a layout.
+The CLI already records the intended directory in the manifest. Using that
+record avoids silently entering the wrong folder. Normal exercises have no
+heuristic fallback; hands-on practicals have a separate layout contract (§11).
 
 ## 5. Why Start must not download unconditionally
 
 Behaviour of `gitmastery download <exercise>` when the folder already exists:
 
-| CLI                                                   | Behaviour                                                                                                                     |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **v7.8.2** (latest release)                           | `warn("You already have ...")`, then `rmtree` and re-download. `--force` does not exist. **The learner's work is destroyed.** |
-| `feat/download-command-fixes` (unreleased, `b972f58`) | `error(...)` → exit 1, nothing downloaded. Recommends `gitmastery progress reset`, or `download <exercise> --force`.          |
+| CLI                                                         | Behaviour                                                                                                                     |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **v7.8.2** (evaluated release)                              | `warn("You already have ...")`, then `rmtree` and re-download. `--force` does not exist. **The learner's work is destroyed.** |
+| `feat/download-command-fixes` (evaluated branch, `b972f58`) | `error(...)` → exit 1, nothing downloaded. Recommends `gitmastery progress reset`, or `download <exercise> --force`.          |
 
-The embedded Start button calls `_download` unconditionally, so on the shipped CLI clicking
-Start on an in-progress exercise deletes it. Checking the filesystem in the app first makes the
+The former embedded Start button called `_download` unconditionally, so on CLI v7.8.2 clicking
+Start on an in-progress exercise deleted it. Checking the filesystem in the app first makes the
 app correct on **both** CLI versions with no version gate: it simply never issues a download
 for a folder that already exists.
 
@@ -136,7 +118,7 @@ reasons:
 The layering is deliberate: the app avoids issuing a call it knows will be refused, and the CLI
 refuses correctly if anything ever does issue it.
 
-## 6. New behaviour
+## 6. Manifest contract and shared Start implementation
 
 ### Resolver
 
@@ -230,7 +212,7 @@ renderer can show the Start modal immediately. Success enables Continue; failure
 failed download, settle the same modal with an explanation. Dismissing the modal does not alter
 the in-flight map or child process.
 
-### Entry points after the change
+### Current entry points
 
 | Trigger                            | Path                                                             |
 | ---------------------------------- | ---------------------------------------------------------------- |
@@ -248,8 +230,8 @@ the in-flight map or child process.
 | Start an in-progress exercise, CLI v7.8.2 | **Work silently deleted**, after a full re-download                                              | `cd` only; nothing downloaded                   |
 | Start an in-progress exercise, newer CLI  | ~6s wait, then a "You already have..." error, and the learner still has to resume some other way | `cd` only; nothing downloaded                   |
 | Resume latency                            | ≥6s (fixed CLI startup + GitHub release check on every invocation)                               | No subprocess; one `existsSync` + one JSON read |
-| `under-control` (no `.git`)               | Right, via rule 5                                                                                | Right by construction                           |
-| `fork-repo` (`ignore`)                    | Right, via rule 4                                                                                | Right by construction                           |
+| `under-control` (no `.git`)               | Correct only while it has a sole subdirectory                                                    | Right by construction                           |
+| `fork-repo` (`ignore`)                    | Correct by accident because there are no subdirectories                                          | Right by construction                           |
 | Learner has a stray folder                | Wrong, silently                                                                                  | Right                                           |
 | Partial or failed download                | Guessed directory, later verify failure                                                          | `incomplete`, actionable message                |
 
@@ -274,6 +256,10 @@ Verify uses the same resolver as Start (`resolveExerciseCwd`) to know which dire
 learner should be in. It then compares that to the shell process cwd (`getCwd()` reads it
 from the pty via `lsof` / `/proc`; it does not parse typed `cd`). If the live cwd cannot
 be read, verify is blocked. Only an exact match (case-insensitive on Windows) is accepted.
+
+The current probe supports macOS (`lsof`) and Linux (`/proc/<pid>/cwd`).
+Windows returns `null`, so successful Verify is blocked there until a Windows
+cwd probe is implemented. Download/resume does not require this probe.
 
 If the identifier is invalid, the exercise is not `ready`, or the terminal is somewhere else,
 `gitmastery verify` is **not** spawned. The renderer shows a small modal: the learner is not
