@@ -44,6 +44,28 @@ Adding a signal is one file under `ai/context/` plus one array entry. The system
 panel's context disclosure need no structural changes. Providers with new evidence semantics also
 update the prompt's interpretation rules.
 
+### GitHub state
+
+Every exercise and hands-on chat collects the same compact **GitHub state** block on each message,
+using the learner's existing `gh` login. Targets come from local GitHub remotes and the manifest's
+`exercise_repo.pr_repo_full_name`; there are no exercise-specific rules.
+
+The AI receives:
+
+1. **Account:** signed-in `login` from `gh api user`.
+2. **Repository:** identity, visibility, fork flag and parent (for forks) from
+   `gh api repos/<owner>/<name>` (`full_name`, `visibility`, `fork`, `parent.full_name`).
+   A changed identity is shown when GitHub redirects a renamed repository.
+3. **The account's open PRs:** number, draft status, head repository and head/base branches from
+   `gh pr list --repo <owner/name> --author <login> --state open`
+   (`number`, `isDraft`, `headRepository`, `headRepositoryOwner`, `headRefName`, `baseRefName`).
+4. **Unknown or omitted data:** short failure reasons and warnings only when a limit is reached.
+
+The block is capped at 2,000 characters, three repositories and five open PRs per repository.
+Collection remains read-only with a 2.1-second deadline. It sends no timestamps, source traces,
+PR URLs, commit hashes or repeated guidance. The prompt has one GitHub interpretation rule:
+prefer current facts; unknown or omitted evidence is inconclusive; metadata is not verification.
+
 ### Why separate blocks rather than one
 
 Truncation at `MAX_BLOCK_CHARS` is per-block and silent. Concatenating sources means whichever lands
@@ -91,11 +113,7 @@ rather than assuming (§5), because some practicals create the repository later.
   `gitmastery-exercises`, e.g. `gitmastery-exercises/under-control`.
 - **Terminal output and scrollback.** Output can echo anything the student ran, including
   credentials, and its size is unbounded.
-
-The GitHub provider uses the same logic for every exercise and hands-on chat. It adds the
-signed-in account, repository identity, visibility, fork and parent, and authored open PR metadata
-for targets discovered from local remotes and the exercise manifest. It sends no remote file
-contents or PR descriptions. See the [field and source list](ai-github-context.md).
+- **Remote file contents and PR descriptions.** The GitHub provider sends metadata only.
 
 Adding `git diff`, other file bodies, or terminal output would cross the boundary stated in
 `../llm-integration.md` and needs a new decision, not an extension of this one.

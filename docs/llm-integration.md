@@ -372,7 +372,7 @@ conversation has a concrete artifact to point at rather than a question.
 - the signed-in GitHub username, plus repository name, visibility, fork status, parent and
   authored open PR metadata for targets discovered from exercise remotes and the manifest.
   Every exercise uses the same collection logic. The block reports query limits and
-  unavailable information. See the [field and source list](architecture/ai-github-context.md).
+  unavailable information. See the [field and source list](architecture/ai-context-providers.md#github-state).
 
 Paths are relative to the folder containing `gitmastery-exercises`, so no home directory or
 OS username is sent. GitHub account logins are included where needed to identify task resources.
