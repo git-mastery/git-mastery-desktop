@@ -29,7 +29,7 @@ export type GithubRunner = (
 ) => Promise<string>;
 
 export const GITHUB_MAX_OUTPUT = 1024 * 1024;
-export const PR_LIMIT = 30;
+export const PR_LIMIT = 5;
 
 /** No shell or interactive stdin. Exported separately for real-process tests. */
 export function runGithubProcess(
@@ -101,7 +101,6 @@ const prSchema = z.object({
   state: z.literal("OPEN"),
   isDraft: z.boolean(),
   headRefName: refSchema,
-  headRefOid: z.string().regex(/^[a-fA-F0-9]{40}$/),
   headRepository: z.object({ name: repoNameSchema }).nullable(),
   headRepositoryOwner: z.object({ login: loginSchema }).nullable(),
   baseRefName: refSchema,
@@ -316,7 +315,7 @@ export function createGithubCli(
               "--limit",
               String(PR_LIMIT),
               "--json",
-              "number,state,isDraft,headRefName,headRefOid,headRepository,headRepositoryOwner,baseRefName",
+              "number,state,isDraft,headRefName,headRepository,headRepositoryOwner,baseRefName",
             ],
             z.array(prSchema).max(PR_LIMIT),
             signal,

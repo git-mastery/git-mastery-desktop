@@ -105,11 +105,11 @@ it("registers fresh GitHub metadata in successive context/prompt snapshots", asy
   const first = buildSystemPrompt(source, await collectContext(source.id));
   const blocks = await collectContext(source.id);
   const second = buildSystemPrompt(source, blocks);
-  expect(first).toContain("0 returned");
+  expect(first).toContain("Open PRs by account: none");
   expect(second).toContain("PR #42");
-  expect(second).not.toContain("0 returned");
+  expect(second).not.toContain("Open PRs by account: none");
   expect(second).toContain("Working tree clean.");
-  expect(second).toContain("remote file contents");
+  expect(second).toContain("metadata is not verification");
   // These same blocks are emitted as data-context for the existing disclosure UI.
   expect(blocks.find((block) => block.id === "github-state")?.label).toBe(
     "GitHub state",
