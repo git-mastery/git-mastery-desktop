@@ -42,7 +42,6 @@ jobs:
           - platform: Windows
             os: windows-2022
     env:
-      GM_E2E_RESULTS: ${{ runner.temp }}/desktop-e2e-results
       E2E_REPEAT: ${{ inputs.repeat || '1' }}
     steps:
       - name: Checkout
@@ -71,6 +70,8 @@ jobs:
       - name: Run Linux journeys
         if: runner.os == 'Linux'
         shell: bash
+        env:
+          GM_E2E_RESULTS: ${{ runner.temp }}/desktop-e2e-results
         # Ubuntu's AppArmor policy restricts unprivileged user namespaces.
         # This applies only to the ephemeral CI test process.
         run: xvfb-run -a npx playwright test --config tests/e2e/playwright.config.ts --repeat-each="$E2E_REPEAT"
@@ -78,6 +79,8 @@ jobs:
       - name: Run macOS and Windows journeys
         if: runner.os != 'Linux'
         shell: bash
+        env:
+          GM_E2E_RESULTS: ${{ runner.temp }}/desktop-e2e-results
         run: npx playwright test --config tests/e2e/playwright.config.ts --repeat-each="$E2E_REPEAT"
 
       - name: Upload results and failure diagnostics
