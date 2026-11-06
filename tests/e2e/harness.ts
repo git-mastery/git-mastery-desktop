@@ -204,6 +204,14 @@ export class Desktop {
 
   async close() {
     if (!this.running) return;
+    if (windows)
+      await this.app.evaluate(async () => {
+        await (
+          globalThis as typeof globalThis & {
+            stopE2eTerminals: () => Promise<void>;
+          }
+        ).stopE2eTerminals();
+      });
     await this.app.close();
     this.running = false;
   }

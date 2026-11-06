@@ -168,8 +168,10 @@ display variables are preserved so Electron can connect to Xvfb. Linux CI
 launches test Electron with `--no-sandbox` for Ubuntu's user-namespace policy;
 this suite therefore does not qualify Chromium sandbox behavior.
 
-Windows bootstrap tracks the real PTYs returned by `node-pty` and kills them
-on Electron's `before-quit` event. The first hosted run reached the download,
+Windows bootstrap tracks the real PTYs returned by `node-pty`. Before asking
+Electron to quit, the harness kills them and waits for their exit events so
+ConPTY can dispose its workers while Electron's event loop is running. The
+first hosted run reached the download,
 resume, and blocked-Verify assertions but hung when quitting with ConPTY still
 alive; its exercise directories remained locked. This cleanup belongs to the
 test harness and makes restarts possible without changing production code.

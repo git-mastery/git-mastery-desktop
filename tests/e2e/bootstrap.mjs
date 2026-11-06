@@ -32,9 +32,19 @@ if (process.platform === "win32") {
     terminal.onExit(() => terminals.delete(terminal));
     return terminal;
   };
-  app.on("before-quit", () => {
-    for (const terminal of terminals) terminal.kill();
-  });
+  globalThis.stopE2eTerminals = async () => {
+    // ConPTY disposes its worker asynchronously. Keep Electron's event loop
+    // running until the PTY exit event, then let Playwright quit the app.
+    await Promise.all(
+      [...terminals].map(
+        (terminal) =>
+          new Promise((resolve) => {
+            terminal.onExit(resolve);
+            terminal.kill();
+          }),
+      ),
+    );
+  };
 }
 
 const configured = new WeakSet();
