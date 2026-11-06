@@ -1,16 +1,31 @@
+import path from "node:path";
 import type { ContextProvider } from "../context.js";
 import { readExerciseManifest } from "../../exerciseManifest.js";
-import { createGithubCli, PR_LIMIT, PR_TARGET } from "../githubCli.js";
+import { createGithubCli, PR_LIMIT } from "../githubCli.js";
+import { runGit } from "./gitCommand.js";
+import {
+  discoverRepositories,
+  exerciseBoundary,
+  REPOSITORY_SEARCH_SCOPE,
+} from "./repositoryDiscovery.js";
 
-// Policies checked against git-mastery/exercises at
-// d00473c6425b9b16e6892a58fa1acf0e3df816b1. Recheck when those verifiers change.
-const POLICIES = new Map([
-  ["fork-repo", "fork"],
-  ["clone-repo", "fork"],
-  ["remote-control", "public-repository"],
-  ["create-pr-from-main", "pull-request"],
-]);
+const MAX_TARGETS = 3;
+const MAX_CONTEXT_CHARS = 8000;
 const COLLECTION_TIMEOUT_MS = 2100;
+
+/** Only repository identity is retained, never credentials or a raw remote URL. */
+export function githubTarget(value: string): string | null {
+  const match =
+    /^(?:https:\/\/github\.com\/|ssh:\/\/git@github\.com\/|git@github\.com:)([^/?#\s]+\/[^/?#\s]+)\/?$/i.exec(
+      value,
+    );
+  const target = match?.[1].replace(/\.git$/i, "");
+  return target &&
+    /^[a-z\d]+(?:-[a-z\d]+)*\/[\w.-]{1,100}$/i.test(target) &&
+    ![".", ".."].includes(target.split("/")[1])
+    ? target
+    : null;
+}
 
 export function createGithubStateProvider(
   cli = createGithubCli(),
@@ -18,131 +33,133 @@ export function createGithubStateProvider(
   return {
     id: "github-state",
     label: "GitHub state",
-    async collect({ exerciseId, location, signal }) {
-      const policy = POLICIES.get(exerciseId);
-      if (!policy || !location || signal?.aborted) return null;
+    async collect({ location, signal }) {
+      if (!location || signal?.aborted) return null;
+      const root = exerciseBoundary(location);
+      if (!root)
+        return "GitHub metadata unknown: exercise folder could not be resolved within the exercise boundary.";
       const started = new Date().toISOString();
-      const lines = [
-        "Read-only GitHub.com metadata; observations are not a verification result.",
-      ];
-      const render = () =>
-        signal?.aborted
-          ? null
-          : [
-              `Observed between ${started} and ${new Date().toISOString()}.`,
-              ...lines,
-              "Use these current observations over earlier assistant guesses. Unknown is not failed; metadata alone cannot establish completion.",
-            ].join("\n");
-      const manifest = readExerciseManifest(location.exerciseRoot);
-      if (!manifest) {
-        lines.push(
-          "GitHub metadata unknown: unsupported-target (manifest unavailable).",
-        );
-        return render();
-      }
-      if (policy === "pull-request") {
-        const repo = manifest.exercise_repo;
-        if (
-          (repo.repo_title != null && repo.repo_title !== "gm-languages") ||
-          (repo.pr_repo_full_name != null &&
-            repo.pr_repo_full_name !== PR_TARGET)
-        ) {
-          lines.push(
-            "GitHub metadata unknown: unsupported-target (setup target conflicts with this exercise).",
-          );
-          return render();
-        }
-        lines.push(
-          "Limit: committed Java.txt content and the verifier's last_user_commit are not checked.",
-        );
-      } else if (exerciseId === "clone-repo") {
-        lines.push(
-          "Limit: local shapes clone and origin/upstream configuration must be checked using local repository evidence.",
-        );
-      } else if (exerciseId === "remote-control") {
-        lines.push(
-          "Limit: the URL submitted to interactive verification is unknown. The desktop verification subprocess does not relay that input.",
-        );
-      }
-
       const deadline = AbortSignal.timeout(COLLECTION_TIMEOUT_MS);
       const requestSignal = signal
         ? AbortSignal.any([signal, deadline])
         : deadline;
-      const identity = await cli.identity(requestSignal);
-      if (identity.status === "unknown") {
+      const lines = [
+        "Read-only GitHub.com metadata; observations are not a verification result.",
+        REPOSITORY_SEARCH_SCOPE,
+        `At most ${MAX_TARGETS} distinct targets and ${PR_LIMIT} open PRs per target; closed and merged PRs are not queried.`,
+      ];
+      const targets = new Map<string, { name: string; sources: Set<string> }>();
+      const addTarget = (name: string | null, source: string) => {
+        if (!name) return;
+        const key = name.toLowerCase();
+        const entry = targets.get(key) ?? { name, sources: new Set<string>() };
+        entry.sources.add(source);
+        targets.set(key, entry);
+      };
+      const manifestTarget =
+        readExerciseManifest(root)?.exercise_repo.pr_repo_full_name;
+      if (typeof manifestTarget === "string")
+        addTarget(
+          githubTarget(`https://github.com/${manifestTarget}`),
+          "exercise manifest pr_repo_full_name",
+        );
+      const [identity, repos] = await Promise.all([
+        cli.identity(requestSignal),
+        discoverRepositories(location, (repo, args) =>
+          runGit(repo, args, requestSignal).catch(() => null),
+        ),
+      ]);
+      await Promise.all(
+        repos.map(async ({ repo }) => {
+          try {
+            const remotes = await runGit(repo, ["remote", "-v"], requestSignal);
+            for (const line of remotes.split("\n")) {
+              const match = /^(\S+)\s+(\S+)\s+\((fetch|push)\)$/.exec(line);
+              if (match)
+                addTarget(
+                  githubTarget(match[2]),
+                  `${JSON.stringify(path.relative(root, repo) || ".")} remote ${JSON.stringify(match[1])} (${match[3]})`,
+                );
+            }
+          } catch {
+            lines.push(
+              "Remote target discovery unknown: Git unavailable or timed out.",
+            );
+          }
+        }),
+      );
+      lines.push(
+        identity.status === "ok"
+          ? `Authenticated GitHub account: ${identity.value.login}.`
+          : `Authenticated GitHub account unknown: ${identity.reason}.`,
+      );
+      if (targets.size > MAX_TARGETS)
         lines.push(
-          `GitHub account and task metadata unknown: ${identity.reason}.`,
+          "Target limit reached; additional discovered targets were not queried.",
         );
-        return render();
-      }
-      const login = identity.value.login;
-      lines.push(`Authenticated GitHub account: ${login}.`);
-      if (policy === "pull-request") {
+      if (!targets.size)
         lines.push(
-          `Query: open PRs authored by ${login} in ${PR_TARGET}; limit ${PR_LIMIT}, no head/base filter.`,
+          "No GitHub repository target discovered from the manifest or inspectable remotes; repository and PR metadata are unknown.",
         );
-        const result = await cli.openPullRequests(login, requestSignal);
-        if (result.status === "unknown") {
-          lines.push(`Open PR metadata unknown: ${result.reason}.`);
-          return render();
-        }
-        const prs = result.value;
-        lines.push(
-          prs.length === PR_LIMIT
-            ? `Returned ${PR_LIMIT} candidates (limit reached; additional candidates may exist).`
-            : `Returned ${prs.length} matching open PRs.`,
-        );
-        const selected = prs.reduce<(typeof prs)[number] | null>(
-          (latest, pr) => (!latest || pr.number > latest.number ? pr : latest),
-          null,
-        );
-        if (!selected) {
-          lines.push(
-            "No matching open PR returned at query time. Closed and merged PRs were not queried.",
-          );
-        } else {
-          const headRepo =
-            selected.headRepository && selected.headRepositoryOwner
-              ? `${selected.headRepositoryOwner.login}/${selected.headRepository.name}`
-              : "unknown (unavailable/deleted)";
-          lines.push(
-            `Selected candidate: #${selected.number}, highest number returned under the verifier's selection rule.`,
-            `URL: https://github.com/${PR_TARGET}/pull/${selected.number}`,
-            `State: ${selected.state}; draft: ${selected.isDraft}.`,
-            `Head repository: ${headRepo}; head branch: ${selected.headRefName}; head commit: ${selected.headRefOid}.`,
-            `Base branch: ${selected.baseRefName}.`,
-            `Head branch main required by task: ${selected.headRefName === "main" ? "observed" : "not observed (wrong head branch)"}.`,
-          );
-        }
-      } else {
-        const target = `${login}/${policy === "fork" ? "gm-shapes" : `gitmastery-${login}-remote-control`}`;
-        lines.push(`Expected repository: ${target}.`);
-        const result = await cli.repository(target, requestSignal);
-        if (result.status === "unknown") {
-          lines.push(
-            `Repository existence, visibility and fork metadata unknown: ${result.reason}.`,
-            "A 404/not-found-or-inaccessible result does not prove a repository is absent or private.",
-          );
-          return render();
-        }
-        const repo = result.value;
-        lines.push(
-          `Observed repository: ${repo.full_name}; expected identity ${repo.full_name.toLowerCase() === target.toLowerCase() ? "matches" : "does not match (possibly renamed/redirected)"}.`,
-          `Visibility: ${repo.visibility}; fork: ${repo.fork}.`,
-        );
-        if (policy === "fork") {
-          lines.push(
-            `Direct parent: ${repo.parent?.full_name ?? "unknown/not supplied"}.`,
-            "Task source: git-mastery/gm-shapes; pinned verifier checks fork status and direct parent owner git-mastery.",
-          );
-        } else {
-          lines.push(
-            `Public visibility required by task: ${repo.visibility === "public" ? "observed" : "not observed"}.`,
-          );
-        }
-      }
-      return render();
+      const results = await Promise.all(
+        [...targets.values()]
+          .slice(0, MAX_TARGETS)
+          .map(async ({ name, sources }) => {
+            const [repository, prs] = await Promise.all([
+              cli.repository(name, requestSignal),
+              identity.status === "ok"
+                ? cli.openPullRequests(
+                    name,
+                    identity.value.login,
+                    requestSignal,
+                  )
+                : null,
+            ]);
+            const result = [
+              `Queried repository: ${name}; source: ${[...sources].join("; ")}.`,
+            ];
+            if (repository.status === "ok") {
+              const repo = repository.value;
+              result.push(
+                `Observed repository: ${repo.full_name}.`,
+                `Visibility: ${repo.visibility}; fork: ${repo.fork}.`,
+                `Direct parent: ${repo.parent?.full_name ?? "unknown/not supplied"}.`,
+              );
+            } else {
+              result.push(`Repository metadata unknown: ${repository.reason}.`);
+            }
+            if (!prs || prs.status === "unknown") {
+              result.push(
+                `Open PR metadata unknown: ${prs?.reason ?? "authenticated account unavailable"}.`,
+              );
+            } else {
+              result.push(
+                `Open PRs authored by ${identity.status === "ok" ? identity.value.login : "unknown"} in ${name}: ${prs.value.length} returned${prs.value.length === PR_LIMIT ? " (limit reached; additional PRs may exist)" : ""}.`,
+              );
+              for (const pr of prs.value) {
+                const head =
+                  pr.headRepository && pr.headRepositoryOwner
+                    ? `${pr.headRepositoryOwner.login}/${pr.headRepository.name}`
+                    : "unknown (unavailable/deleted)";
+                result.push(
+                  `PR #${pr.number}: https://github.com/${name}/pull/${pr.number}; state: ${pr.state}; draft: ${pr.isDraft}; head repository: ${head}; head branch: ${JSON.stringify(pr.headRefName)}; head commit: ${pr.headRefOid}; base branch: ${JSON.stringify(pr.baseRefName)}.`,
+                );
+              }
+            }
+            return result.join("\n");
+          }),
+      );
+      if (signal?.aborted) return null;
+      const text = [
+        `Observed between ${started} and ${new Date().toISOString()} (not atomic).`,
+        ...lines,
+        ...results,
+        "Use current observations over earlier guesses. Unknown is not failed; a 404 can mean absent or inaccessible. Metadata alone does not establish exercise completion or file correctness.",
+      ].join("\n");
+      const suffix = "\n[Truncated: remaining GitHub metadata is unknown.]";
+      return text.length > MAX_CONTEXT_CHARS
+        ? text.slice(0, MAX_CONTEXT_CHARS - suffix.length) + suffix
+        : text;
     },
   };
 }

@@ -29,7 +29,6 @@ export type GithubRunner = (
 ) => Promise<string>;
 
 export const GITHUB_MAX_OUTPUT = 1024 * 1024;
-export const PR_TARGET = "git-mastery/gm-languages";
 export const PR_LIMIT = 30;
 
 /** No shell or interactive stdin. Exported separately for real-process tests. */
@@ -298,16 +297,18 @@ export function createGithubCli(
         ? query(apiArgs(`repos/${target}`), repositorySchema, signal, true)
         : Promise.resolve({ status: "unknown", reason: "unsupported-target" }),
     openPullRequests: (
+      target: string,
       login: string,
       signal: AbortSignal,
     ): Promise<GithubOutcome<GithubPullRequest[]>> =>
+      fullNameSchema.safeParse(target).success &&
       loginSchema.safeParse(login).success
         ? query(
             [
               "pr",
               "list",
               "--repo",
-              `github.com/${PR_TARGET}`,
+              `github.com/${target}`,
               "--author",
               login,
               "--state",

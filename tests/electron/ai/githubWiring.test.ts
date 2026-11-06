@@ -26,7 +26,7 @@ vi.mock("../../../src/electron/utils/cli/getters.js", () => ({
 }));
 vi.mock("../../../src/electron/ai/availability.js", () => ({
   locateExercise: () => ({
-    exercisesRoot: fixture.directory,
+    exercisesRoot: path.dirname(fixture.directory),
     exerciseRoot: fixture.directory,
     cwd: fixture.directory,
   }),
@@ -67,7 +67,11 @@ beforeEach(() => {
     path.join(fixture.directory, ".gitmastery-exercise.json"),
     JSON.stringify({
       exercise_name: "create-pr-from-main",
-      exercise_repo: { repo_type: "ignore", repo_name: "unused" },
+      exercise_repo: {
+        repo_type: "ignore",
+        repo_name: "unused",
+        pr_repo_full_name: "team/project",
+      },
     }),
   );
 });
@@ -75,10 +79,14 @@ afterEach(() => fs.rmSync(fixture.directory, { recursive: true, force: true }));
 
 it("registers fresh GitHub metadata in successive context/prompt snapshots", async () => {
   const identity = 'HTTP/2 200 OK\r\n\r\n{"login":"learner"}';
+  const repository =
+    'HTTP/2 200 OK\r\n\r\n{"full_name":"team/project","fork":false,"private":false,"visibility":"public"}';
   fixture.runner
     .mockResolvedValueOnce(identity)
+    .mockResolvedValueOnce(repository)
     .mockResolvedValueOnce("[]")
     .mockResolvedValueOnce(identity)
+    .mockResolvedValueOnce(repository)
     .mockResolvedValueOnce(
       JSON.stringify([
         {
@@ -97,20 +105,20 @@ it("registers fresh GitHub metadata in successive context/prompt snapshots", asy
   const first = buildSystemPrompt(source, await collectContext(source.id));
   const blocks = await collectContext(source.id);
   const second = buildSystemPrompt(source, blocks);
-  expect(first).toContain("No matching open PR");
-  expect(second).toContain("Selected candidate: #42");
-  expect(second).not.toContain("No matching open PR");
+  expect(first).toContain("0 returned");
+  expect(second).toContain("PR #42");
+  expect(second).not.toContain("0 returned");
   expect(second).toContain("Working tree clean.");
-  expect(second).toContain("committed Java.txt content");
+  expect(second).toContain("remote file contents");
   // These same blocks are emitted as data-context for the existing disclosure UI.
   expect(blocks.find((block) => block.id === "github-state")?.label).toBe(
     "GitHub state",
   );
-  expect(fixture.runner).toHaveBeenCalledTimes(4);
+  expect(fixture.runner).toHaveBeenCalledTimes(6);
 });
 
 it("keeps local context when GitHub authentication is unavailable", async () => {
-  fixture.runner.mockRejectedValueOnce({ code: 4, stderr: "private detail" });
+  fixture.runner.mockRejectedValue({ code: 4, stderr: "private detail" });
   const blocks = await collectContext("create-pr-from-main");
   expect(blocks.find((block) => block.id === "github-state")?.text).toContain(
     "auth-required",
@@ -121,8 +129,7 @@ it("keeps local context when GitHub authentication is unavailable", async () => 
   expect(JSON.stringify(blocks)).not.toContain("private detail");
 });
 
-it("makes no GitHub calls for an unrelated exercise or cancelled collection", async () => {
-  await collectContext("under-control");
+it("makes no GitHub calls for cancelled collection", async () => {
   const controller = new AbortController();
   controller.abort();
   expect(

@@ -39,11 +39,13 @@ describe.skipIf(process.env.GIT_MASTERY_GITHUB_SMOKE !== "1")(
       const cli = createGithubCli();
       // Public example used in the feasibility check; it may close over time.
       const prs = await cli.openPullRequests(
+        "git-mastery/gm-languages",
         "fuhlie",
         AbortSignal.timeout(2100),
       );
       expect(prs.status).toBe("ok");
       const empty = await cli.openPullRequests(
+        "git-mastery/gm-languages",
         "git-mastery-nonexistent-smoke-account",
         AbortSignal.timeout(2100),
       );

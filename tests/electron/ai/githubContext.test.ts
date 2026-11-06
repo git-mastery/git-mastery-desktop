@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createGithubCli,
@@ -8,7 +9,10 @@ import {
   runGithubProcess,
   type GithubRunner,
 } from "../../../src/electron/ai/githubCli.js";
-import { createGithubStateProvider } from "../../../src/electron/ai/context/githubState.js";
+import {
+  createGithubStateProvider,
+  githubTarget,
+} from "../../../src/electron/ai/context/githubState.js";
 import { buildSystemPrompt } from "../../../src/electron/ai/prompt.js";
 import { workspaceSource } from "../../../src/electron/ai/source.js";
 
@@ -170,7 +174,8 @@ describe("GitHub CLI response boundary", () => {
     const runner = vi.fn<GithubRunner>();
     const cli = createGithubCli(runner);
     await cli.repository("https://elsewhere/private", signal());
-    await cli.openPullRequests("--web", signal());
+    await cli.openPullRequests("owner/repo", "--web", signal());
+    await cli.openPullRequests("--web", "learner", signal());
     expect(runner).not.toHaveBeenCalled();
   });
 
@@ -190,7 +195,9 @@ describe("GitHub CLI response boundary", () => {
       "unknown",
     );
     for (let n = 0; n < 3; n++) {
-      expect(await cli.openPullRequests("learner", signal())).toEqual({
+      expect(
+        await cli.openPullRequests("owner/repo", "learner", signal()),
+      ).toEqual({
         status: "unknown",
         reason: "invalid-response",
       });
@@ -200,8 +207,11 @@ describe("GitHub CLI response boundary", () => {
 
 describe("GitHub exercise context", () => {
   let directory: string;
+  let root: string;
   beforeEach(() => {
     directory = fs.mkdtempSync(path.join(os.tmpdir(), "git-mastery-github-"));
+    root = path.join(directory, "exercise");
+    fs.mkdirSync(root);
     writeManifest();
   });
   afterEach(() => {
@@ -210,10 +220,15 @@ describe("GitHub exercise context", () => {
   });
   function writeManifest(fields = {}) {
     fs.writeFileSync(
-      path.join(directory, ".gitmastery-exercise.json"),
+      path.join(root, ".gitmastery-exercise.json"),
       JSON.stringify({
         exercise_name: "fixture",
-        exercise_repo: { repo_type: "ignore", repo_name: "unused", ...fields },
+        exercise_repo: {
+          repo_type: "ignore",
+          repo_name: "unused",
+          pr_repo_full_name: "learner/gm-shapes",
+          ...fields,
+        },
       }),
     );
   }
@@ -221,69 +236,75 @@ describe("GitHub exercise context", () => {
     exerciseId,
     location: {
       exercisesRoot: directory,
-      exerciseRoot: directory,
-      cwd: directory,
+      exerciseRoot: root,
+      cwd: root,
     },
     signal: abort,
   });
-  const fixture = (output: string) => {
+  const fixture = (output = http(repo()), prs = "[]") => {
     const runner = vi
       .fn<GithubRunner>()
-      .mockResolvedValueOnce(http({ login: "learner" }))
-      .mockResolvedValueOnce(output);
+      .mockImplementation(async (command) =>
+        command[0] === "pr"
+          ? prs
+          : command.at(-1) === "user"
+            ? http({ login: "learner" })
+            : output,
+      );
     return {
       runner,
       provider: createGithubStateProvider(createGithubCli(runner)),
     };
   };
 
-  it.each(["fork-repo", "clone-repo", "remote-control", "create-pr-from-main"])(
-    "resolves %s without requiring a local repository",
-    async (exerciseId) => {
-      const { provider, runner } = fixture(
-        exerciseId === "create-pr-from-main" ? "[]" : http(repo()),
-      );
-      const text = await provider.collect(args(exerciseId));
-      expect(text).toContain("Authenticated GitHub account: learner");
-      expect(runner).toHaveBeenCalledTimes(2);
-      const command = runner.mock.calls[1][0];
-      if (exerciseId === "create-pr-from-main") {
-        expect(command).toContain("github.com/git-mastery/gm-languages");
-        expect(
-          command.slice(command.indexOf("--author"), command.indexOf("--json")),
-        ).toEqual(["--author", "learner", "--state", "open", "--limit", "30"]);
-        expect(text).toContain("committed Java.txt content");
-      } else {
-        expect(command.at(-1)).toBe(
-          exerciseId === "remote-control"
-            ? "repos/learner/gitmastery-learner-remote-control"
-            : "repos/learner/gm-shapes",
-        );
-      }
-    },
-  );
+  it.each([
+    "arbitrary-exercise",
+    "hp-example",
+    "fork-repo",
+    "create-pr-from-main",
+  ])("collects the same complete metadata for %s", async (exerciseId) => {
+    const { provider, runner } = fixture(http(repo()), JSON.stringify([pr()]));
+    const text = await provider.collect(args(exerciseId));
+    expect(text).toContain("Authenticated GitHub account: learner");
+    expect(text).toContain("Direct parent: git-mastery/gm-shapes");
+    expect(text).toContain("PR #1");
+    expect(text).not.toContain("required by task");
+    expect(runner).toHaveBeenCalledTimes(3);
+    const command = runner.mock.calls.find(([args]) => args[0] === "pr")![0];
+    expect(command).toContain("github.com/learner/gm-shapes");
+    expect(
+      command.slice(command.indexOf("--author"), command.indexOf("--json")),
+    ).toEqual(["--author", "learner", "--state", "open", "--limit", "30"]);
+  });
 
-  it("makes no requests for unsupported workspaces, missing locations, or conflicting setup", async () => {
-    const runner = vi.fn<GithubRunner>();
+  it("skips missing or external locations and reports missing targets without guessing", async () => {
+    const runner = vi
+      .fn<GithubRunner>()
+      .mockResolvedValue(http({ login: "learner" }));
     const provider = createGithubStateProvider(createGithubCli(runner));
-    expect(await provider.collect(args("hp-example"))).toBeNull();
     expect(
       await provider.collect({ exerciseId: "fork-repo", location: null }),
     ).toBeNull();
-    for (const fields of [
-      { repo_title: "another-repo" },
-      { pr_repo_full_name: "elsewhere/repo" },
-      { pr_repo_full_name: 123 },
-    ]) {
-      writeManifest(fields);
-      expect(await provider.collect(args("create-pr-from-main"))).toContain(
-        "unsupported-target",
-      );
-    }
     expect(runner).not.toHaveBeenCalled();
+    writeManifest({ pr_repo_full_name: null });
+    expect(await provider.collect(args("fork-repo"))).toContain(
+      "No GitHub repository target discovered",
+    );
+    expect(runner).toHaveBeenCalledTimes(1);
+    expect(
+      await provider.collect({
+        ...args("anything"),
+        location: {
+          exercisesRoot: root,
+          exerciseRoot: directory,
+          cwd: directory,
+        },
+      }),
+    ).toContain("boundary");
+    expect(runner).toHaveBeenCalledTimes(1);
   });
 
-  it("reports observed mismatches and never projects unrelated repository content", async () => {
+  it("sends observed repository metadata without grading comparisons or unrelated fields", async () => {
     const { provider } = fixture(
       http(
         repo({
@@ -297,43 +318,33 @@ describe("GitHub exercise context", () => {
       ),
     );
     const text = await provider.collect(args("fork-repo"));
-    expect(text).toContain("does not match");
+    expect(text).toContain("Observed repository: learner/renamed");
     expect(text).toContain("Visibility: private; fork: false");
     expect(text).toContain("Direct parent: another/source");
     expect(text).not.toContain("DO NOT SEND");
   });
 
-  it("refreshes unavailable then public metadata and resolves a changed account on the next turn", async () => {
-    const runner = vi
-      .fn<GithubRunner>()
-      .mockResolvedValueOnce(http({ login: "first" }))
-      .mockRejectedValueOnce({ code: 1, stdout: http({}, 404) })
-      .mockResolvedValueOnce(http({ login: "second" }))
-      .mockResolvedValueOnce(
-        http(
-          repo({
-            full_name: "second/gitmastery-second-remote-control",
-            fork: false,
-          }),
-        ),
-      );
+  it("refreshes repository facts and the authenticated PR author each turn", async () => {
+    let turn = 0;
+    const runner = vi.fn<GithubRunner>().mockImplementation(async (command) => {
+      if (command.at(-1) === "user")
+        return http({ login: ++turn === 1 ? "first" : "second" });
+      if (command[0] === "pr") return "[]";
+      if (turn === 1) throw { code: 1, stdout: http({}, 404) };
+      return http(repo({ fork: false }));
+    });
     const provider = createGithubStateProvider(createGithubCli(runner));
     expect(await provider.collect(args("remote-control"))).toContain(
       "not-found-or-inaccessible",
     );
     const updated = await provider.collect(args("remote-control"));
     expect(updated).toContain("Authenticated GitHub account: second");
-    expect(updated).toContain("Public visibility required by task: observed");
-    expect(updated).toContain(
-      "URL submitted to interactive verification is unknown",
-    );
+    expect(updated).toContain("Visibility: public; fork: false");
     expect(updated).not.toContain("first");
-    expect(runner.mock.calls[3][0].at(-1)).toBe(
-      "repos/second/gitmastery-second-remote-control",
-    );
+    expect(runner.mock.calls.at(-1)![0]).toContain("second");
   });
 
-  it("refreshes no PR to the highest returned PR, including a wrong head and deleted head repository", async () => {
+  it("sends every returned PR without selecting or grading its branch", async () => {
     writeManifest({
       repo_title: "gm-languages",
       pr_repo_full_name: "git-mastery/gm-languages",
@@ -342,8 +353,10 @@ describe("GitHub exercise context", () => {
     const runner = vi
       .fn<GithubRunner>()
       .mockResolvedValueOnce(http({ login: "learner" }))
+      .mockResolvedValueOnce(http(repo()))
       .mockResolvedValueOnce("[]")
       .mockResolvedValueOnce(http({ login: "learner" }))
+      .mockResolvedValueOnce(http(repo()))
       .mockResolvedValueOnce(
         JSON.stringify([
           pr(8, {
@@ -357,23 +370,34 @@ describe("GitHub exercise context", () => {
       );
     const provider = createGithubStateProvider(createGithubCli(runner));
     expect(await provider.collect(args("create-pr-from-main"))).toContain(
-      "No matching open PR",
+      "0 returned",
     );
     const updated = await provider.collect(args("create-pr-from-main"));
-    expect(updated).toContain("Selected candidate: #8");
-    expect(updated).toContain("wrong head branch");
+    expect(updated).toContain("PR #8");
+    expect(updated).toContain("PR #2");
+    expect(updated).toContain("PR #5");
+    expect(updated).toContain('head branch: "wrong"');
+    expect(updated).not.toContain("Selected candidate");
     expect(updated).toContain("unknown (unavailable/deleted)");
     expect(updated).not.toContain("#999");
   });
 
   it("marks capped results and stays below the context cap", async () => {
     const { provider } = fixture(
-      JSON.stringify(Array.from({ length: 30 }, (_, n) => pr(n + 1))),
+      http(repo()),
+      JSON.stringify(
+        Array.from({ length: 30 }, (_, n) =>
+          pr(n + 1, {
+            headRefName: "x".repeat(255),
+            baseRefName: "y".repeat(255),
+          }),
+        ),
+      ),
     );
     const text = await provider.collect(args("create-pr-from-main"));
-    expect(text).toContain("additional candidates may exist");
-    expect(text).toContain("Selected candidate: #30");
-    expect(text!.length).toBeLessThan(8000);
+    expect(text).toContain("additional PRs may exist");
+    expect(text).toContain("[Truncated:");
+    expect(text!.length).toBeLessThanOrEqual(8000);
   });
 
   it("drops cancelled work and never starts a subsequent query", async () => {
@@ -397,7 +421,7 @@ describe("GitHub exercise context", () => {
     const runner = vi
       .fn<GithubRunner>()
       .mockResolvedValueOnce(http({ login: "learner" }))
-      .mockImplementationOnce(
+      .mockImplementation(
         (_args, options) =>
           new Promise((_resolve, reject) => {
             options.signal.addEventListener(
@@ -414,16 +438,105 @@ describe("GitHub exercise context", () => {
   });
 
   it("puts metadata and its limitations in the model prompt", async () => {
-    const { provider } = fixture(JSON.stringify([pr()]));
+    const { provider } = fixture(http(repo()), JSON.stringify([pr()]));
     const text = await provider.collect(args("create-pr-from-main"));
     const prompt = buildSystemPrompt(workspaceSource("create-pr-from-main"), [
       { id: provider.id, label: provider.label, text: text! },
     ]);
     expect(prompt).toContain("## GitHub state");
-    expect(prompt).toContain("Selected candidate: #1");
+    expect(prompt).toContain("PR #1");
     expect(prompt).toContain("GitHub query failures mean unknown");
-    expect(prompt).toContain("committed Java.txt content");
+    expect(prompt).toContain("remote file contents");
     expect(prompt).toContain("Never give the complete solution");
+  });
+
+  it("discovers arbitrary HTTPS/SSH fetch and push targets and deduplicates the manifest", async () => {
+    execFileSync("git", ["init", "-q", root]);
+    execFileSync("git", [
+      "-C",
+      root,
+      "remote",
+      "add",
+      "origin",
+      "https://github.com/learner/gm-shapes.git",
+    ]);
+    execFileSync("git", [
+      "-C",
+      root,
+      "remote",
+      "set-url",
+      "--push",
+      "origin",
+      "git@github.com:other/project.git",
+    ]);
+    execFileSync("git", [
+      "-C",
+      root,
+      "remote",
+      "add",
+      "upstream",
+      "ssh://git@github.com/team/source.git",
+    ]);
+    const { provider, runner } = fixture();
+    const text = await provider.collect(args("completely-new-task"));
+    expect(text).toContain("Queried repository: other/project");
+    expect(text).toContain("Queried repository: team/source");
+    expect(text).toContain('remote "origin" (push)');
+    expect(
+      runner.mock.calls.filter(
+        ([args]) => args.at(-1) === "repos/learner/gm-shapes",
+      ),
+    ).toHaveLength(1);
+    expect(runner).toHaveBeenCalledTimes(7);
+  });
+
+  it("ignores parent repositories and external Git storage", async () => {
+    writeManifest({ pr_repo_full_name: null });
+    execFileSync("git", ["init", "-q", directory]);
+    execFileSync("git", [
+      "-C",
+      directory,
+      "remote",
+      "add",
+      "origin",
+      "https://github.com/private/unrelated.git",
+    ]);
+    fs.symlinkSync(
+      path.join(directory, ".git"),
+      path.join(root, ".git"),
+      "dir",
+    );
+    const { provider, runner } = fixture();
+    expect(await provider.collect(args("anything"))).toContain(
+      "No GitHub repository target discovered",
+    );
+    expect(runner).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps repository metadata when authentication or the PR lookup fails", async () => {
+    const runner = vi.fn<GithubRunner>().mockImplementation(async (command) => {
+      if (command.at(-1) === "user") throw { code: 4 };
+      return http(repo());
+    });
+    const text = await createGithubStateProvider(
+      createGithubCli(runner),
+    ).collect(args("anything"));
+    expect(text).toContain("auth-required");
+    expect(text).toContain("Visibility: public");
+    expect(text).toContain("Open PR metadata unknown");
+    expect(runner).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["https://github.com/owner/project.git", "owner/project"],
+    ["git@github.com:owner/project.git", "owner/project"],
+    ["ssh://git@github.com/owner/project.git", "owner/project"],
+    ["https://github.com.evil.test/owner/project", null],
+    ["https://token@github.com/owner/project", null],
+    ["file:///owner/project", null],
+    ["https://github.com/owner/project?token=secret", null],
+  ])("parses only GitHub repository identities from %s", (url, expected) => {
+    expect(githubTarget(url)).toBe(expected);
   });
 });
 
