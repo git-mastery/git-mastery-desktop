@@ -3,6 +3,7 @@ import childProcess from "node:child_process";
 import { syncBuiltinESMExports } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
+import pty from "node-pty";
 import { responses } from "./site.mjs";
 import "../../dist-electron/main.js";
 
@@ -19,6 +20,22 @@ childProcess.spawn = function (command, ...args) {
   return spawn.call(this, command, ...args);
 };
 syncBuiltinESMExports();
+
+if (process.platform === "win32") {
+  // Track real PTYs for test-owned cleanup. Leaving ConPTY alive while
+  // Electron quits hangs shutdown and keeps the temporary cwd locked.
+  const terminals = new Set();
+  const spawnTerminal = pty.spawn;
+  pty.spawn = function (...args) {
+    const terminal = spawnTerminal.apply(this, args);
+    terminals.add(terminal);
+    terminal.onExit(() => terminals.delete(terminal));
+    return terminal;
+  };
+  app.on("before-quit", () => {
+    for (const terminal of terminals) terminal.kill();
+  });
+}
 
 const configured = new WeakSet();
 app.on("web-contents-created", (_event, contents) => {
