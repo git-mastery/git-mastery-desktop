@@ -1,4 +1,4 @@
-# Desktop happy-path E2E proposal and implementation
+# Happy-Path E2E Tests
 
 **Status: cross-platform harness and optional GitHub workflow implemented; smoke passed on all three hosted runners.**
 Three small Electron journeys check that a learner can download and resume an
