@@ -35,13 +35,13 @@ type ContextProvider = {
 parallel, drops anything that fails, times out or is empty, and caps each block at 8,000 characters
 with an explicit truncation marker. A provider may return multiple blocks without changing IPC.
 
-| Provider          | Block label                                                                                                                                                    | Source                                                                                                                 |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `instructions`    | Instructions                                                                                                                                                   | live scrape of the lesson page, else the copy cached on open                                                           |
-| `exercise-files`  | Exercise file contents; File contents · relative path                                                                                                          | bounded visible UTF-8 working files, including questions and learner answers                                           |
-| `exercise-folder` | Exercise folder                                                                                                                                                | exercise manifest, progress store, names-only directory tree                                                           |
-| `git-state`       | Repository state; Local branch relationships; Branch ancestry and counts; Branch commit history; Branch operation history; Local tag details; Live remote refs | separate blocks per repository, from read-only Git observations                                                        |
-| `github-state`    | GitHub state                                                                                                                                                   | fresh account, repository/fork and authored open PR metadata for targets discovered from exercise remotes and manifest |
+| Provider          | Block label                                                                                                                                                                                           | Source                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `instructions`    | Instructions                                                                                                                                                                                          | live scrape of the lesson page, else the copy cached on open                                                           |
+| `exercise-files`  | Exercise file contents; File contents · relative path                                                                                                                                                 | bounded visible UTF-8 working files, including questions and learner answers                                           |
+| `exercise-folder` | Exercise folder                                                                                                                                                                                       | exercise manifest, progress store, names-only directory tree                                                           |
+| `git-state`       | Repository state; Local branch relationships; Branch ancestry and counts; Branch commit history; Branch operation history; Local tag details (when tags exist); Live remote refs (when remotes exist) | separate blocks per repository, from read-only Git observations; empty remotes/tags skip their blocks                  |
+| `github-state`    | GitHub state                                                                                                                                                                                          | fresh account, repository/fork and authored open PR metadata for targets discovered from exercise remotes and manifest |
 
 Adding a signal is one file under `ai/context/` plus one array entry. The system prompt, IPC and the
 panel's context disclosure need no structural changes. Providers with new evidence semantics also
@@ -77,9 +77,11 @@ and ancestry summaries are separate from detailed histories and reflogs. Omitted
 unknown; a truncated list never establishes absence. The disclosure's labels include the repository.
 Those labels are the student-facing record of what was sent, so they must name the actual sources.
 
-Block text is fenced in `buildSystemPrompt` with a backtick run longer than any inside it. Porcelain
-status lines begin with `##`, and the scraped instructions carry their own headings and code fences.
-Without the fence, both would be read as structure of the surrounding prompt.
+Block text is fenced in `formatAttachedContext` with a backtick run longer than any inside it.
+Porcelain status lines begin with `##`, and the scraped instructions carry their own headings and
+code fences. Without the fence, both would be read as structure of the surrounding prompt. The
+fenced evidence is attached to the student's latest message, not the system prompt, so it outranks
+earlier assistant diagnoses. See §6.
 
 ### Deadlines are not optional
 
@@ -113,7 +115,7 @@ rather than assuming (§5), because some practicals create the repository later.
 ## 4. File contents and exclusions
 
 - **Staged and historical file bodies are not collected.** Working text comes from the file
-  provider (§4.1); Git supplies separate metadata, subjects, reflogs and tag annotations.
+  provider (§4.1); Git supplies separate metadata, subjects, reflogs and tag identities.
 - **Unrelated repositories.** The Git collector rejects working folders, gitdirs and worktree
   common directories outside the canonical exercise boundary (§5). Local file remotes are also
   confined to that boundary. Broader workspace-generation and all-provider containment work
@@ -166,6 +168,27 @@ file a learner might add. The existing context disclosure shows the text attache
 
 ## 5. The git provider
 
+Collection is exercise-agnostic: the same commands run for every workspace, and blocks are omitted
+only from repository signals (no remotes, no tags, clean worktree). A catalog audit of the 40
+published exercises and 36 hands-on practicals set the union of evidence that must remain available
+somewhere, not per-exercise collectors.
+
+**Always collected when a repository is inspectable:** placement of `.git` versus the working
+folder, HEAD / detached state, working-tree cleanliness, paused operations, merge direction when
+known, configured remote names, and a compact local branch/tracking summary. Dirty porcelain is
+included so staging exercises still show filenames. Compact commit history, ancestry counts, and
+reflogs cover HEAD and the first four local branches — enough for log, checkout, reset, revert,
+merge-direction, and undo tasks.
+
+**Collected only when the repository shows the signal:** live `ls-remote` heads when remotes exist;
+local tag details and live tag advertisements when local tags exist; `SQUASH_MSG` only when that
+marker file is present.
+
+**Not collected:** stashes (no catalog or hands-on task uses them), tag annotation bodies, full
+all-ref JSON dumps, all-pairs branch comparisons, and live tags when the repository has no local
+tags. Omitted items are unknown, not absent, except where the collector states an empty complete
+list (for example `Local tags: none`, `Configured remotes: none`).
+
 ### Repository discovery
 
 Candidates are the working folder plus directories within depth two of the exercise root that
@@ -182,12 +205,13 @@ short, conservative summary of what they already show:
 - working folder versus where `.git` actually is
 - attached branch or detached HEAD, plus the current commit subject
 - clean, dirty, or conflicted working tree (conflicted paths by name)
+- configured remote names (repository remotes, not branch tracking)
 - paused merge, rebase, cherry-pick, revert, or bisect
 - merge direction when `MERGE_HEAD` can be named (`bringing <incoming> into <current>`)
 
 The summary is structural. It does not encode exercise ids, expected branches, or verifier
-answers. The raw command output stays below it as evidence. If a fact cannot be parsed, it is
-omitted rather than guessed.
+answers. Dirty porcelain stays below it as evidence; a clean status line is omitted as redundant.
+If a fact cannot be parsed, it is omitted rather than guessed.
 
 ### Containment is a privacy control
 
@@ -211,34 +235,41 @@ No fetch, prune, checkout or verifier runs during collection.
 
 - **Porcelain, not plain `git status`.** Plain status advertises commands in its hint lines
   (`use "git restore --staged <file>..."`), which works against a model meant to stay inside the
-  course. Porcelain suggests nothing. The cost is a short legend, because the XY column semantics are
-  what a small model misreads.
+  course. Porcelain suggests nothing. It is included only when the worktree is dirty, so staging
+  exercises still show filenames.
 - **`--no-optional-locks`.** Status runs on every send, exactly when the student may be part-way
   through their own `git add`. Without the flag, status rewrites the index and can race `index.lock`.
-- **Local refs.** `for-each-ref` collects up to 60 local branches and 60 remote-tracking refs,
-  including full object IDs, upstreams and symbolic targets. Relationships for the first eight
-  local branches compare configured upstreams and same-name tracking refs with
-  `rev-list --left-right --count`. A missing upstream is explicitly independent of push status.
-- **Topology.** For HEAD and the first eight local branches, logs carry commit IDs and parent IDs
-  (12 commits per ref), alongside reachable commit/merge counts and pairwise ancestry. A shallow
-  repository is labeled; its available history does not prove full ancestry.
-- **Operation history.** Up to eight reflog events per inspected ref expose rename, reset and
-  merge events with time and without author/email fields. Clone/fetch/pull/push command text is
-  redacted. Missing or expired reflogs mean unknown. `SQUASH_MSG` is reported only as a preparation
-  marker that may remain after a commit, not proof of correctness.
-- **Tags.** Up to 20 local tags carry object type/ID, lightweight versus annotated kind, fully
-  peeled target, and at most 1,200 characters of annotation. Tagger identity is excluded.
+- **Local refs.** `for-each-ref` collects up to 20 local branches and 20 remote-tracking refs,
+  including object IDs, configured tracking branches and symbolic targets. Relationships for the
+  first four local branches compare configured tracking branches and same-name tracking refs with
+  `rev-list --left-right --count`. The evidence calls these “tracking branches,” not “upstreams,”
+  so a model cannot confuse missing branch tracking with a remote whose name happens to be
+  `upstream`. Configured remote names also appear in the top-level derived facts.
+- **Topology.** For HEAD and the first four local branches, logs carry commit IDs and parent IDs
+  (8 commits per ref) alongside reachable commit/merge counts. Ancestry compares HEAD to each
+  other inspected branch rather than every pair. A shallow repository is labeled; its available
+  history does not prove full ancestry.
+- **Operation history.** Up to six reflog events per inspected ref expose rename, reset and merge
+  events with time and without author/email fields. Clone/fetch/pull/push command text is
+  redacted. Missing or expired reflogs mean unknown. `SQUASH_MSG` is reported only when the marker
+  file is present, and only as a preparation marker that may remain after a commit, not proof of
+  correctness.
+- **Tags.** When local tags exist, up to 12 tags carry object type/ID, lightweight versus
+  annotated kind, and fully peeled target. Annotation bodies and tagger identity are omitted. When
+  there are none, the refs block states `Local tags: none` and the detailed tag block is skipped.
 - **Paused operations.** A paused merge, rebase, cherry-pick, revert or bisect is reported from
   marker files in the validated Git directory. Porcelain status alone does not say which
   operation is in progress, and "you are mid-rebase" is often the whole answer.
 
 ### Remote observations are separate
 
-`remote get-url --all` resolves fetch and push destinations separately. For at most three configured
-remotes and four destinations per remote, `ls-remote --heads --tags` reads server advertisements.
-Shared fetch/push URLs are queried once. Tag `^{}` rows are normalized into the tag's peeled target.
-Same-name branches are explicitly reported as matching, different, or not advertised at the checked
-target. Remote ancestry is not inferred from different IDs.
+`remote get-url --all` resolves fetch and push destinations separately when remotes exist. For at
+most three configured remotes and four destinations per remote, `ls-remote --heads` reads server
+advertisements. `--tags` is added only when local tags exist. Shared fetch/push URLs are queried
+once. Tag `^{}` rows are normalized into the tag's peeled target. Same-name branches are explicitly
+reported as matching, different, or not advertised at the checked target. Remote ancestry is not
+inferred from different IDs. Repositories with no remotes skip this block; derived facts already
+state that none are configured.
 
 Only HTTPS, SSH, and local file targets inside this exercise are supported. Network queries use an
 empty Git configuration, with protocol restrictions, credential helpers disabled, and SSH in batch
@@ -250,18 +281,28 @@ Displayed remote lists are also bounded. No observation updates local remote-tra
 Remote identity is not proof of fork ownership, repository visibility, or PR state. GitHub API
 context is a separate feature.
 
-## 6. Cost
+## 6. Cost and provider payload
 
-Context is collected per send, so the system prompt is rebuilt every turn. `data-*` parts are dropped
-by `convertToModelMessages`, so context does not accumulate across turns. Cost is linear in turns,
-not quadratic, and the model never sees earlier turns' repository state. History sent to the model is
-capped at the last 20 messages.
+Context is collected per send. `data-*` parts are dropped by `convertToModelMessages`, so context
+does not accumulate across turns. Cost is linear in turns, not quadratic, and the model never sees
+earlier turns' repository state.
+
+The UI and `ai-history.json` keep the full transcript. The provider sees a shorter payload:
+
+1. **System:** static tutor policy only (`buildSystemPrompt`).
+2. **Messages:** at most two complete earlier turns (`MAX_PROVIDER_TURNS` in `providerMessages.ts`).
+3. **Final user message:** fenced current workspace evidence (`formatAttachedContext`) followed by
+   the student's question.
+
+That order is the load-bearing fix for remove-then-re-add conversations: stale assistant diagnoses
+must not sit after the evidence they contradict. Follow-ups such as “I already did that” still have
+the previous turn. Older chat is visible in the pane and is not sent.
 
 Git evidence adds bounded local commands and optional network latency on each send. One reader
 shares a deadline and command cache for that collection only. The overall provider ceiling remains
 2,500 ms; large repositories or slow remotes yield explicitly partial evidence. Independent blocks
-increase the maximum payload compared with the former single Git block, while preserving decisive
-refs, counts and tags when detailed history is truncated.
+preserve decisive refs, counts and tags when detailed history is truncated. Live remotes and tag
+details are skipped when the repository has none, which is the common case.
 
 GitHub collection reads the account and discovers targets, then queries repository and PR metadata
 in parallel within a 2,100 ms deadline. Those facts are recollected each turn; only rate-limit retry

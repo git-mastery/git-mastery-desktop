@@ -1,19 +1,13 @@
 import {
   APICallError,
-  convertToModelMessages,
   createUIMessageStream,
   streamText,
   type UIMessageChunk,
 } from "ai";
 import { collectContext } from "./context.js";
 import type { ProviderConnection, ProviderSpec } from "./llmProviders.js";
+import { assembleProviderMessages } from "./providerMessages.js";
 import { buildSystemPrompt } from "./prompt.js";
-
-/**
- * Only the most recent turns are sent. Older ones cost quota on every send,
- * and the repository snapshot is rebuilt each turn anyway.
- */
-const MAX_HISTORY_MESSAGES = 20;
 
 /**
  * A safety cap, not a length target — the prompt asks for brevity. It is set
@@ -89,10 +83,12 @@ export async function runChat(options: {
 
       const result = streamText({
         model: spec.createModel(connection),
-        system: buildSystemPrompt(source, context),
-        messages: await convertToModelMessages(
-          messages.slice(-MAX_HISTORY_MESSAGES),
-        ),
+        system: buildSystemPrompt(source),
+        messages: await assembleProviderMessages({
+          source,
+          messages,
+          blocks: context,
+        }),
         abortSignal: controller.signal,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         providerOptions: spec.providerOptions,
