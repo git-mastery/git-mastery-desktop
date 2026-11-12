@@ -102,8 +102,10 @@ replace it.
 
 ## Retention
 
-History is bounded on disk. These limits are independent of the 20-message window sent to the model
-on each turn (`MAX_HISTORY_MESSAGES` in `src/electron/ai/chat.ts`).
+History is bounded on disk. These limits are independent of the provider window: the model receives
+the current user message plus at most two earlier complete turns (`MAX_PROVIDER_TURNS` in
+`src/electron/ai/providerMessages.ts`), with fresh workspace evidence attached to that latest user
+turn.
 
 - Each stored message is clipped at 20,000 characters. The composer uses the same `maxLength`, so a
   paste is cut in the field before Send.

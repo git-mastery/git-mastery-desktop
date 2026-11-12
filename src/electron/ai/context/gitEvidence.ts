@@ -3,11 +3,13 @@ import { fileURLToPath } from "url";
 import type { ContextBlock } from "../context.js";
 import { contained, GitReader, realpath } from "./gitReader.js";
 
-const MAX_REFS = 60;
-const MAX_BRANCHES = 8;
-const MAX_TAGS = 20;
+const MAX_REFS = 20;
+const MAX_BRANCHES = 4;
+const MAX_TAGS = 12;
 const MAX_REMOTES = 3;
 const MAX_TARGETS = 4;
+const MAX_LOG = 8;
+const MAX_REFLOG = 6;
 const UNKNOWN =
   "unknown: command failed, timed out, or exceeded collection limits";
 
@@ -45,14 +47,15 @@ async function refs(
     : [];
 }
 
-function refList(label: string, entries: Ref[] | null): string {
-  if (!entries) return `${label}: ${UNKNOWN}`;
-  return `${label}: ${entries.length > MAX_REFS ? `partial, first ${MAX_REFS}; omitted refs unknown` : "complete"}\n${
-    entries
-      .slice(0, MAX_REFS)
-      .map((ref) => JSON.stringify(ref))
-      .join("\n") || "(none)"
-  }`;
+function completeness(entries: Ref[] | null, limit: number): string {
+  if (!entries) return UNKNOWN;
+  return entries.length > limit
+    ? `partial, first ${limit}; omitted refs unknown`
+    : "complete";
+}
+
+function shortRef(ref: Ref): string {
+  return `${ref.name} oid=${ref.oid}${ref.symbolic ? ` symbolic=${ref.symbolic}` : ""}`;
 }
 
 async function compare(
@@ -85,6 +88,7 @@ async function branchEvidence(
   repo: string,
   branches: Ref[] | null,
   tracking: Ref[] | null,
+  tags: Ref[] | null,
 ): Promise<string> {
   const relations = await Promise.all(
     (branches ?? []).slice(0, MAX_BRANCHES).map(async (branch) => {
@@ -110,7 +114,7 @@ async function branchEvidence(
         ).values(),
       ];
       return [
-        `${branch.name}: upstream=${branch.upstream ?? "(not configured; does not imply not pushed)"}`,
+        `${branch.name}: tracking branch=${branch.upstream ?? "(not configured; independent of configured remotes and push status)"}`,
         ...(await Promise.all(
           pairs.map((ref) => compare(git, repo, branch, ref)),
         )),
@@ -122,12 +126,21 @@ async function branchEvidence(
       ].join("\n");
     }),
   );
+  const tagSummary =
+    tags === null
+      ? `Local tags: ${UNKNOWN}`
+      : tags.length === 0
+        ? "Local tags: none"
+        : null;
   return [
-    "These are LOCAL refs, including locally cached remote-tracking refs; they are not live server state.",
+    "These are LOCAL refs, including locally cached remote-tracking refs; they are not live server state. Tracking is branch configuration, not a remote named upstream.",
     `Relationships (first ${MAX_BRANCHES} local branches; omitted comparisons unknown):`,
     ...relations,
-    refList("Local branches", branches),
-    refList("Local remote-tracking refs", tracking),
+    `Local branches (${completeness(branches, MAX_REFS)}):`,
+    (branches ?? []).slice(0, MAX_REFS).map(shortRef).join("\n") || "(none)",
+    `Local remote-tracking refs (${completeness(tracking, MAX_REFS)}):`,
+    (tracking ?? []).slice(0, MAX_REFS).map(shortRef).join("\n") || "(none)",
+    ...(tagSummary ? [tagSummary] : []),
   ].join("\n\n");
 }
 
@@ -164,20 +177,18 @@ async function historyEvidence(
         git.read(repo, [
           "log",
           "-n",
-          "12",
+          String(MAX_LOG),
           "--format=%H%x09%P%x09%s",
           ref.oid,
           "--",
         ]),
         git.read(repo, ["rev-list", "--count", ref.oid]),
         git.read(repo, ["rev-list", "--count", "--merges", ref.oid]),
-        // No identity fields. The selector includes time; messages carry rename,
-        // reset and merge events that tip names alone cannot establish.
         git.read(repo, [
           "reflog",
           "show",
           "-n",
-          "8",
+          String(MAX_REFLOG),
           "--date=iso-strict",
           "--format=%H%x09%gD%x09%gs",
           ref.name,
@@ -185,19 +196,17 @@ async function historyEvidence(
       ]);
       return {
         summary: `${ref.name} at ${ref.oid}: reachable commits=${count ?? "unknown"}, merge commits=${merges ?? "unknown"}`,
-        log: `${ref.name}: newest first, at most 12 (commit<TAB>parents<TAB>subject):\n${log ?? UNKNOWN}`,
-        reflog: `${ref.name}: newest first, at most 8 (commit<TAB>selector/time<TAB>event):\n${reflog || "unknown: reflog unavailable, empty, or expired; absence does not prove an action never happened"}`,
+        log: `${ref.name}: newest first, at most ${MAX_LOG} (commit<TAB>parents<TAB>subject):\n${log ?? UNKNOWN}`,
+        reflog: `${ref.name}: newest first, at most ${MAX_REFLOG} (commit<TAB>selector/time<TAB>event):\n${reflog || "unknown: reflog unavailable, empty, or expired; absence does not prove an action never happened"}`,
       };
     }),
   );
-  // All bounded branch pairs cover main/master and task-specific branch names
-  // without hardcoding verifier answers or assuming the current branch is main.
-  const pairs: Promise<string>[] = [];
-  for (let left = 0; left < targets.length; left += 1) {
-    for (let right = left + 1; right < targets.length; right += 1) {
-      pairs.push(compare(git, repo, targets[left], targets[right]));
-    }
-  }
+  const headRef = targets[0];
+  const pairs = headRef
+    ? await Promise.all(
+        targets.slice(1).map((target) => compare(git, repo, headRef, target)),
+      )
+    : [];
   const scope = [
     `Shallow repository: ${shallow ?? "unknown"}. Counts/ancestry describe available objects only; shallow boundaries or missing objects limit conclusions.`,
     `History scope: HEAD and first ${MAX_BRANCHES} local branches. Omitted commits/events are unknown.`,
@@ -209,8 +218,12 @@ async function historyEvidence(
       text: [
         scope,
         ...sections.map((section) => section.summary),
-        "Pairwise reachability (ahead/behind is left relative to right):",
-        ...(await Promise.all(pairs)),
+        ...(pairs.length
+          ? [
+              "Reachability of HEAD relative to other inspected branches:",
+              ...pairs,
+            ]
+          : []),
       ].join("\n\n"),
     },
     {
@@ -238,38 +251,26 @@ async function historyEvidence(
 async function tagEvidence(
   git: GitReader,
   repo: string,
-  tags: Ref[] | null,
+  tags: Ref[],
 ): Promise<string> {
-  if (!tags) return UNKNOWN;
   const records = await Promise.all(
     tags.slice(0, MAX_TAGS).map(async (tag) => {
       const annotated = tag.type === "tag";
-      const [peeled, object] = await Promise.all([
-        git.read(repo, ["rev-parse", "--verify", `${tag.oid}^{}`]),
-        annotated ? git.read(repo, ["cat-file", "tag", tag.oid]) : null,
+      const peeled = await git.read(repo, [
+        "rev-parse",
+        "--verify",
+        `${tag.oid}^{}`,
       ]);
-      const message = object
-        ?.split("\n\n")
-        .slice(1)
-        .join("\n\n")
-        .split("-----BEGIN PGP SIGNATURE-----")[0]
-        .trim();
       return JSON.stringify({
         ref: tag.name,
         kind: annotated ? "annotated" : "lightweight",
         objectType: tag.type,
         objectId: tag.oid,
         peeledTarget: peeled ?? "unknown",
-        annotation: annotated
-          ? message === undefined
-            ? "unknown"
-            : message.slice(0, 1200)
-          : null,
-        annotationTruncated: (message?.length ?? 0) > 1200,
       });
     }),
   );
-  return `LOCAL tags: ${tags.length > MAX_TAGS ? `partial, first ${MAX_TAGS}; other tags unknown` : "complete"}.\n${records.join("\n") || "(none)"}\nAnnotated tag object IDs differ from their peeled targets; compare like fields with live remote tags.`;
+  return `LOCAL tags: ${tags.length > MAX_TAGS ? `partial, first ${MAX_TAGS}; other tags unknown` : "complete"}. Kind and peeled target only; annotation bodies omitted.\n${records.join("\n")}\nAnnotated tag object IDs differ from their peeled targets; compare like fields with live remote tags.`;
 }
 
 type Target = { query: string; display: string };
@@ -343,11 +344,15 @@ async function remoteEvidence(
   repo: string,
   root: string,
   branches: Ref[] | null,
-): Promise<string> {
+  includeLiveTags: boolean,
+): Promise<string | null> {
   const names = await git.read(repo, ["remote"]);
   if (names === null) return UNKNOWN;
-  if (!names) return "No configured remotes.";
+  if (!names) return null;
   const configured = names.split("\n");
+  const lsRemote = includeLiveTags
+    ? (["ls-remote", "--heads", "--tags", "--"] as const)
+    : (["ls-remote", "--heads", "--"] as const);
   const sections = await Promise.all(
     configured.slice(0, MAX_REMOTES).map(async (name) => {
       const destinations = await Promise.all(
@@ -392,7 +397,7 @@ async function remoteEvidence(
           .map(async ({ target, roles }) => {
             const output = await git.read(
               repo,
-              ["ls-remote", "--heads", "--tags", "--", target.query],
+              [...lsRemote, target.query],
               true,
             );
             const heading = `Remote ${name}, ${roles.join("+")} destination ${target.display}`;
@@ -411,10 +416,14 @@ async function remoteEvidence(
               ...[...heads]
                 .slice(0, MAX_REFS)
                 .map(([ref, objectId]) => JSON.stringify({ ref, objectId })),
-              `Server tags (${tags.size > MAX_TAGS ? `partial first ${MAX_TAGS}` : "complete advertised list"}; peeled ^{} rows normalized):`,
-              ...[...tags]
-                .slice(0, MAX_TAGS)
-                .map(([ref, tag]) => JSON.stringify({ ref, ...tag })),
+              ...(includeLiveTags
+                ? [
+                    `Server tags (${tags.size > MAX_TAGS ? `partial first ${MAX_TAGS}` : "complete advertised list"}; peeled ^{} rows normalized):`,
+                    ...[...tags]
+                      .slice(0, MAX_TAGS)
+                      .map(([ref, tag]) => JSON.stringify({ ref, ...tag })),
+                  ]
+                : []),
               ...relations,
             ].join("\n");
           }),
@@ -443,16 +452,26 @@ export async function collectGitEvidence(
     refs(git, repo, "refs/remotes"),
     refs(git, repo, "refs/tags"),
   ]);
+  const includeTagDetails = tags === null || tags.length > 0;
+  const includeLiveTags = Boolean(tags?.length);
   const [branchText, history, tagText, remotes] = await Promise.all([
-    branchEvidence(git, repo, branches, tracking),
+    branchEvidence(git, repo, branches, tracking, tags),
     historyEvidence(git, repo, branches),
-    tagEvidence(git, repo, tags),
-    remoteEvidence(git, repo, root, branches),
+    includeTagDetails && tags
+      ? tagEvidence(git, repo, tags)
+      : includeTagDetails
+        ? Promise.resolve(UNKNOWN)
+        : Promise.resolve(null),
+    remoteEvidence(git, repo, root, branches, includeLiveTags),
   ]);
   return [
     { id: "git-refs", label: "Local branch relationships", text: branchText },
     ...history,
-    { id: "git-tags", label: "Local tag details", text: tagText },
-    { id: "git-remotes", label: "Live remote refs", text: remotes },
+    ...(tagText
+      ? [{ id: "git-tags", label: "Local tag details", text: tagText }]
+      : []),
+    ...(remotes
+      ? [{ id: "git-remotes", label: "Live remote refs", text: remotes }]
+      : []),
   ];
 }

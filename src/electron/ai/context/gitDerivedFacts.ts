@@ -7,6 +7,7 @@ export type GitDerivedInput = {
   cwdAbs: string;
   status: string | null;
   headSubject: string | null;
+  configuredRemotes: string[] | null;
   inProgress: string[];
   mergeIncoming: string | null;
 };
@@ -99,6 +100,11 @@ export function formatDerivedFacts(input: GitDerivedInput): string {
     `Repository: ${input.repoDisplay} (${placement(input.repoAbs, input.cwdAbs)})`,
     headFact(branchLine(input.status), input.headSubject),
     workingTreeFact(input.status),
+    input.configuredRemotes === null
+      ? "Configured remotes (repository names, not branch tracking): unknown"
+      : input.configuredRemotes.length > 0
+        ? `Configured remotes (repository names, not branch tracking): ${input.configuredRemotes.join(", ")}`
+        : "Configured remotes (repository names, not branch tracking): none",
   ];
   if (input.inProgress.length > 0) {
     lines.push(

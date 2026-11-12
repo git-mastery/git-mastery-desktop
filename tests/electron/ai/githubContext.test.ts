@@ -14,7 +14,10 @@ import {
   createGithubStateProvider,
   githubTarget,
 } from "../../../src/electron/ai/context/githubState.js";
-import { buildSystemPrompt } from "../../../src/electron/ai/prompt.js";
+import {
+  buildSystemPrompt,
+  formatAttachedContext,
+} from "../../../src/electron/ai/prompt.js";
 import { workspaceSource } from "../../../src/electron/ai/source.js";
 
 vi.mock("../../../src/electron/utils/cli/getters.js", () => ({
@@ -443,14 +446,15 @@ describe("GitHub exercise context", () => {
   it("puts metadata and its limitations in the model prompt", async () => {
     const { provider } = fixture(http(repo()), JSON.stringify([pr()]));
     const text = await provider.collect(args("create-pr-from-main"));
-    const prompt = buildSystemPrompt(workspaceSource("create-pr-from-main"), [
+    const system = buildSystemPrompt(workspaceSource("create-pr-from-main"));
+    const attached = formatAttachedContext([
       { id: provider.id, label: provider.label, text: text! },
     ]);
-    expect(prompt).toContain("## GitHub state");
-    expect(prompt).toContain("PR #1");
-    expect(prompt).toContain("Prefer current GitHub facts.");
-    expect(prompt).toContain("metadata is not verification");
-    expect(prompt).toContain("Never give the complete solution");
+    expect(attached).toContain("## GitHub state");
+    expect(attached).toContain("PR #1");
+    expect(system).toContain("Prefer current GitHub facts.");
+    expect(system).toContain("Metadata is not verification.");
+    expect(system).toContain("Never give the complete solution");
   });
 
   it("discovers arbitrary HTTPS/SSH fetch and push targets and deduplicates the manifest", async () => {
@@ -549,11 +553,9 @@ describe("GitHub exercise context", () => {
     expect(
       runner.mock.calls.find(([args]) => args[0] === "pr")![0].at(-1),
     ).not.toContain("headRefOid");
-    const prompt = buildSystemPrompt(workspaceSource("arbitrary-task"), [
-      { id: provider.id, label: provider.label, text: text! },
-    ]);
-    expect(prompt).not.toContain("When a GitHub state block is present");
-    expect(prompt).not.toContain("Respect its repository scope and limits");
+    const system = buildSystemPrompt(workspaceSource("arbitrary-task"));
+    expect(system).not.toContain("When a GitHub state block is present");
+    expect(system).not.toContain("Respect its repository scope and limits");
   });
 
   it.each([

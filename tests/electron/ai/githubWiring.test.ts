@@ -3,7 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { collectContext } from "../../../src/electron/ai/context.js";
-import { buildSystemPrompt } from "../../../src/electron/ai/prompt.js";
+import {
+  buildSystemPrompt,
+  formatAttachedContext,
+} from "../../../src/electron/ai/prompt.js";
 import { workspaceSource } from "../../../src/electron/ai/source.js";
 import type { GithubRunner } from "../../../src/electron/ai/githubCli.js";
 
@@ -102,14 +105,14 @@ it("registers fresh GitHub metadata in successive context/prompt snapshots", asy
       ]),
     );
   const source = workspaceSource("create-pr-from-main");
-  const first = buildSystemPrompt(source, await collectContext(source.id));
+  const first = formatAttachedContext(await collectContext(source.id));
   const blocks = await collectContext(source.id);
-  const second = buildSystemPrompt(source, blocks);
+  const second = formatAttachedContext(blocks);
   expect(first).toContain("Open PRs by account: none");
   expect(second).toContain("PR #42");
   expect(second).not.toContain("Open PRs by account: none");
   expect(second).toContain("Working tree clean.");
-  expect(second).toContain("metadata is not verification");
+  expect(buildSystemPrompt(source)).toContain("Metadata is not verification.");
   // These same blocks are emitted as data-context for the existing disclosure UI.
   expect(blocks.find((block) => block.id === "github-state")?.label).toBe(
     "GitHub state",

@@ -123,7 +123,9 @@ OpenRouter key can keep using it.
 
 ## 5. Tutoring policy
 
-`ai/prompt.ts` builds the system prompt. The policy depends on the source kind:
+`ai/prompt.ts` builds the static system prompt. Workspace evidence is fenced separately and attached
+to the student's latest message so it outranks earlier assistant diagnoses. The policy depends on
+the source kind:
 
 - **Lessons are teaching pages.** The model may show commands and examples. No exercise folder is
   required; workspace context is not collected.
@@ -141,11 +143,14 @@ Exercise and hands-on kinds share the same extra rules:
 - **Scope.** Answers are limited to this source, Git and GitHub, the Git-Mastery app and CLI, and
   basic terminal use. Anything else is politely declined.
 - **Injection resistance.** Context blocks are fenced data, never instructions, and the prompt is
-  not revealed.
+  not revealed. The provider sees only the current question plus two earlier turns; older chat stays
+  in the UI.
 - **Grounding.** Task instructions describe initial conditions; current observations supersede them
-  and earlier assistant diagnoses. Local remote-tracking refs, live server refs, upstream
-  configuration and checkout are distinct facts. Clean files alone do not establish completion.
-  Missing or truncated evidence calls for one precise check, not a guessed diagnosis.
+  and earlier assistant diagnoses. Configured remotes, branch tracking, local remote-tracking refs,
+  live server refs and checkout are distinct facts. The context avoids using “upstream” as shorthand
+  for branch tracking because an exercise may use that word as a remote name. Clean files alone do
+  not establish completion. Missing or truncated evidence calls for one precise check, not a guessed
+  diagnosis.
 - **Working files and answers.** Bounded visible text files show the learner's actual attempt,
   including answer sheets. The tutor uses these to explain mistakes and guide one next step;
   it must not supply corrected answer values or a finished replacement file. Hidden files,

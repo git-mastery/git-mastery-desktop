@@ -11,7 +11,8 @@ const MAX_ENTRIES = 80;
 const PROGRESS_LABEL: Record<ProgressState, string> = {
   downloaded: "downloaded, not verified yet",
   "in-progress": "verified before, has not passed yet",
-  completed: "completed (verify passed)",
+  completed:
+    "VERIFY PASSED (recorded completion; if current evidence is consistent, this exercise is complete)",
 };
 
 /**

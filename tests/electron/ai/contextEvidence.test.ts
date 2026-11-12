@@ -7,7 +7,10 @@ import { GitReader } from "../../../src/electron/ai/context/gitReader.js";
 import { collectGitEvidence } from "../../../src/electron/ai/context/gitEvidence.js";
 import { gitStateProvider } from "../../../src/electron/ai/context/gitState.js";
 import { exerciseFilesProvider } from "../../../src/electron/ai/context/exerciseFiles.js";
-import { buildSystemPrompt } from "../../../src/electron/ai/prompt.js";
+import {
+  buildSystemPrompt,
+  formatAttachedContext,
+} from "../../../src/electron/ai/prompt.js";
 import { workspaceSource } from "../../../src/electron/ai/source.js";
 
 vi.mock("../../../src/electron/utils/cli/getters.js", () => ({
@@ -71,7 +74,7 @@ describe("real Git evidence", () => {
     const before = git("show-ref");
     const blocks = await evidence();
     expect(blocks["git-refs"]).toContain(
-      "refs/heads/feature: upstream=(not configured; does not imply not pushed)",
+      "refs/heads/feature: tracking branch=(not configured; independent of configured remotes and push status)",
     );
     expect(blocks["git-refs"]).toContain(
       "refs/heads/feature vs refs/remotes/origin/feature: ahead=1, behind=0",
@@ -81,6 +84,18 @@ describe("real Git evidence", () => {
     );
     expect(blocks["git-remotes"]).toContain("exercise-relative:.server.git");
     expect(git("show-ref")).toBe(before);
+  });
+
+  it("separates configured remote names from branch tracking", async () => {
+    const result = JSON.stringify(
+      await gitStateProvider.collect(collectArgs()),
+    );
+    expect(result).toContain(
+      "Configured remotes (repository names, not branch tracking): origin",
+    );
+    expect(result).toContain(
+      "refs/heads/main: tracking branch=(not configured; independent of configured remotes and push status)",
+    );
   });
 
   it("includes commit parents, branch-specific counts, ancestry and reset events", async () => {
@@ -135,7 +150,7 @@ describe("real Git evidence", () => {
     const blocks = await evidence();
     expect(blocks["git-tags"]).toContain('"kind":"annotated"');
     expect(blocks["git-tags"]).toContain('"kind":"lightweight"');
-    expect(blocks["git-tags"]).toContain('"annotation":"Release note"');
+    expect(blocks["git-tags"]).not.toContain("Release note");
     expect(blocks["git-tags"]).toContain(`"peeledTarget":"${head}"`);
     expect(blocks["git-remotes"]).toContain(
       `"objectId":"${tag}","peeledTarget":"${head}"`,
@@ -217,8 +232,21 @@ it("marks bounded file excerpts and reports oversized files as unavailable", asy
   expect(text).not.toContain("EXCLUDED_OVERSIZE");
 });
 
+it("omits stash, empty remotes, empty tag details, and clean porcelain", async () => {
+  git("init", "-q", "-b", "main");
+  commit("Initial");
+  const result = JSON.stringify(await gitStateProvider.collect(collectArgs()));
+  const blocks = await evidence();
+  expect(result).not.toContain("Stashes");
+  expect(result).not.toContain("git status --porcelain");
+  expect(result).toContain("Local tags: none");
+  expect(blocks["git-tags"]).toBeUndefined();
+  expect(blocks["git-remotes"]).toBeUndefined();
+});
+
 it("keeps current evidence and recorded/reported passes distinct from setup and old advice", () => {
-  const prompt = buildSystemPrompt(workspaceSource("arbitrary-task"), [
+  const system = buildSystemPrompt(workspaceSource("arbitrary-task"));
+  const attached = formatAttachedContext([
     {
       id: "instructions",
       label: "Instructions",
@@ -235,11 +263,14 @@ it("keeps current evidence and recorded/reported passes distinct from setup and 
       text: "Progress: passed",
     },
   ]);
-  expect(prompt).toContain(
+  expect(system).toContain(
     "Current observations supersede initial conditions and earlier assistant diagnoses",
   );
-  expect(prompt).toContain("acknowledge it as reported or recorded");
-  expect(prompt).toContain("does not identify the latest verification attempt");
-  expect(prompt).toContain("Never give the complete solution");
-  expect(prompt).toContain("do not supply corrected answer values");
+  expect(system).toContain("acknowledge it as reported or recorded");
+  expect(system).toContain("does not identify the latest verification attempt");
+  expect(system).toContain("Never give the complete solution");
+  expect(system).toContain("do not supply corrected answer values");
+  expect(system).not.toContain("# Current workspace evidence");
+  expect(attached).toContain("Untrusted workspace evidence for this turn only");
+  expect(attached).toContain("## Live remote refs");
 });

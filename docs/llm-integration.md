@@ -366,10 +366,11 @@ conversation has a concrete artifact to point at rather than a question.
 - bounded **visible working-file contents**, including question sheets and the student's answers,
   whether tracked by Git or not;
 - for each repository inside the exercise folder: a short derived summary (branch or detached
-  HEAD, working-tree cleanliness, paused operation, merge direction when known), plus read-only
-  Git evidence: local branches and upstream relationships, commit parents and histories,
-  reachability counts, reflog events, local tag details, live remote branch/tag advertisements,
-  stashes, and the **names and staged/unstaged status** of changed files;
+  HEAD, working-tree cleanliness, paused operation, configured remotes, merge direction when
+  known), plus read-only Git evidence: local branches and tracking relationships, commit parents
+  and histories, reachability counts, reflog events, local tag identities when tags exist, live
+  remote branch advertisements when remotes exist (and live tags only when local tags exist),
+  and the **names and staged/unstaged status** of changed files;
 - the signed-in GitHub username, plus repository name, visibility, fork status, parent and
   authored open PR metadata for targets discovered from exercise remotes and the manifest.
   Every exercise uses the same collection logic. The block reports query limits and

@@ -26,10 +26,10 @@ async function describeState(
   cwd: string,
   display: (target: string) => string,
 ): Promise<string> {
-  const [status, subject, stash, incoming] = await Promise.all([
+  const [status, subject, remoteNames, incoming] = await Promise.all([
     git.read(repo, ["status", "--porcelain=v1", "-b"]),
     git.read(repo, ["log", "-1", "--format=%s"]),
-    git.read(repo, ["stash", "list", "-n", "10", "--format=%gd %gs"]),
+    git.read(repo, ["remote"]),
     fs.existsSync(path.join(gitDir, "MERGE_HEAD"))
       ? git.read(repo, [
           "name-rev",
@@ -46,20 +46,32 @@ async function describeState(
     cwdAbs: cwd,
     status,
     headSubject: subject,
+    configuredRemotes:
+      remoteNames === null ? null : remoteNames.split("\n").filter(Boolean),
     inProgress: IN_PROGRESS.filter(({ marker }) =>
       fs.existsSync(path.join(gitDir, marker)),
     ).map(({ label }) => label),
     mergeIncoming:
       incoming?.replace(/[~^].*$/, "").replace(/^remotes\/[^/]+\//, "") ?? null,
   });
-  return [
-    facts,
-    `Squash preparation marker SQUASH_MSG: ${fs.existsSync(path.join(gitDir, "SQUASH_MSG")) ? "present (may remain after a commit; not proof of completion)" : "absent"}`,
-    "git status (column 1 = staged, column 2 = working tree; ?? = untracked, UU = conflict, ## = branch)",
-    status ?? "(unknown: command unavailable)",
-    "Stashes (at most 10):",
-    stash ?? "(unknown: command unavailable)",
-  ].join("\n");
+  const files = status
+    ?.split(/\r?\n/)
+    .filter((row) => row.length >= 3 && !row.startsWith("## "));
+  const parts = [facts];
+  if (fs.existsSync(path.join(gitDir, "SQUASH_MSG"))) {
+    parts.push(
+      "Squash preparation marker SQUASH_MSG: present (may remain after a commit; not proof of completion)",
+    );
+  }
+  if (status === null) {
+    parts.push("git status --porcelain=v1 -b: unknown (command unavailable)");
+  } else if (files && files.length > 0) {
+    parts.push(
+      "git status --porcelain=v1 -b (column 1 staged, column 2 worktree; ?? untracked, UU conflict):",
+      status,
+    );
+  }
+  return parts.join("\n");
 }
 
 export const gitStateProvider: ContextProvider = {
@@ -100,10 +112,11 @@ export const gitStateProvider: ContextProvider = {
             { id: "git-state", label: "Repository state", text: state },
             ...evidence,
           ];
-          return parts.map((part): ContextBlock => ({
+          const heading = `Repository: ${display(repo)}\nObservation window: ${started} – ${new Date().toISOString()} (not atomic)\n${REPOSITORY_SEARCH_SCOPE}\n\n`;
+          return parts.map((part, partIndex): ContextBlock => ({
             id: `${part.id}-${index}`,
             label: `${part.label} · ${display(repo)}`,
-            text: `Repository: ${display(repo)}\nObservation window: ${started} – ${new Date().toISOString()} (not atomic)\n${REPOSITORY_SEARCH_SCOPE}\n\n${part.text}`,
+            text: partIndex === 0 ? `${heading}${part.text}` : part.text,
           }));
         }),
       );
